@@ -1,0 +1,110 @@
+id: SRE-AT-07
+title: Runbook Quality & Recovery Readiness Assessment
+domain: SRE
+variant: A
+priority: P1
+applicability: All FSI REO applications with P1/P2 incident history; immediately applies to Rebates Batch (6 defect patterns,
+  no runbooks) and EosUW
+accountable_owner: Application Engineering / PSE / SRE
+purpose: Evaluate the completeness, accuracy, and operational accessibility of runbooks and standard operating procedures.
+  This assessment directly feeds the AI Runbook Generator capability, identifying gaps for automated drafting and engineer
+  validation.
+relevance: 'Six Rebates Batch defect patterns close with OneNote workarounds. RD_GDX3M: 981 incidents / 248 days with no Problem
+  records and no runbook. G-05, IO-07.'
+reassessment_trigger: Major release, architecture change, or Post-Incident Review recommendation
+scope: []
+signoff_roles:
+- Assessment Lead
+- SRE Reviewer
+- Engineering Owner
+- PSE Representative
+criteria:
+- id: SRE-AT-07-C01
+  number: 1
+  name: Runbook Existence per Critical Scenario
+  standard_ref: Golden Pathways — Runbook Engineering; ITPN IO-07
+  applicability: All P1/P2 failure scenarios for production applications
+  required_evidence: ServiceNow Knowledge article list; runbook index confirming coverage of top 5 incident categories
+  evaluation_method: 'Deterministic: runbook exists in ServiceNow for each of the top 5 incident categories by volume'
+  methods:
+  - deterministic
+  acceptance_criteria: At least one runbook per top-5 incident category; all linked in ServiceNow (not OneNote or email)
+  default_risk: Critical
+  default_risk_assumed: false
+  accountable_owner: Application Engineering / PSE
+  reassessment: ''
+  example_risk: Critical — six Rebates Batch patterns close via OneNote workarounds with no formal runbooks
+  example_recommendation: Migrate all OneNote procedures to ServiceNow; create runbook stubs for each of 6 named batch patterns
+  references: []
+- id: SRE-AT-07-C02
+  number: 2
+  name: Recovery Step Completeness
+  standard_ref: Golden Pathways — Runbook Engineering
+  applicability: All production runbooks
+  required_evidence: 'Runbook document review: sections for trigger, diagnosis, remediation, validation, and escalation'
+  evaluation_method: 'Human review: each runbook contains all five sections; steps are specific and executable'
+  methods:
+  - human
+  acceptance_criteria: 'Runbooks contain: trigger condition, diagnosis steps, remediation actions, validation check, and escalation
+    path'
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: Application Engineering / SRE
+  reassessment: ''
+  example_risk: High — incomplete runbooks extend MTTR and require senior engineer involvement for every incident
+  example_recommendation: Apply standard 5-section runbook template; validate each section with the on-call engineer
+  references: []
+- id: SRE-AT-07-C03
+  number: 3
+  name: Runbook Currency (Review Date)
+  standard_ref: ITPN IO-07; ITIL Knowledge Management
+  applicability: All production runbooks
+  required_evidence: ServiceNow article properties showing last-reviewed date; review log
+  evaluation_method: 'Deterministic: review date < 6 months; reviewed by a named engineer'
+  methods:
+  - deterministic
+  acceptance_criteria: All runbooks reviewed within the past 6 months by a named engineer; review date visible in ServiceNow
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: Application Engineering
+  reassessment: ''
+  example_risk: Medium — stale runbooks mislead responders under pressure
+  example_recommendation: Assign review owner per runbook; schedule 6-month cadence in team calendar; automate reminder via
+    ServiceNow
+  references: []
+- id: SRE-AT-07-C04
+  number: 4
+  name: P1 Scenario Coverage
+  standard_ref: ITIL Major Incident; ITPN G-02
+  applicability: All P1 applications
+  required_evidence: Runbook index showing coverage of complete-outage, data-loss, and security-incident scenarios
+  evaluation_method: 'Human review: P1 runbooks cover at minimum: full outage, data-integrity failure, and security event'
+  methods:
+  - human
+  acceptance_criteria: At least 3 P1 scenario runbooks exist; each tested by on-call engineer within past 12 months
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: PSE / SRE / Application Engineering
+  reassessment: ''
+  example_risk: High — untested P1 runbooks may fail under real outage pressure
+  example_recommendation: Conduct game-day exercise for each P1 runbook; document outcomes and update procedures
+  references: []
+- id: SRE-AT-07-C05
+  number: 5
+  name: Runbook Automation Opportunity Identification
+  standard_ref: ITPN IO-01, IO-03; AE Maturity Assessment
+  applicability: High-volume repetitive runbook steps
+  required_evidence: List of runbook steps flagged as automation candidates; AE intake record or engineering ticket
+  evaluation_method: 'Human review: review top-10 volume runbooks; flag steps executable without human judgment'
+  methods:
+  - human
+  acceptance_criteria: At least 3 runbook automation candidates identified and submitted to AE backlog
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: AE / Application Engineering / SRE
+  reassessment: ''
+  example_risk: Medium — manual execution of automatable steps accumulates toil and delays recovery
+  example_recommendation: Partner with AE lead to identify and score automation candidates per IO-01 and IO-03 scoring model
+  references: []
+source_file: SRE-AT-07 — Runbook Quality & Recovery Readiness Assessment.docx
+references: []

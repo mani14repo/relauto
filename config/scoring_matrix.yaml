@@ -1,0 +1,49 @@
+# Scoring matrix. Layered on the Reliability Readiness Score Rubric (V1 Draft), which defines the
+# gating Readiness Rating (P1/P2 gap counts) and domain weights but no numeric score.
+# Everything numeric below is a PROPOSAL pending REO / SRE leadership approval.
+version: "2026-11-draft-1"
+status: "DRAFT - pending REO/SRE leadership approval"
+
+# Points per criterion result. Insufficient Evidence scores as a Gap (rubric section 7).
+# Not Applicable is excluded from the denominator only when approved (rubric section 7).
+result_points:
+  Met: 1.0
+  Gap: 0.0
+  Insufficient Evidence: 0.0
+  Not Applicable: null        # excluded when approved; unapproved N/A is scored as Gap
+
+# Criterion weight by risk classification (catalog default_risk, overridable by the assessor).
+risk_weights: {Critical: 4, High: 3, Medium: 2, Low: 1}
+
+# Template weight inside its domain, by template priority. Variant B templates have no priority field.
+template_priority_weights: {P1: 3, P2: 2, P3: 1}
+default_template_priority: P2
+
+# Domain weights - taken verbatim from the rubric (section 3). Renormalised over assessed domains.
+domain_weights: {SRE: 0.5, ITSM: 0.3, CMDB: 0.2}
+
+# Maturity levels on the 0-100 Reliability Readiness Index (lower bound inclusive).
+maturity_levels:
+  - {level: 1, name: Initial,    min: 0}
+  - {level: 2, name: Developing, min: 40}
+  - {level: 3, name: Defined,    min: 60}
+  - {level: 4, name: Managed,    min: 75}
+  - {level: 5, name: Optimized,  min: 90}
+
+# Readiness rating - rubric section 2, evaluated in order; first match wins.
+ratings:
+  - {rating: Not Ready,   p1_min: 1,                     outcome: "Block deployment / escalate to SRE and leadership", remediation_days: 0}
+  - {rating: At Risk,     p1_max: 0, p2_min: 4,          outcome: "Conditional approval; remediation plan required within 30 days", remediation_days: 30}
+  - {rating: Conditional, p1_max: 0, p2_min: 1, p2_max: 3, outcome: "Conditional approval; remediation plan required within 60 days", remediation_days: 60}
+  - {rating: Ready,       p1_max: 0, p2_max: 0,          outcome: "Full reliability readiness certification", remediation_days: null}
+
+# Gating caps: the maturity level cannot exceed this while the rating applies.
+maturity_caps: {Not Ready: 2, At Risk: 3}
+
+# Recommendation due dates (days from assessment date) by finding severity, when the rating gives none.
+severity_due_days: {Critical: 14, High: 30, Medium: 60, Low: 90}
+
+# Tier-dependent thresholds (rubric P2-07, P2-10; CMDB-AT-11-C03).
+tier_thresholds:
+  cmdb_completeness_pct: {1: 95, 2: 85, 3: 75}
+  dr_test_max_age_months: {1: 12, 2: 24, 3: 36}

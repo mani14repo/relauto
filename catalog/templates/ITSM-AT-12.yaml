@@ -1,0 +1,117 @@
+id: ITSM-AT-12
+title: Service Continuity Management Assessment
+domain: ITSM
+variant: B
+priority: ''
+applicability: All FSI REO-managed applications and services within scope of the Reliability by Design initiative Production
+  and pre-production environments where the assessed capability is required Application Engineering, SRE, PSE, CMDB, and Architecture
+  teams responsible for the assessed capability
+accountable_owner: ITSM Standards / Practice Owner
+purpose: This assessment evaluates whether FSI REO-managed services have approved recovery objectives, documented and tested
+  continuity plans, integrated business continuity and disaster recovery procedures, and whether continuity plans are maintained
+  after major changes or incidents. Service continuity management bridges operational resilience engineering with enterprise
+  business continuity requirements.
+relevance: ''
+reassessment_trigger: ''
+scope:
+- All FSI REO-managed applications and services within scope of the Reliability by Design initiative
+- Production and pre-production environments where the assessed capability is required
+- Application Engineering, SRE, PSE, CMDB, and Architecture teams responsible for the assessed capability
+signoff_roles: []
+criteria:
+- id: ITSM-AT-12-C01
+  number: 1
+  name: Recovery objectives (RTO and RPO) are defined, approved, and achievable
+  standard_ref: ITSM-STD-12 — Service Continuity Management Standard; ISO 22301:2019; NIST SP 800-34 Rev. 1
+  applicability: All Tier 1 Critical and Tier 2 Standard services in FSI REO scope
+  required_evidence: Approved continuity plan or CMDB record showing RTO and RPO values; sign-off by business owner and SRE;
+    evidence from DR test confirming objectives are achievable
+  evaluation_method: Deterministic — RTO and RPO fields populated in continuity plan or CMDB; AI-Assisted — review DR test
+    evidence to confirm objectives were met in last test
+  methods:
+  - deterministic
+  - ai
+  acceptance_criteria: RTO and RPO are defined with specific time values; approved by business owner; confirmed achievable
+    via DR test within the required period
+  default_risk: High
+  default_risk_assumed: true
+  accountable_owner: Application Engineering / SRE / Business Owner
+  reassessment: Annually; after DR test; after material architecture change
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - ITSM-STD-12
+- id: ITSM-AT-12-C02
+  number: 2
+  name: Service continuity plan exists, is current, and has been tested
+  standard_ref: ITSM-STD-12; ITSM-PRC-12 — Continuity Planning, Testing and Recovery Process
+  applicability: All Tier 1 Critical services; Tier 2 Standard services where continuity planning is required by policy
+  required_evidence: Continuity plan document dated within 12 months; DR test record within required period (12 months Tier
+    1, 24 months Tier 2); test results showing pass/fail against RTO/RPO
+  evaluation_method: 'AI-Assisted — review continuity plan for: scope, RTO/RPO, recovery procedures, contact list, and escalation
+    path; verify last test date and outcome'
+  methods:
+  - ai
+  acceptance_criteria: Continuity plan exists, reviewed within 12 months, and DR test completed within required period showing
+    RTO/RPO were met or gaps are remediated
+  default_risk: High
+  default_risk_assumed: true
+  accountable_owner: Application Engineering / SRE
+  reassessment: At each DR test; after material changes; when RTO/RPO are revised
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - ITSM-STD-12
+  - ITSM-PRC-12
+- id: ITSM-AT-12-C03
+  number: 3
+  name: Business continuity requirements are integrated with DR procedures
+  standard_ref: ITSM-STD-12; SRE-STD-13 — Disaster Recovery & Business Continuity Standard; ISO 22301:2019
+  applicability: All services with a formally approved BIA (see CMDB-AT-10)
+  required_evidence: DR procedure referencing BIA-derived RTO/RPO; evidence that business owner has reviewed and approved
+    DR runbook; CMDB dependency map used in DR impact assessment
+  evaluation_method: 'AI-Assisted — review DR runbook and continuity plan for alignment: confirm BIA recovery objectives are
+    reflected in DR procedure; confirm CMDB dependencies are included in blast-radius assessment'
+  methods:
+  - ai
+  acceptance_criteria: DR procedures reflect BIA-derived recovery objectives; business owner has approved DR runbook; CMDB
+    dependency map is referenced in impact assessment
+  default_risk: High
+  default_risk_assumed: true
+  accountable_owner: Application Engineering / SRE / Business Owner
+  reassessment: After BIA update; after DR runbook revision; after dependency map changes
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - ITSM-STD-12
+  - SRE-STD-13
+- id: ITSM-AT-12-C04
+  number: 4
+  name: Continuity plan is reviewed after major incidents or architecture changes
+  standard_ref: ITSM-POL-12 — Service Continuity Management Policy; ITSM-PRC-12
+  applicability: All services with an active continuity plan
+  required_evidence: Change record or post-incident review showing continuity plan review was triggered; revised continuity
+    plan version with updated date and approver; or documented assessment that no update was required
+  evaluation_method: Deterministic — check whether a major incident (P1/P2) or architecture-impacting change occurred since
+    last continuity plan review; AI-Assisted — verify review was performed and documented
+  methods:
+  - deterministic
+  - ai
+  acceptance_criteria: Following every P1/P2 incident or major architecture change, a continuity plan review is documented
+    and either an updated plan or a documented "no change required" decision is on record
+  default_risk: High
+  default_risk_assumed: true
+  accountable_owner: Application Engineering / SRE
+  reassessment: After every P1/P2 incident; after every major architecture change; minimum annually
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - ITSM-POL-12
+  - ITSM-PRC-12
+source_file: ITSM-AT-12 — Service Continuity Management Assessment.docx
+references:
+- ITSM-STD-12
+- ITSM-PRC-12
+- SRE-STD-13
+- ITSM-POL-12
+- CMDB-AT-10

@@ -1,0 +1,112 @@
+id: CMDB-AT-10
+title: Service Criticality & Operational Risk Assessment
+domain: CMDB
+variant: B
+priority: ''
+applicability: All FSI REO-managed applications and services within scope of the Reliability by Design initiative Production
+  and pre-production environments where the assessed capability is required Application Engineering, SRE, PSE, CMDB, and Architecture
+  teams responsible for the assessed capability
+accountable_owner: CMDB Standards / Practice Owner
+purpose: This assessment evaluates whether business applications and services have an approved criticality designation, documented
+  business impact, defined recovery objectives, and that the designation is reflected consistently across CMDB, ITSM, and
+  SRE records. Accurate service criticality is a prerequisite for appropriate operational investment, incident prioritization,
+  and DR test frequency.
+relevance: ''
+reassessment_trigger: ''
+scope:
+- All FSI REO-managed applications and services within scope of the Reliability by Design initiative
+- Production and pre-production environments where the assessed capability is required
+- Application Engineering, SRE, PSE, CMDB, and Architecture teams responsible for the assessed capability
+signoff_roles: []
+criteria:
+- id: CMDB-AT-10-C01
+  number: 1
+  name: Service criticality tier is designated and documented
+  standard_ref: CMDB-STD-10 — Service Criticality & Tiering Standard; CMDB-POL-10
+  applicability: All production business applications and services managed by FSI REO
+  required_evidence: CMDB record showing u_service_tier or criticality field populated; documented criticality designation
+    with approver and date
+  evaluation_method: Deterministic — check u_service_tier (or equivalent) is not null on cmdb_ci record
+  methods:
+  - deterministic
+  acceptance_criteria: CMDB record has approved service tier designation (Tier 1 Critical / Tier 2 Standard / Tier 3) with
+    accountable approver documented
+  default_risk: High
+  default_risk_assumed: true
+  accountable_owner: CMDB / Application Engineering / Architecture
+  reassessment: When application criticality changes, after material architecture change, or annually
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-10
+  - CMDB-POL-10
+- id: CMDB-AT-10-C02
+  number: 2
+  name: Business impact assessment is current
+  standard_ref: CMDB-STD-10; ISO 22301:2019
+  applicability: All Tier 1 Critical services; Tier 2 Standard services where BIA is required by policy
+  required_evidence: Business impact analysis document or record with date within 12 months; approved by business owner
+  evaluation_method: 'AI-Assisted — review BIA document for completeness: financial impact, user impact, regulatory impact,
+    and reputational impact sections'
+  methods:
+  - ai
+  acceptance_criteria: BIA document exists, approved by business owner, dated within 12 months, and covers financial, user,
+    regulatory, and reputational impact dimensions
+  default_risk: High
+  default_risk_assumed: true
+  accountable_owner: Application Engineering / Business Owner
+  reassessment: Annually, or after significant change to service scope or business function
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-10
+- id: CMDB-AT-10-C03
+  number: 3
+  name: RTO and RPO are defined, approved, and reflected in operational records
+  standard_ref: CMDB-STD-10; ITSM-STD-12 — Service Continuity Standard; ISO 22301:2019
+  applicability: All Tier 1 Critical and Tier 2 Standard services
+  required_evidence: CMDB record or continuity plan with approved RTO and RPO values; evidence of SRE and business owner sign-off
+  evaluation_method: Deterministic — check RTO/RPO fields are populated on CMDB record or continuity plan; AI-Assisted — confirm
+    values are approved and consistent across CMDB, continuity plan, and DR runbook
+  methods:
+  - deterministic
+  - ai
+  acceptance_criteria: RTO and RPO are defined with specific time values, approved by business owner and SRE, and match values
+    in the service continuity plan and DR runbook
+  default_risk: High
+  default_risk_assumed: true
+  accountable_owner: Application Engineering / SRE / Business Owner
+  reassessment: Annually, after major architecture change, after DR test reveals RTO/RPO cannot be met
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-10
+  - ITSM-STD-12
+- id: CMDB-AT-10-C04
+  number: 4
+  name: Criticality designation is consistently reflected across operational records
+  standard_ref: CMDB-STD-10; ITSM-STD-01 — Incident Management Standard
+  applicability: All services with a designated service tier
+  required_evidence: Incident records showing correct priority derived from service tier; Change records showing risk rating
+    consistent with service tier; SRE engagement model reflecting tier
+  evaluation_method: Deterministic — sample last 5 Incidents for this service; verify incident.priority aligns with service
+    tier (Tier 1 → P1/P2; Tier 2 → P2/P3)
+  methods:
+  - deterministic
+  acceptance_criteria: Incident priority, change risk classification, and SRE engagement model are consistent with the CMDB
+    service tier designation
+  default_risk: High
+  default_risk_assumed: true
+  accountable_owner: CMDB / ITSM Process Owner
+  reassessment: Quarterly audit; after criticality designation change; after incident where priority appeared misaligned
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-10
+  - ITSM-STD-01
+source_file: CMDB-AT-10 — Service Criticality & Operational Risk Assessment.docx
+references:
+- CMDB-STD-10
+- CMDB-POL-10
+- ITSM-STD-12
+- ITSM-STD-01

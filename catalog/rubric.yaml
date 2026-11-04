@@ -1,0 +1,359 @@
+version: 'Version: V1.0 Draft  |  For discussion with MG and Shelley  |  October 2026'
+ratings:
+- rating: Not Ready
+  meaning: Critical reliability gaps; production risk is unacceptable
+  p1: 1 or more
+  p2: Any
+  outcome: Block deployment / escalate to SRE and leadership
+- rating: At Risk
+  meaning: No P1 gaps but significant P2 remediation required
+  p1: '0'
+  p2: 4 or more
+  outcome: Conditional approval; remediation plan required within 30 days
+- rating: Conditional
+  meaning: Minor gaps; risk accepted with documented plan
+  p1: '0'
+  p2: 1–3
+  outcome: Conditional approval; remediation plan required within 60 days
+- rating: Ready
+  meaning: All criteria met or Not Applicable with evidence
+  p1: '0'
+  p2: '0'
+  outcome: Full reliability readiness certification
+domain_weights:
+  SRE: 0.5
+  ITSM: 0.3
+  CMDB: 0.2
+criteria:
+- id: P1-01
+  priority: P1
+  name: Business application registered with accountable owner in CMDB
+  domain: CMDB
+  condition: No CMDB application record, or owner field is null or stale
+  tables: cmdb_ci  (or u_business_application if CSDM table in use)
+  fields: name, sys_class_name, owned_by, support_group, operational_status
+  rule: 'Verify: (1) A CI record exists for the application name. (2) owned_by field is not null/empty. (3) support_group
+    field is not null/empty. All three conditions must be TRUE for a Pass.'
+  pass_condition: CI record found AND owned_by populated AND support_group populated
+  gap_condition: No CI record for application; OR owned_by is null; OR support_group is null
+  method: Deterministic
+  confirmation_needed: '[CONFIRM: CVS may use u_business_application table for CSDM-aligned records. Confirm exact table name
+    and "owned_by" field label with ServiceNow admin.]'
+  notes: P1 because an unregistered application cannot be assessed, incident-routed, or change-controlled.
+- id: P1-02
+  priority: P1
+  name: Incident Management support model established
+  domain: ITSM
+  condition: No support group, escalation path, or operational contact on record
+  tables: cmdb_ci (support_group field)  |  incident (assignment_group, last 90 days)
+  fields: cmdb_ci.support_group, incident.assignment_group, incident.cmdb_ci
+  rule: 'Check 1: cmdb_ci.support_group is not null. Check 2: At least one incident in last 90 days has assignment_group populated
+    AND cmdb_ci linked to this application. Both checks must pass.'
+  pass_condition: CMDB support_group populated AND incidents show valid assignment_group
+  gap_condition: support_group null on CMDB record; OR last 90 days of incidents show empty assignment_group
+  method: Deterministic
+  confirmation_needed: '[CONFIRM: CVS may have a custom "u_ops_support_group" or "u_on_call_group" field. Confirm field name
+    on cmdb_ci with ServiceNow admin.]'
+  notes: A "support model" means engineers know who to escalate to. Without this, incidents have no routing target.
+- id: P1-03
+  priority: P1
+  name: Observability coverage meets minimum standard for service tier
+  domain: SRE
+  condition: No metrics, logs, or traces; alert coverage absent or non-actionable
+  tables: 'em_alert (ServiceNow event management)  |  External: Splunk index existence, AppDynamics application'
+  fields: em_alert.cmdb_ci, em_alert.message_key, em_alert.source, em_alert.sys_created_on (last 30 days)
+  rule: 'Check 1 (Deterministic): em_alert records exist for this application in last 30 days. Check 2 (AI-Assisted): Review
+    monitoring configuration evidence provided by engineer — confirm metrics, logs, and at least one actionable alert are
+    documented. Check 3 (Confirm with SRE): Validate against Golden Pathways observability tier requirement for this service
+    tier.'
+  pass_condition: Alert activity exists in last 30 days AND monitoring configuration documented AND aligns with tier standard
+  gap_condition: No em_alert records in 30 days; OR no monitoring configuration evidence provided; OR below tier minimum
+  method: AI-Assisted
+  confirmation_needed: '[CONFIRM: Verify whether CVS uses ServiceNow Event Management (em_alert) or a separate tool. Confirm
+    Splunk index naming convention for FSI applications with Splunk platform owner. Confirm Golden Pathways observability
+    tier requirements with SRE Lead.]'
+  notes: Observability is the foundation of incident detection and SLO measurement. A blind service cannot be reliably operated.
+- id: P1-04
+  priority: P1
+  name: Operational runbook exists and has been reviewed
+  domain: SRE
+  condition: No runbook, or runbook is undated / unreviewed for more than 12 months
+  tables: kb_knowledge  |  CVSEvidenceLog Playbooks library
+  fields: kb_knowledge.topic, kb_knowledge.u_application (or tags), kb_knowledge.active, kb_knowledge.published, kb_knowledge.sys_updated_on
+  rule: 'Check 1 (Deterministic): Active, published knowledge article exists tagged to this application. Check 2 (Deterministic):
+    kb_knowledge.sys_updated_on is within 12 months of assessment date. Check 3 (AI-Assisted): Review runbook content — confirm
+    Sections 5 (Procedure) and 8 (Failure & Recovery) contain specific, actionable steps.'
+  pass_condition: Active published runbook exists, updated within 12 months, with actionable recovery steps
+  gap_condition: No active runbook; OR last updated > 12 months ago; OR runbook lacks recovery procedure content
+  method: AI-Assisted
+  confirmation_needed: '[CONFIRM: CVS may store runbooks in Confluence or SharePoint rather than ServiceNow KB. Confirm primary
+    runbook repository and how to associate a runbook with an application with SRE/PSE Lead.]'
+  notes: A runbook that has not been reviewed in 12 months or after major changes may not reflect current architecture.
+- id: P1-05
+  priority: P1
+  name: SLI/SLO defined and actively measured
+  domain: SRE
+  condition: No SLI definitions or SLO targets; no measurement evidence
+  tables: '[CONFIRM: u_slo_definition (custom table) or Splunk / external SLO tool]'
+  fields: '[CONFIRM: u_slo_definition.application, u_slo_definition.sli_name, u_slo_definition.slo_target, u_slo_definition.measurement_active,
+    u_slo_definition.last_calculated]'
+  rule: 'Check 1 (Deterministic): At least one SLO record exists for this application. Check 2 (Deterministic): measurement_active
+    = true AND last_calculated within 7 days. Check 3 (AI-Assisted): Review SLI definition for completeness — confirm measurement
+    window, service indicator, and target are specified.'
+  pass_condition: SLO record exists with active measurement within 7 days AND complete SLI definition
+  gap_condition: No SLO record; OR measurement_active = false; OR no measurement in last 7 days; OR SLI definition incomplete
+  method: AI-Assisted
+  confirmation_needed: '[CONFIRM: CVS may not use a ServiceNow SLO table. SLOs may live in Splunk dashboards only. Confirm
+    SLO storage location and field names with SRE Lead. If Splunk-only, the deterministic check becomes a Splunk API query
+    for dashboard existence.]'
+  notes: Without an active SLO, there is no objective measure of reliability and no error budget to manage.
+- id: P1-06
+  priority: P1
+  name: Recovery procedure documented and validated
+  domain: SRE
+  condition: No recovery steps, or recovery has never been tested
+  tables: 'kb_knowledge  |  CVSEvidenceLog Playbooks library  |  [CONFIRM: u_dr_test or change_request DR test type]'
+  fields: 'kb_knowledge fields (see P1-04) + [CONFIRM: u_last_recovery_test_date, u_recovery_validated_by]'
+  rule: 'Check 1 (AI-Assisted): Recovery procedure exists (Section 8 of runbook) with specific rollback/restore steps. Check
+    2 (Human Review): Evidence that recovery steps have been tested or validated by an engineer. A "validated" procedure has
+    been exercised in a real incident, DR test, or documented simulation.'
+  pass_condition: Recovery procedure exists with specific steps AND evidence of at least one validation event
+  gap_condition: No recovery procedure; OR recovery steps are generic/placeholder; OR no evidence of testing or validation
+  method: Human Review
+  confirmation_needed: '[CONFIRM: CVS may record DR tests as ServiceNow change records (type = DR Test) or in a separate tracking
+    tool. Confirm how recovery validations are recorded with SRE/PSE Lead.]'
+  notes: Recovery procedures that have never been tested frequently fail when first used in a production incident.
+- id: P1-07
+  priority: P1
+  name: Change management process applied to this application
+  domain: ITSM
+  condition: Changes deployed without Change records; no rollback plan on record
+  tables: change_request
+  fields: change_request.cmdb_ci, change_request.business_service, change_request.state, change_request.opened_at, change_request.type,
+    change_request.backout_plan, change_request.test_plan
+  rule: 'Check 1 (Deterministic): At least one closed change record linked to this application (via cmdb_ci or business_service)
+    in last 90 days — if deployment activity has occurred. Check 2 (Deterministic): backout_plan field is not null on most
+    recent change record. Check 3 (Deterministic): test_plan field is not null on most recent change record. Note: If no deployments
+    occurred in 90 days, evaluate against last 12 months.'
+  pass_condition: Change records present for recent deployments; backout_plan and test_plan populated on most recent change
+  gap_condition: Deployment evidence (via incident or release note) with no corresponding change record; OR backout_plan null;
+    OR test_plan null on most recent change
+  method: Deterministic
+  confirmation_needed: '[CONFIRM: CVS may use a custom field u_deployment_evidence or link changes to releases. Confirm how
+    deployments are linked to change records with Change Management Process Owner. Confirm whether emergency changes follow
+    a different workflow that still requires post-event closure.]'
+  notes: Changes without backout plans leave no recovery path if a deployment causes an incident.
+- id: P1-08
+  priority: P1
+  name: Architecture failure modes documented
+  domain: SRE
+  condition: No risk-storming or failure-mode analysis on record for current architecture
+  tables: '[CONFIRM: Architecture document repository — Confluence, SharePoint, or ServiceNow attachment]'
+  fields: '[CONFIRM: Document title/tag for this application, last_modified_date, presence of "failure modes", "risk storming",
+    or "single points of failure" section]'
+  rule: 'Check 1 (AI-Assisted): Architecture document exists for this application and was last modified within 18 months of
+    assessment date. Check 2 (AI-Assisted): Document contains a failure modes, risk storming, or SPOF section with at least
+    two specific failure scenarios and mitigations documented.'
+  pass_condition: Architecture document updated within 18 months AND failure modes section present with specific scenarios
+  gap_condition: No architecture document; OR last modified > 18 months ago; OR no failure modes section; OR failure modes
+    section is generic/blank
+  method: AI-Assisted
+  confirmation_needed: '[CONFIRM: CVS architecture document storage location and naming convention with Architecture/SRE Lead.
+    If stored in Confluence, confirm space and page template. If stored in SharePoint, confirm library path.]'
+  notes: Undocumented failure modes mean SRE cannot proactively design resilience or identify single points of failure.
+- id: P2-01
+  priority: P2
+  name: Service dependency map complete and current
+  domain: CMDB
+  condition: Upstream/downstream dependencies not mapped or not reviewed in 12+ months
+  tables: cmdb_rel_ci  |  cmdb_ci_service  |  svc_catalog_item
+  fields: cmdb_rel_ci.parent, cmdb_rel_ci.child, cmdb_rel_ci.type, cmdb_rel_ci.sys_updated_on
+  rule: 'Check 1 (Deterministic): cmdb_rel_ci records exist for this application with at least one "Depends on::Used by" or
+    "Hosted on::Hosts" relationship. Check 2 (Deterministic): All cmdb_rel_ci records have sys_updated_on within 12 months.
+    Check 3 (AI-Assisted): Review dependency list for completeness — flag obvious missing dependencies (e.g., database with
+    no DB CI linked, shared platform with no hosting relationship).'
+  pass_condition: Dependency relationships exist AND all updated within 12 months AND no obvious gaps
+  gap_condition: No dependency records; OR all dependency records stale (> 12 months); OR critical dependencies evidently
+    missing
+  method: AI-Assisted
+  confirmation_needed: '[CONFIRM: Confirm CSDM relationship types used at CVS with CMDB Platform Owner. Standard types: "Depends
+    on::Used by", "Hosted on::Hosts", "Runs on::Runs". CVS may have custom relationship types in cmdb_rel_ci.type.]'
+  notes: Incomplete dependency maps prevent accurate change impact analysis and blast-radius assessment during incidents.
+- id: P2-02
+  priority: P2
+  name: Problem Management entry criteria applied
+  domain: ITSM
+  condition: Recurring incidents not entering Problem Management
+  tables: incident  |  problem
+  fields: incident.cmdb_ci, incident.problem_id, incident.category, incident.opened_at (last 90 days)  |  problem.cmdb_ci,
+    problem.state, problem.opened_at
+  rule: 'Check 1 (Deterministic): Count incidents for this application in last 90 days where incident.category = same category
+    AND no linked problem_id. If count >= 3 same-category incidents with no Problem linked → Gap. Check 2 (Deterministic):
+    Review open Problems for this application — confirm at least one is in "In Progress" or "Known Error" state.'
+  pass_condition: Recurring incident patterns have linked Problem records; at least one active Problem in progress
+  gap_condition: 3 or more same-category incidents in 90 days with no linked Problem; OR all Problems in "Closed" or "Cancelled"
+    state while incidents continue
+  method: Deterministic
+  confirmation_needed: '[CONFIRM: CVS may use a custom threshold field u_recurrence_threshold or a separate recurrence tracking
+    table. Confirm the exact incident-to-Problem linking field (problem_id vs u_related_problem) with ITSM Process Owner.]'
+  notes: Unlinked recurring incidents indicate that systemic investigation is not occurring, allowing patterns to persist.
+- id: P2-03
+  priority: P2
+  name: Error budget defined and reviewed
+  domain: SRE
+  condition: Error budget calculated but not actively reviewed
+  tables: '[CONFIRM: u_error_budget table or Splunk dashboard]'
+  fields: '[CONFIRM: u_error_budget.application, u_error_budget.slo_id, u_error_budget.budget_remaining_pct, u_error_budget.last_reviewed,
+    u_error_budget.burn_rate_7d]'
+  rule: 'Check 1 (Deterministic): Error budget record exists for this application linked to an active SLO (P1-05). Check 2
+    (Deterministic): last_reviewed within 30 days of assessment date. A Gap requires a documented review; an error budget
+    that exists but is never looked at does not satisfy the criterion.'
+  pass_condition: Error budget record exists AND reviewed within 30 days AND review documented
+  gap_condition: No error budget record; OR last_reviewed > 30 days ago; OR no review evidence
+  method: Deterministic
+  confirmation_needed: '[CONFIRM: CVS may not have a ServiceNow error budget table. If SLOs live in Splunk, the error budget
+    may be a Splunk dashboard panel only. Confirm with SRE Lead how error budgets are tracked and reviewed.]'
+  notes: An unreviewed error budget cannot drive reliability prioritization decisions.
+- id: P2-04
+  priority: P2
+  name: Resilience patterns implemented (retry, circuit breaker, timeout)
+  domain: SRE
+  condition: Critical dependencies lack timeout or retry configuration
+  tables: '[CONFIRM: u_resilience_config table or architecture document attachment]'
+  fields: '[CONFIRM: u_resilience_config.application, u_resilience_config.timeout_ms, u_resilience_config.retry_max, u_resilience_config.circuit_breaker_enabled]'
+  rule: 'Check 1 (AI-Assisted): Review architecture document or configuration evidence submitted by Application Engineering
+    — confirm timeout, retry, and circuit breaker settings are present for at least the top three critical dependencies identified
+    in cmdb_rel_ci. Check 2 (Human Review): SRE or Application Engineering confirms configuration is active in production.'
+  pass_condition: Timeout, retry, and circuit breaker configurations documented and confirmed active for critical dependencies
+  gap_condition: No resilience configuration evidence; OR only generic defaults with no dependency-specific tuning; OR critical
+    dependency lacks timeout/retry
+  method: Human Review
+  confirmation_needed: '[CONFIRM: CVS may store resilience configuration in application configuration management (e.g., Kubernetes
+    ConfigMaps, Terraform state, Ansible vars). Confirm evidence submission format with Application Engineering and SRE Lead.]'
+  notes: Applications without resilience patterns propagate failures across dependencies, turning isolated outages into cascading
+    incidents.
+- id: P2-05
+  priority: P2
+  name: Performance baselines established and documented
+  domain: SRE
+  condition: No load test results or performance benchmark on record
+  tables: '[CONFIRM: Test results repository — Confluence, SharePoint, or test management tool]'
+  fields: '[CONFIRM: Document or record: application_name, test_type (load/stress/soak), test_date, throughput_baseline_rps,
+    latency_p95_ms, latency_p99_ms, error_rate_pct]'
+  rule: 'Check 1 (AI-Assisted): Performance test report exists for the current application version (within 90 days of last
+    deployment or major release). Check 2 (AI-Assisted): Report contains: throughput baseline (RPS), P95 latency target, P99
+    latency target, and acceptable error rate threshold. Check 3 (Deterministic): Test date is within 90 days of last deployment
+    to production.'
+  pass_condition: Performance test report exists for current version with baseline metrics and within 90 days of last release
+  gap_condition: No performance test report; OR report is for a prior version; OR missing baseline metrics; OR > 90 days stale
+  method: AI-Assisted
+  confirmation_needed: '[CONFIRM: CVS performance test report storage location and naming convention with Application Engineering
+    Lead. Confirm whether Jira, Confluence, or a dedicated test management tool (e.g., Zephyr, Xray) is used.]'
+  notes: Without a performance baseline, post-deployment regressions cannot be detected objectively.
+- id: P2-06
+  priority: P2
+  name: Capacity forecast current
+  domain: SRE
+  condition: No capacity plan or forecast updated within the past 6 months
+  tables: '[CONFIRM: Capacity plan document — Confluence / SharePoint / AppDynamics capacity view]'
+  fields: '[CONFIRM: capacity_plan.application, capacity_plan.last_updated, capacity_plan.peak_load_forecast, capacity_plan.utilization_current_pct,
+    capacity_plan.headroom_months, capacity_plan.scaling_trigger]'
+  rule: 'Check 1 (AI-Assisted): Capacity plan document exists for this application. Check 2 (Deterministic): last_updated
+    within 6 months of assessment date. Check 3 (AI-Assisted): Plan contains: current utilization, peak load forecast, scaling
+    trigger thresholds, and headroom estimate.'
+  pass_condition: Capacity plan exists, updated within 6 months, with utilization, forecast, and scaling thresholds
+  gap_condition: No capacity plan; OR plan not updated in > 6 months; OR plan lacks forecast/scaling thresholds
+  method: AI-Assisted
+  confirmation_needed: '[CONFIRM: CVS capacity planning process and document storage with SRE Lead and Application Engineering.
+    Confirm whether AppDynamics capacity analytics or a separate planning tool is used.]'
+  notes: A stale capacity plan means resource exhaustion risk during peak load cannot be assessed.
+- id: P2-07
+  priority: P2
+  name: Disaster recovery plan tested
+  domain: SRE
+  condition: DR plan exists but has not been exercised within the required period
+  tables: 'change_request (DR test type)  |  [CONFIRM: u_dr_test table or test results document]'
+  fields: '[CONFIRM: u_dr_test.application, u_dr_test.test_date, u_dr_test.rto_achieved_min, u_dr_test.rpo_achieved_min, u_dr_test.result
+    (pass/fail/partial), u_dr_test.gaps_identified]'
+  rule: 'Check 1 (Deterministic): DR test record exists for this application. Check 2 (Deterministic): test_date within required
+    period — 12 months for Tier 1/Critical, 24 months for Tier 2/Standard. Tier determined from CMDB service criticality (CMDB-10).
+    Check 3 (AI-Assisted): Review test results — confirm RTO/RPO targets were met or gaps identified have a remediation plan.'
+  pass_condition: DR test completed within required period for service tier AND RTO/RPO met or gaps remediated
+  gap_condition: No DR test record; OR test outside required period for service tier; OR RTO/RPO not met with no remediation
+    plan
+  method: AI-Assisted
+  confirmation_needed: '[CONFIRM: CVS DR test recording method (ServiceNow change type vs separate tracker) with SRE Lead.
+    Confirm service tier testing period requirements (12 vs 24 months) with SRE Standards Owner. Confirm "u_service_tier"
+    or criticality field on CMDB record with CMDB Platform Owner.]'
+  notes: DR plans that are never tested frequently fail on first execution due to environment drift and undocumented dependencies.
+- id: P2-08
+  priority: P2
+  name: Post-deployment validation performed after last release
+  domain: SRE
+  condition: No deployment health check or SLO validation evidence for last release
+  tables: change_request
+  fields: 'change_request.cmdb_ci, change_request.state (= Closed), change_request.close_code, change_request.close_notes,
+    change_request.work_end, [CONFIRM: u_post_deploy_validation_complete, u_post_deploy_validation_notes]'
+  rule: 'Check 1 (Deterministic): Most recent closed change record for this application has close_code = "Successful" or "Successful
+    with issues". Check 2 (Deterministic): [CONFIRM] u_post_deploy_validation_complete = true OR close_notes contain validation
+    evidence keywords ("SLO", "smoke test", "health check", "validated"). Check 3 (AI-Assisted): Review close_notes text —
+    confirm validation activity was substantive.'
+  pass_condition: Most recent change closed as Successful AND post-deployment validation evidence in close notes or custom
+    field
+  gap_condition: Most recent change closed as Failed or Rolled Back; OR no validation evidence in close notes; OR close_notes
+    are empty or generic
+  method: AI-Assisted
+  confirmation_needed: '[CONFIRM: CVS change close_code picklist values with Change Management Process Owner. Confirm whether
+    a custom field u_post_deploy_validation_complete exists on change_request. Confirm whether smoke test or health check
+    evidence is attached to the change record.]'
+  notes: Without post-deployment validation, issues introduced by a release may go undetected until customers report them.
+- id: P2-09
+  priority: P2
+  name: Known errors and workarounds documented
+  domain: ITSM
+  condition: Known errors exist but are not in KEDB or workarounds are undocumented
+  tables: problem (known_error flag)  |  kb_knowledge (known error articles)
+  fields: problem.cmdb_ci, problem.known_error (= true), problem.workaround, problem.problem_state (= "Known Error"), problem.sys_updated_on  |  kb_knowledge.active,
+    kb_knowledge.published, kb_knowledge.u_application (or tags)
+  rule: 'Check 1 (Deterministic): If recurring incidents exist (see P2-02), at least one Problem record for this application
+    has known_error = true. Check 2 (Deterministic): problem.workaround field is not null on known error records. Check 3
+    (AI-Assisted): Review workaround text — confirm it is specific and actionable, not a generic "restart the service" placeholder.'
+  pass_condition: Known errors recorded with specific, actionable workarounds for patterns with recurrence
+  gap_condition: Recurring incidents (P2-02 triggers) with no known_error = true Problem; OR known error has null or generic
+    workaround text
+  method: AI-Assisted
+  confirmation_needed: '[CONFIRM: CVS KEDB implementation — confirm whether known errors are tracked on the problem record
+    itself (problem.known_error flag) or in a separate Knowledge article. Confirm with ITSM Process Owner and Knowledge Management
+    Process Owner.]'
+  notes: A KEDB without actionable workarounds does not reduce resolution time during incidents; engineers cannot act on it.
+- id: P2-10
+  priority: P2
+  name: CMDB CI attributes meet completeness threshold
+  domain: CMDB
+  condition: Required CI attributes below approved completeness threshold
+  tables: cmdb_ci
+  fields: 'name (not null), sys_class_name (not null), operational_status (not null), support_group (not null), owned_by (not
+    null), environment (not null), [CONFIRM: u_service_tier (not null), u_application_id (not null)]'
+  rule: 'Check (Deterministic): For the application CI and its direct child CIs (from cmdb_rel_ci), count the required fields.
+    Completeness score = (populated required fields) / (total required fields across all CIs). Pass threshold: >= 95% for
+    Tier 1/Critical; >= 85% for Tier 2/Standard. Flag each specific null field.'
+  pass_condition: Completeness score >= threshold for service tier across all required fields
+  gap_condition: Completeness score below threshold; list each field that is null per CI
+  method: Deterministic
+  confirmation_needed: '[CONFIRM: Required field list for CVS CMDB records with CMDB Standards Owner. Confirm custom fields
+    such as u_service_tier, u_application_id, u_environment with CMDB Platform Owner. Confirm completeness threshold percentages
+    (95% / 85%) with CMDB Standards Owner and REO.]'
+  notes: Incomplete CMDB attributes degrade incident routing, change impact analysis, and AI reliability assessment accuracy.
+output_fields:
+- Application
+- Assessment Date
+- Overall Rating
+- P1 Gaps
+- P2 Gaps
+- Met
+- Not Applicable
+- Insufficient Evidence
+- Domain Scores
+- Recommended Actions
+- Accountable Owners
+- Reassessment Trigger

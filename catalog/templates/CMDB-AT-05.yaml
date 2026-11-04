@@ -1,0 +1,109 @@
+id: CMDB-AT-05
+title: Infrastructure Configuration Accuracy Assessment
+domain: CMDB
+variant: A
+priority: P2
+applicability: All production infrastructure CIs (servers, network devices, databases, middleware) supporting FSI REO applications
+accountable_owner: Platform Engineering / CMDB
+purpose: Evaluate whether infrastructure CI records in ServiceNow CMDB accurately reflect actual deployed configurations.
+  Accurate infrastructure CIs are required for change impact analysis, capacity planning, and security posture assessment.
+relevance: Infrastructure configuration accuracy unknown from extract. Supports G-20 (CMDB completeness). Platform dependency
+  confirmed for Jenkins migration (G-17). Region A has 8 apps with 86.2% of incident volume.
+reassessment_trigger: Major release, architecture change, or Post-Incident Review recommendation
+scope: []
+signoff_roles:
+- Assessment Lead
+- Domain Reviewer
+- Engineering / Service Owner
+- PSE Representative
+criteria:
+- id: CMDB-AT-05-C01
+  number: 1
+  name: Server CI Accuracy
+  standard_ref: ServiceNow Discovery; ITPN G-20
+  applicability: All production servers (physical and virtual) supporting FSI REO applications
+  required_evidence: Comparison of Discovery-sourced server CIs against platform team inventory; discrepancy count
+  evaluation_method: 'Deterministic: Discovery-sourced server CIs match platform inventory for > 95% of production servers'
+  methods:
+  - deterministic
+  acceptance_criteria: '> 95% of production servers in CMDB match platform inventory; discrepancies resolved within 30 days'
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: CMDB / Platform Engineering
+  reassessment: ''
+  example_risk: Medium — inaccurate server CIs lead to incorrect change impact analysis
+  example_recommendation: Run Discovery-to-inventory comparison for Region A servers first; remediate discrepancies
+  references: []
+- id: CMDB-AT-05-C02
+  number: 2
+  name: Database CI Accuracy
+  standard_ref: ServiceNow Discovery; ITPN G-20
+  applicability: All production databases supporting FSI REO applications
+  required_evidence: Discovery-sourced database CIs vs. DBA team inventory; version, schema, and owner fields populated
+  evaluation_method: 'Deterministic: all production databases in CMDB with version, schema, and owner; Discovery confirms
+    existence'
+  methods:
+  - deterministic
+  acceptance_criteria: 100% of production databases registered in CMDB; version and DBA owner populated
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: CMDB / DBA team
+  reassessment: ''
+  example_risk: High — unregistered databases create shadow IT risk and prevent change impact analysis
+  example_recommendation: Cross-reference DBA inventory against CMDB; register missing databases; assign DBA owner per record
+  references: []
+- id: CMDB-AT-05-C03
+  number: 3
+  name: Network CI Accuracy
+  standard_ref: ServiceNow Discovery; ITPN G-20
+  applicability: All production network devices in FSI REO environments
+  required_evidence: Discovery-sourced network device CIs vs. network team inventory; IP address, location, and owner populated
+  evaluation_method: 'Deterministic: > 90% of production network devices in CMDB match network team inventory'
+  methods:
+  - deterministic
+  acceptance_criteria: '> 90% of production network devices in CMDB with IP, location, and owner populated'
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: CMDB / Network Engineering
+  reassessment: ''
+  example_risk: Medium — inaccurate network CIs prevent correct blast-radius analysis during incidents
+  example_recommendation: Enable Discovery for network devices; cross-reference with network team inventory quarterly
+  references: []
+- id: CMDB-AT-05-C04
+  number: 4
+  name: Middleware & Application Server Accuracy
+  standard_ref: ServiceNow Discovery; ITPN G-20
+  applicability: All middleware platforms (WebSphere, JBoss, IIS, Tomcat) supporting FSI REO applications
+  required_evidence: Discovery-sourced middleware CIs vs. application team inventory; version and linked application populated
+  evaluation_method: 'Deterministic: all production middleware instances in CMDB; version and linked application populated'
+  methods:
+  - deterministic
+  acceptance_criteria: 100% of production middleware instances in CMDB with version, owner, and linked application
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: CMDB / Application Engineering
+  reassessment: ''
+  example_risk: High — unregistered middleware creates undetectable single points of failure
+  example_recommendation: Enumerate middleware instances from application team inventory; register in CMDB; link to application
+    CIs
+  references: []
+- id: CMDB-AT-05-C05
+  number: 5
+  name: Configuration Drift Detection
+  standard_ref: ServiceNow Discovery — Change Detection; ITIL Configuration Management
+  applicability: All CIs with Discovery-managed attributes
+  required_evidence: 'ServiceNow Discovery change log: unauthorized configuration changes detected and flagged'
+  evaluation_method: 'Deterministic: Discovery-detected configuration changes compared to Change Record history; unauthorized
+    drifts flagged'
+  methods:
+  - deterministic
+  acceptance_criteria: Configuration drift detection enabled; unauthorized drifts trigger Problem record within 24h
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: CMDB / Change Management
+  reassessment: ''
+  example_risk: Medium — configuration drift without detection creates unknown variance from approved baselines
+  example_recommendation: Enable Discovery change detection; wire unauthorized drift to Problem Management process
+  references: []
+source_file: CMDB-AT-05 — Infrastructure Configuration Accuracy Assessment.docx
+references: []

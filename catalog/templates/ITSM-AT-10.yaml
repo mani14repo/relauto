@@ -1,0 +1,107 @@
+id: ITSM-AT-10
+title: Vendor & Third-Party Service Management Assessment
+domain: ITSM
+variant: A
+priority: P3
+applicability: All third-party vendors and service providers supporting FSI REO production applications
+accountable_owner: Application Engineering / REO leadership
+purpose: Evaluate whether third-party vendor relationships are governed by formal contracts with defined SLAs, escalation
+  paths, and performance measurement. Ensures vendor dependencies do not create unmanaged reliability risks.
+relevance: No vendor dependency mapping found in current extract. Upstream dependencies identified for GDX, RCI, CRS chain
+  but no vendor contracts found (G-12). Platform team dependency for Jenkins migration (G-17).
+reassessment_trigger: Major release, architecture change, or Post-Incident Review recommendation
+scope: []
+signoff_roles:
+- Assessment Lead
+- Domain Reviewer
+- Engineering / Service Owner
+- PSE Representative
+criteria:
+- id: ITSM-AT-10-C01
+  number: 1
+  name: Vendor Inventory & Dependency Mapping
+  standard_ref: ITIL Supplier Management; ServiceNow CSDM
+  applicability: All third-party services supporting FSI REO production applications
+  required_evidence: 'Vendor inventory: each vendor named, services provided, and linked to dependent FSI applications'
+  evaluation_method: 'Deterministic: vendor inventory exists; each entry linked to dependent application in CMDB'
+  methods:
+  - deterministic
+  acceptance_criteria: Vendor inventory complete; all third-party services linked to dependent FSI applications in CMDB
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: Application Engineering / CMDB
+  reassessment: ''
+  example_risk: Medium — untracked vendor dependencies create unmanaged failure risk
+  example_recommendation: Build vendor inventory from CMDB service relationships; cross-reference with procurement records
+  references: []
+- id: ITSM-AT-10-C02
+  number: 2
+  name: Contract & SLA Coverage
+  standard_ref: ITIL Supplier Management; FSI Procurement Policy
+  applicability: All critical (Tier-1) vendors supporting production services
+  required_evidence: 'Contract register: each critical vendor has contract with SLA, penalty clause, and review date'
+  evaluation_method: 'Deterministic: contract exists for each critical vendor; SLA defined and current'
+  methods:
+  - deterministic
+  acceptance_criteria: All critical vendor contracts current; SLA defined and measurable; review date within 12 months
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: REO leadership / Procurement
+  reassessment: ''
+  example_risk: High — vendor SLA gaps mean FSI cannot enforce reliability commitments upstream
+  example_recommendation: Audit vendor contracts against critical application dependencies; escalate expired contracts
+  references: []
+- id: ITSM-AT-10-C03
+  number: 3
+  name: Vendor Incident Escalation Path
+  standard_ref: ITIL Supplier Management; ITPN G-12
+  applicability: All vendors with production SLAs
+  required_evidence: 'Escalation playbook: vendor contact list with names, roles, and response commitment per priority level'
+  evaluation_method: 'Human review: escalation path tested; vendor response within committed SLA in last 6 months'
+  methods:
+  - human
+  acceptance_criteria: Named escalation contact for each critical vendor; response SLA tested within past 6 months
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: Application Engineering
+  reassessment: ''
+  example_risk: Medium — no escalation path means extended MTTR during vendor-caused incidents
+  example_recommendation: Document and test vendor escalation paths annually; store in ServiceNow CMDB supplier record
+  references: []
+- id: ITSM-AT-10-C04
+  number: 4
+  name: Vendor Performance Measurement
+  standard_ref: ITIL Supplier Management; FSI Vendor Management Policy
+  applicability: All vendors with contractual SLAs
+  required_evidence: 'Vendor scorecards: availability, response time, and incident count reviewed quarterly'
+  evaluation_method: 'Human review: vendor performance reviewed quarterly; underperforming vendors escalated'
+  methods:
+  - human
+  acceptance_criteria: Vendor performance review completed quarterly; underperformance triggers formal remediation plan
+  default_risk: Low
+  default_risk_assumed: false
+  accountable_owner: REO leadership / Application Engineering
+  reassessment: ''
+  example_risk: Low — without measurement, vendor underperformance is invisible until a major incident
+  example_recommendation: Implement quarterly vendor scorecard review; include top-3 metrics per vendor
+  references: []
+- id: ITSM-AT-10-C05
+  number: 5
+  name: Single-Vendor Concentration Risk
+  standard_ref: ITIL Supplier Management; FSI Risk Framework
+  applicability: Any vendor providing services to > 5 FSI REO applications
+  required_evidence: 'Vendor concentration analysis: percentage of FSI applications dependent on each vendor'
+  evaluation_method: 'Human review: single-vendor concentration risk identified; mitigation plan exists for each high-concentration
+    vendor'
+  methods:
+  - human
+  acceptance_criteria: Concentration risk documented for any vendor supporting > 5 FSI applications; mitigation plan in place
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: REO leadership
+  reassessment: ''
+  example_risk: Medium — Platform team single dependency for Jenkins migration exemplifies concentration risk
+  example_recommendation: Map vendor concentration risk; ensure contingency for any vendor supporting > 30% of FSI portfolio
+  references: []
+source_file: ITSM-AT-10 — Vendor & Third-Party Service Management Assessment.docx
+references: []

@@ -1,0 +1,125 @@
+id: SRE-AT-01
+title: Application Reliability Readiness Assessment
+domain: SRE
+variant: A
+priority: P1
+applicability: All FSI REO applications entering production or undergoing major changes
+accountable_owner: SRE / Application Engineering
+purpose: Evaluate whether an application meets minimum reliability engineering requirements before and after production deployment.
+  This assessment integrates evidence from architecture, observability, incident readiness, and CMDB registration to produce
+  a reliability readiness verdict.
+relevance: 'Directly supports the approved AI-Assisted Reliability Readiness Assessment capability. Relevant gaps: G-18 (no
+  SLO evidence), G-20/G-21 (CMDB blanks), G-02 (no Problem linkage), G-08 (no Change gate).'
+reassessment_trigger: Major release, architecture change, or Post-Incident Review recommendation
+scope: []
+signoff_roles:
+- Assessment Lead
+- SRE Reviewer
+- Engineering Owner
+- PSE Representative
+criteria:
+- id: SRE-AT-01-C01
+  number: 1
+  name: SLI/SLO Definition
+  standard_ref: Golden Pathways — SLO Pillar; Google SRE Workbook Ch.2
+  applicability: All production applications
+  required_evidence: Documented SLI definitions and SLO targets with error budget; confirmed in SRE governance record
+  evaluation_method: 'Deterministic: SLO document present, targets set, error budget defined'
+  methods:
+  - deterministic
+  acceptance_criteria: At least one SLI and one SLO defined per application with a named error budget owner
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: SRE
+  reassessment: ''
+  example_risk: High — without SLOs, reliability state is unmeasurable
+  example_recommendation: Define SLIs for availability and latency; set SLO targets; assign error budget owner
+  references: []
+- id: SRE-AT-01-C02
+  number: 2
+  name: Observability Coverage
+  standard_ref: Golden Pathways — Observability Pillar; ITPN IO-04
+  applicability: All production applications
+  required_evidence: Splunk/AppDynamics dashboard link; log sample showing structured output; alert inventory
+  evaluation_method: 'AI-assisted: review monitoring config for log structure, metric coverage, alert ownership'
+  methods:
+  - ai
+  acceptance_criteria: Structured logs, at least one application-level metric, and at least one actionable alert with a named
+    owner
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: SRE / Application Engineering
+  reassessment: ''
+  example_risk: High — observability gap (avg score 2.08 in SRE assessment)
+  example_recommendation: Instrument structured logging and key transaction metrics; define alert routing per assignment group
+  references: []
+- id: SRE-AT-01-C03
+  number: 3
+  name: Incident Response Ownership
+  standard_ref: Golden Pathways — Incident Management Pillar; ITPN G-15
+  applicability: All production applications
+  required_evidence: On-call roster; escalation matrix; ServiceNow assignment group mapping in CMDB_Mapping.xlsx
+  evaluation_method: 'Deterministic: named on-call owner, escalation path, and assignment group populated'
+  methods:
+  - deterministic
+  acceptance_criteria: Named on-call owner, L1/L2/L3 escalation path, and ServiceNow assignment group all populated
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: PSE / Application Engineering
+  reassessment: ''
+  example_risk: High — key-person risk confirmed (G-15, G-16, G-26)
+  example_recommendation: Assign named backup; cross-train at least one additional engineer per critical queue
+  references: []
+- id: SRE-AT-01-C04
+  number: 4
+  name: Change Record Compliance
+  standard_ref: ITIL Change Enablement; ITPN G-08; IO-08 Score 20
+  applicability: All applications making production changes
+  required_evidence: ServiceNow Change Records for last 5 production deployments; deployment log or pipeline artifact
+  evaluation_method: 'Deterministic: rfc field populated on incident records; Change Record created per production deploy'
+  methods:
+  - deterministic
+  acceptance_criteria: 100% of production deployments have a corresponding ServiceNow Change Record with risk assessment
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: Application Engineering / Change Management
+  reassessment: ''
+  example_risk: High — 0% Change->Incident linkage found across 52 change records
+  example_recommendation: Implement ServiceNow Change gate in CI/CD pipeline; enforce prior to deploy
+  references: []
+- id: SRE-AT-01-C05
+  number: 5
+  name: Recovery Runbook Availability
+  standard_ref: Golden Pathways — Runbook Engineering; ITPN G-05
+  applicability: All P1/P2-class applications
+  required_evidence: ServiceNow Knowledge article or linked runbook per critical failure scenario; review date
+  evaluation_method: 'Human review: runbook tested, current (reviewed < 6 months), stored in ServiceNow (not OneNote)'
+  methods:
+  - human
+  acceptance_criteria: At least one validated runbook per P1 failure scenario; last reviewed within 6 months
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: Application Engineering / PSE
+  reassessment: ''
+  example_risk: High — runbooks found only in OneNote/personal notes across portfolio
+  example_recommendation: Migrate runbooks to ServiceNow; assign review owner; schedule 6-month cadence
+  references: []
+- id: SRE-AT-01-C06
+  number: 6
+  name: CMDB Registration & CI Accuracy
+  standard_ref: ServiceNow CSDM; ITPN G-20, G-21
+  applicability: All FSI applications
+  required_evidence: CMDB_Mapping.xlsx record; cmdb_ci_business_app field on recent incidents; region and owner fields
+  evaluation_method: 'Deterministic: application registered, cmdb_ci_business_app populated, region and owner set'
+  methods:
+  - deterministic
+  acceptance_criteria: Application registered in CMDB with region, owned_by, operational_owner, and ci_business_app populated
+  default_risk: Critical
+  default_risk_assumed: false
+  accountable_owner: CMDB / Application Engineering
+  reassessment: ''
+  example_risk: Critical — 99.1% cmdb_ci_business_app blank across 14,034 incidents
+  example_recommendation: Wire cmdb_ci_business_app in ServiceNow routing; assign region for all 28 unclassified apps
+  references: []
+source_file: SRE-AT-01 — Application Reliability Readiness Assessment.docx
+references: []

@@ -1,0 +1,114 @@
+id: SRE-AT-14
+title: Reliability Automation Readiness Assessment
+domain: SRE
+variant: B
+priority: ''
+applicability: All FSI REO-managed applications and services within scope of the Reliability by Design initiative Production
+  and pre-production environments where the assessed capability is required Application Engineering, SRE, PSE, CMDB, and Architecture
+  teams responsible for the assessed capability
+accountable_owner: SRE Standards / Practice Owner
+purpose: This assessment evaluates whether reliability automation deployed for FSI REO-managed services meets safety, observability,
+  rollback, ownership, and authorization requirements. Reliability automation that lacks appropriate safety controls can amplify
+  failures rather than prevent them. This assessment ensures automation is an operational asset, not a risk.
+relevance: ''
+reassessment_trigger: ''
+scope:
+- All FSI REO-managed applications and services within scope of the Reliability by Design initiative
+- Production and pre-production environments where the assessed capability is required
+- Application Engineering, SRE, PSE, CMDB, and Architecture teams responsible for the assessed capability
+signoff_roles: []
+criteria:
+- id: SRE-AT-14-C01
+  number: 1
+  name: 'Automation safety controls are implemented: testing, observability, and rollback'
+  standard_ref: SRE-STD-14 — Reliability Automation Standard; SRE-POL-14
+  applicability: All reliability automation deployed to production for FSI REO-managed services
+  required_evidence: 'Automation deployment record with: test evidence before production deployment, observability configuration
+    (metrics/logs for automation execution), and documented rollback procedure'
+  evaluation_method: 'AI-Assisted — review automation deployment documentation for: pre-production test results, monitoring
+    configuration covering execution success/failure, and rollback procedure with tested steps'
+  methods:
+  - ai
+  acceptance_criteria: Automation has documented test evidence, execution monitoring that alerts on failure, and a validated
+    rollback procedure that returns the system to its prior state
+  default_risk: High
+  default_risk_assumed: true
+  accountable_owner: Automation Engineering / Application Engineering / SRE
+  reassessment: After each automation deployment or modification; after automation-related incident
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - SRE-STD-14
+  - SRE-POL-14
+- id: SRE-AT-14-C02
+  number: 2
+  name: Automation authorization and human oversight process is in place
+  standard_ref: SRE-POL-14 — Reliability Automation Policy; SRE-PRC-14
+  applicability: All automation with the ability to modify production configuration, restart services, or take recovery action
+  required_evidence: Change record or automation approval record showing authorization before production deployment; defined
+    boundary conditions for autonomous vs human-required actions; escalation path when automation encounters unexpected conditions
+  evaluation_method: AI-Assisted — review automation design documentation and change record; confirm authorization was obtained;
+    confirm boundary conditions (what automation can and cannot do autonomously) are documented
+  methods:
+  - ai
+  acceptance_criteria: Automation deployment was authorized via approved Change process; boundary conditions for autonomous
+    action are documented and reviewed by SRE; escalation path is defined for out-of-bounds conditions
+  default_risk: High
+  default_risk_assumed: true
+  accountable_owner: Automation Engineering / SRE / Change Management
+  reassessment: Before each automation scope expansion; annually; after automation-related incident
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - SRE-POL-14
+  - SRE-PRC-14
+- id: SRE-AT-14-C03
+  number: 3
+  name: Automation failure handling and recovery procedures are defined
+  standard_ref: SRE-STD-14; SRE-PB-11 — Reliability Automation Engineering Playbook
+  applicability: All production reliability automation
+  required_evidence: 'Automation runbook or playbook covering: failure conditions, expected behavior on failure, manual recovery
+    steps, and conditions that require automation to be disabled'
+  evaluation_method: 'AI-Assisted — review automation runbook for: at least two documented failure scenarios with specific
+    recovery steps; disable/halt procedure; post-failure validation steps'
+  methods:
+  - ai
+  acceptance_criteria: Automation runbook exists with documented failure conditions, recovery steps, disable procedure, and
+    post-recovery validation; runbook has been reviewed by SRE within 12 months
+  default_risk: High
+  default_risk_assumed: true
+  accountable_owner: Automation Engineering / SRE
+  reassessment: After automation failure in production; after architecture changes affecting automation; annually
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - SRE-STD-14
+  - SRE-PB-11
+- id: SRE-AT-14-C04
+  number: 4
+  name: Automation operational ownership is assigned and active
+  standard_ref: SRE-POL-14; SRE-STD-14
+  applicability: All production reliability automation
+  required_evidence: Named automation owner in CMDB or automation registry; evidence of recent ownership activity (alert acknowledgment,
+    configuration review, or scheduled check within 30 days)
+  evaluation_method: Deterministic — check automation registry or CMDB for owner field; verify last owner activity within
+    30 days
+  methods:
+  - deterministic
+  acceptance_criteria: Automation has a named owner who is actively engaged; ownership is reflected in CMDB or automation
+    registry; owner has performed a review or responded to an alert within the last 30 days
+  default_risk: High
+  default_risk_assumed: true
+  accountable_owner: Automation Engineering / SRE
+  reassessment: Monthly ownership verification; when owner changes; after automation-related incident
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - SRE-POL-14
+  - SRE-STD-14
+source_file: SRE-AT-14 — Reliability Automation Readiness Assessment.docx
+references:
+- SRE-STD-14
+- SRE-POL-14
+- SRE-PRC-14
+- SRE-PB-11

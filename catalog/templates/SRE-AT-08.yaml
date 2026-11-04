@@ -1,0 +1,109 @@
+id: SRE-AT-08
+title: Operational Ownership & Supportability Assessment
+domain: SRE
+variant: A
+priority: P1
+applicability: All FSI REO applications; immediate priority for AE practice (lead on leave) and applications with high key-person
+  concentration risk
+accountable_owner: PSE / SRE / Application Engineering
+purpose: Confirm that every application has clear, distributed operational ownership across Application Engineering, PSE,
+  and SRE. Evaluates on-call coverage, escalation readiness, knowledge transfer, and concentration risk. Prevents single-person
+  dependency from becoming a service reliability gap.
+relevance: AE lead on leave Oct 1–Jan 4 with no named backup (G-26 Critical). Observability lead departed with no succession
+  plan (G-15). ~20 handoffs across 6 workflows with no SLA (G-12, G-13). IO-19 Score 20.
+reassessment_trigger: Major release, architecture change, or Post-Incident Review recommendation
+scope: []
+signoff_roles:
+- Assessment Lead
+- SRE Reviewer
+- Engineering Owner
+- PSE Representative
+criteria:
+- id: SRE-AT-08-C01
+  number: 1
+  name: Named Application Owner
+  standard_ref: FSI REO Operating Model; ITPN G-15
+  applicability: All 63 FSI REO applications
+  required_evidence: CMDB owned_by field; confirmed with sub-portfolio leader; documented in CMDB_Mapping.xlsx
+  evaluation_method: 'Deterministic: named owner present in CMDB; owner confirmed with REO leader'
+  methods:
+  - deterministic
+  acceptance_criteria: Named application owner confirmed in CMDB and acknowledged by sub-portfolio leader
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: Sub-portfolio leaders / Bijal Parekh
+  reassessment: ''
+  example_risk: High — ownership gaps confirmed across all sub-portfolios
+  example_recommendation: Validate CMDB owned_by for all 63 apps; confirm each owner with their portfolio leader
+  references: []
+- id: SRE-AT-08-C02
+  number: 2
+  name: On-Call Coverage & Backup
+  standard_ref: ITPN G-15, G-16; IO-19 Score 20
+  applicability: All P1/P2 applications
+  required_evidence: On-call schedule; named backup for each primary; confirmation that backup is trained
+  evaluation_method: 'Deterministic: on-call roster current; named backup for every primary; 24/7 coverage verified'
+  methods:
+  - deterministic
+  acceptance_criteria: At least 2 named on-call engineers per application; both trained on P1 runbooks
+  default_risk: Critical
+  default_risk_assumed: false
+  accountable_owner: PSE / Application Engineering
+  reassessment: ''
+  example_risk: Critical — AE lead on leave with no named backup; observability lead departed with no successor
+  example_recommendation: Immediately name interim on-call backups; cross-train CFAO queue engineers per IO-19
+  references: []
+- id: SRE-AT-08-C03
+  number: 3
+  name: Escalation Matrix Completeness
+  standard_ref: ITPN G-12, G-13; ITIL Incident Management
+  applicability: All production applications
+  required_evidence: 'Documented escalation matrix: L1 PSE -> L2 Engineering -> L3 SRE/Architecture; SLA per level'
+  evaluation_method: 'Human review: escalation matrix documented; SLA defined at each level; tested in past 6 months'
+  methods:
+  - human
+  acceptance_criteria: Escalation matrix documented with named contacts at each level and response SLAs
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: PSE / SRE
+  reassessment: ''
+  example_risk: High — ~20 handoffs across 6 workflows with no SLA; corrective actions have no SLA (G-12, G-13)
+  example_recommendation: Document escalation matrix per application; define 15-min L1, 30-min L2, 1h L3 SLAs
+  references: []
+- id: SRE-AT-08-C04
+  number: 4
+  name: Knowledge Transfer & Cross-Training
+  standard_ref: ITPN G-15, G-26; ITIL Knowledge Management
+  applicability: All applications with concentration risk (< 2 knowledgeable engineers)
+  required_evidence: Cross-training log; runbook review sign-offs by at least 2 engineers; succession plan
+  evaluation_method: 'Human review: at least 2 engineers can independently handle P1 incidents; succession plan exists'
+  methods:
+  - human
+  acceptance_criteria: At least 2 trained engineers per application; cross-training completed and documented
+  default_risk: Critical
+  default_risk_assumed: false
+  accountable_owner: Application Engineering / SRE / PSE
+  reassessment: ''
+  example_risk: Critical — key-person risk confirmed in AE and observability function; no succession plans
+  example_recommendation: Require dual-engineer sign-off on all runbooks; implement cross-training within 30 days for critical
+    functions
+  references: []
+- id: SRE-AT-08-C05
+  number: 5
+  name: PSE/SRE/Engineering RACI Clarity
+  standard_ref: ITPN G-09, G-10; REO Operating Model
+  applicability: All FSI REO application families
+  required_evidence: RACI matrix for Incident, Problem, and Change for this application; confirmed with team leads
+  evaluation_method: 'Human review: RACI complete; no gaps or overlaps in Incident, Problem, or Change responsibilities'
+  methods:
+  - human
+  acceptance_criteria: RACI matrix for I/P/C complete; no blank cells; confirmed by PSE, SRE, and engineering leads
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: REO leadership / PSE / SRE
+  reassessment: ''
+  example_risk: High — RACI gaps create ambiguity; 2 improvement intake paths with no value-based prioritisation (G-09)
+  example_recommendation: Complete RACI workshop per application family; ratify with PSE, SRE, and engineering leads
+  references: []
+source_file: SRE-AT-08 — Operational Ownership & Supportability Assessment.docx
+references: []

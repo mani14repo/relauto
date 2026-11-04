@@ -1,0 +1,108 @@
+id: CMDB-AT-02
+title: CI Discovery & Reconciliation Assessment
+domain: CMDB
+variant: A
+priority: P1
+applicability: All FSI REO infrastructure and platform CIs; Discovery scope covering Region A and Region B environments
+accountable_owner: CMDB / Platform Engineering
+purpose: Evaluate whether automated discovery is configured and running for all FSI REO infrastructure, and whether discovered
+  CI data is reconciled against manually maintained records to identify gaps, duplicates, and stale entries.
+relevance: 'CMDB completeness gaps confirmed: 28/63 apps have Region = None; 99.1% cmdb_ci_business_app blank on incidents.
+  Discovery scope and reconciliation cadence unknown from extract. G-20, G-21.'
+reassessment_trigger: Major release, architecture change, or Post-Incident Review recommendation
+scope: []
+signoff_roles:
+- Assessment Lead
+- Domain Reviewer
+- Engineering / Service Owner
+- PSE Representative
+criteria:
+- id: CMDB-AT-02-C01
+  number: 1
+  name: Discovery Scope Coverage
+  standard_ref: ServiceNow Discovery; ITPN G-20
+  applicability: All production infrastructure supporting FSI REO applications
+  required_evidence: 'ServiceNow Discovery schedule: IP ranges and credentials covering all FSI production environments'
+  evaluation_method: 'Deterministic: Discovery schedules configured for all FSI production IP ranges; last run < 7 days'
+  methods:
+  - deterministic
+  acceptance_criteria: Discovery runs at least weekly for all production environments; coverage confirmed for Region A and
+    Region B
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: CMDB / Platform Engineering
+  reassessment: ''
+  example_risk: High — unscanned infrastructure creates CMDB gaps that prevent application attribution on incidents
+  example_recommendation: Confirm Discovery IP range covers all 63 FSI application environments; schedule weekly runs
+  references: []
+- id: CMDB-AT-02-C02
+  number: 2
+  name: Discovery-to-CMDB Reconciliation
+  standard_ref: ServiceNow Discovery Reconciliation; ITPN G-21
+  applicability: All discovered CIs
+  required_evidence: ServiceNow Identification and Reconciliation Engine (IRE) log; duplicate CI count; unmatched CI count
+  evaluation_method: 'Deterministic: IRE reconciliation running; duplicate and unmatched CI counts reviewed monthly'
+  methods:
+  - deterministic
+  acceptance_criteria: Duplicate CI count < 1% of total; unmatched CIs reviewed and resolved within 30 days of discovery
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: CMDB
+  reassessment: ''
+  example_risk: Medium — unreconciled CIs create phantom records that corrupt incident attribution
+  example_recommendation: Enable IRE; schedule monthly reconciliation review; assign CMDB analyst to resolve unmatched CIs
+  references: []
+- id: CMDB-AT-02-C03
+  number: 3
+  name: CI Attribute Completeness Post-Discovery
+  standard_ref: ServiceNow CSDM; ITPN G-20
+  applicability: All CIs discovered by automated scan
+  required_evidence: 'Sample of 50 discovered CIs: owned_by, environment, region, and application_service fields populated'
+  evaluation_method: 'Deterministic: ownership, environment, and region populated for > 90% of discovered CIs'
+  methods:
+  - deterministic
+  acceptance_criteria: '> 90% of CIs have owned_by, environment, and region populated post-discovery enrichment'
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: CMDB / Platform Engineering
+  reassessment: ''
+  example_risk: High — discovered CIs without ownership cannot be linked to incidents or changes
+  example_recommendation: Enrich Discovery output with ownership rules; auto-populate environment and region from IP range
+    mapping
+  references: []
+- id: CMDB-AT-02-C04
+  number: 4
+  name: Stale CI Detection & Remediation
+  standard_ref: ServiceNow CMDB Health; ITPN G-20
+  applicability: All CIs with last-discovered date > 30 days
+  required_evidence: 'CMDB Health Dashboard: stale CI percentage; CI age distribution by class'
+  evaluation_method: 'Deterministic: CI age > 90 days without rediscovery flagged for review; remediation tracked'
+  methods:
+  - deterministic
+  acceptance_criteria: Stale CI rate (> 90 days without discovery) < 5% of total active CIs
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: CMDB
+  reassessment: ''
+  example_risk: Medium — stale CIs represent decommissioned or unknown assets that inflate CMDB noise
+  example_recommendation: Enable CMDB Health stale CI report; review and decommission confirmed stale CIs monthly
+  references: []
+- id: CMDB-AT-02-C05
+  number: 5
+  name: Discovery Credential Coverage & Security
+  standard_ref: ServiceNow Discovery Security; FSI Security Policy
+  applicability: All Discovery credentials covering FSI production environments
+  required_evidence: 'Discovery credential records: each has owner, last-rotated date, and minimum-privilege justification'
+  evaluation_method: 'Deterministic: all Discovery credentials owned, rotated within 90 days, and scoped to minimum privilege'
+  methods:
+  - deterministic
+  acceptance_criteria: All Discovery credentials rotated within 90 days; minimum-privilege justification documented
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: CMDB / Security
+  reassessment: ''
+  example_risk: Medium — stale or over-privileged Discovery credentials represent a security exposure
+  example_recommendation: Audit all Discovery credentials; enforce 90-day rotation; document privilege scope
+  references: []
+source_file: CMDB-AT-02 — CI Discovery & Reconciliation Assessment.docx
+references: []

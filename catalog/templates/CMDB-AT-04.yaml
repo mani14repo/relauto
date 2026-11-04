@@ -1,0 +1,112 @@
+id: CMDB-AT-04
+title: CMDB Data Quality Governance Assessment
+domain: CMDB
+variant: A
+priority: P1
+applicability: All FSI REO application and CI records in ServiceNow CMDB; assessed against the FSI REO CMDB quality standards
+accountable_owner: CMDB / Bijal Parekh
+purpose: Evaluate the overall data quality health of the FSI REO CMDB footprint using ServiceNow CMDB Health metrics. Covers
+  completeness, accuracy, relationship integrity, and the governance process for maintaining data quality over time.
+relevance: 99.1% cmdb_ci_business_app blank on 14,034 incidents. 28/63 apps Region = None. Single application_manager for
+  62 active apps. G-20, G-21, G-15. CMDB data quality is the single highest-leverage fix in the portfolio.
+reassessment_trigger: Major release, architecture change, or Post-Incident Review recommendation
+scope: []
+signoff_roles:
+- Assessment Lead
+- Domain Reviewer
+- Engineering / Service Owner
+- PSE Representative
+criteria:
+- id: CMDB-AT-04-C01
+  number: 1
+  name: CMDB Health Score Baseline
+  standard_ref: ServiceNow CMDB Health; ITPN G-20, G-21
+  applicability: All FSI REO CI classes in ServiceNow CMDB
+  required_evidence: 'ServiceNow CMDB Health Dashboard: completeness, compliance, correctness, and relationship health scores'
+  evaluation_method: 'Deterministic: CMDB Health Dashboard reviewed; baseline scores recorded for each health dimension'
+  methods:
+  - deterministic
+  acceptance_criteria: CMDB Health baseline established; target scores defined (completeness > 80%, relationship health >
+    70%)
+  default_risk: Critical
+  default_risk_assumed: false
+  accountable_owner: CMDB / Bijal Parekh
+  reassessment: ''
+  example_risk: Critical — without baseline, CMDB improvement has no reference point or measurable progress
+  example_recommendation: Run CMDB Health baseline assessment; document scores by CI class; set 90-day improvement targets
+  references: []
+- id: CMDB-AT-04-C02
+  number: 2
+  name: Mandatory Field Compliance
+  standard_ref: ServiceNow CSDM; ITPN G-20
+  applicability: All business application and infrastructure CI records
+  required_evidence: 'ServiceNow CMDB Health: mandatory field completion rate per CI class; specifically owned_by, region,
+    environment'
+  evaluation_method: 'Deterministic: owned_by, region, and environment populated for > 90% of production CIs'
+  methods:
+  - deterministic
+  acceptance_criteria: owned_by populated for 100% of production CIs; region for 100%; environment for 100%
+  default_risk: Critical
+  default_risk_assumed: false
+  accountable_owner: Bijal Parekh / sub-portfolio owners
+  reassessment: ''
+  example_risk: Critical — 28/63 apps have Region = None; single application_manager for 62 apps is not an ownership solution
+  example_recommendation: Run mandatory field completion report; assign sub-portfolio owners to remediate within 30 days
+  references: []
+- id: CMDB-AT-04-C03
+  number: 3
+  name: Relationship Integrity
+  standard_ref: ServiceNow CSDM — Relationships; ITPN G-12
+  applicability: All CI-to-CI and CI-to-Application relationships
+  required_evidence: 'ServiceNow CMDB Health: orphan CI count; broken relationship count; stale relationship count'
+  evaluation_method: 'Deterministic: orphan CIs < 2% of total; broken relationships flagged and resolved'
+  methods:
+  - deterministic
+  acceptance_criteria: Orphan CIs < 2%; broken relationships resolved within 30 days of detection
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: CMDB
+  reassessment: ''
+  example_risk: High — broken relationships prevent accurate impact analysis and dependency mapping
+  example_recommendation: Run CMDB relationship health report monthly; assign CMDB analyst to resolve broken relationships
+  references: []
+- id: CMDB-AT-04-C04
+  number: 4
+  name: CMDB Governance & Ownership Model
+  standard_ref: ServiceNow CSDM; ITPN G-15
+  applicability: The FSI REO CMDB governance program
+  required_evidence: 'CMDB governance charter: roles (data steward, CI owner, CMDB admin) defined; change control process
+    for CMDB updates'
+  evaluation_method: 'Human review: governance charter exists; roles assigned; change control process for CMDB updates documented'
+  methods:
+  - human
+  acceptance_criteria: CMDB governance charter exists; data steward, CI owner, and CMDB admin roles assigned; change control
+    defined
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: Bijal Parekh / REO leadership
+  reassessment: ''
+  example_risk: High — single application_manager for 62 apps with no governance structure is unsustainable
+  example_recommendation: Define CMDB governance charter; assign sub-portfolio data stewards; delegate CI ownership per app
+    family
+  references: []
+- id: CMDB-AT-04-C05
+  number: 5
+  name: CMDB Quality Improvement Cadence
+  standard_ref: ServiceNow CMDB Health; ITIL CSI
+  applicability: The CMDB data quality improvement program
+  required_evidence: Monthly CMDB Health score trend; improvement actions tracked in CSIP register
+  evaluation_method: 'Deterministic: CMDB Health scores reviewed monthly; improvement actions tracked and completed'
+  methods:
+  - deterministic
+  acceptance_criteria: CMDB Health scores reviewed monthly; at least 2 improvement actions completed per quarter
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: CMDB / Bijal Parekh
+  reassessment: ''
+  example_risk: Medium — CMDB quality degrades without active governance; improvements must be measurable
+  example_recommendation: Add CMDB Health score to monthly REO governance report; assign monthly improvement target per CI
+    class
+  references: []
+source_file: CMDB-AT-04 — CMDB Data Quality Governance Assessment.docx
+references: []

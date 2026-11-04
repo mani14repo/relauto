@@ -1,0 +1,31 @@
+# Uses the shared Automation Engineering workflow (see docs/image (7).png).
+# Builds web + python into one image and publishes to cvsh.jfrog.io/cvsdigital-docker as sra-<run_number>.
+name: ci
+on:
+  push: {branches: [main]}
+  pull_request:
+jobs:
+  test:
+    runs-on: [self-hosted]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.13"}
+      - name: Install (JFrog PyPI remote)
+        env: {PIP_INDEX_URL: "${{ secrets.ARTIFACTORY_PYPI_URL }}"}
+        run: pip install --no-cache-dir -r requirements.txt pytest && pip install --no-deps -e .
+      - name: Tests
+        run: python -m pytest -q
+  build:
+    needs: test
+    if: github.event_name == 'push'
+    uses: cvs-health-source-code/gha_workflow_actions/.github/workflows/python_docker.yaml@latest
+    with:
+      PYTHON_VERSION: "3.13"
+      PYTHON_PACKAGE_MANAGER: pip
+      PYTHON_DEPS_COMMAND: pip install --no-cache-dir -r requirements.txt
+      DOCKERFILE_PATH: ./Dockerfile
+      ARTIFACT_SCA: true
+      DOCKER_PUBLISH: true
+      IMAGE_TAG_VERSION: sra-${{ github.run_number }}
+    secrets: inherit

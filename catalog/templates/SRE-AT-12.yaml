@@ -1,0 +1,114 @@
+id: SRE-AT-12
+title: Deployment Pipeline & Release Readiness Assessment
+domain: SRE
+variant: A
+priority: P1
+applicability: All FSI REO applications with active CI/CD pipelines or scheduled releases; immediate focus on 28 apps still
+  on Jenkins and CFAO/Eos pipeline (COG v2)
+accountable_owner: Application Engineering / Platform Engineering
+purpose: Evaluate whether the CI/CD pipeline for each FSI REO application enforces quality gates, enables fast and reliable
+  deployments, and provides full deployment traceability. Pipeline maturity directly determines deployment frequency, change
+  failure rate, and MTTR for deployment-caused incidents.
+relevance: 100% manual deployments confirmed (all 15 release-type changes). 28/35 FSI apps on Jenkins past EOL deadline (G-17).
+  0% Change-to-Incident linkage (G-08). COG v2 CI/CD has no Change gate. IO-08 Score 20.
+reassessment_trigger: Major release, architecture change, or Post-Incident Review recommendation
+scope: []
+signoff_roles:
+- Assessment Lead
+- Domain Reviewer
+- Engineering / Service Owner
+- PSE Representative
+criteria:
+- id: SRE-AT-12-C01
+  number: 1
+  name: Pipeline Existence & Automation Level
+  standard_ref: ITPN G-17, IO-08 Score 20; DORA Metrics — Deployment Frequency
+  applicability: All FSI REO production applications
+  required_evidence: Pipeline configuration files; deployment log showing automated vs. manual steps; Jenkins migration tracker
+  evaluation_method: 'Deterministic: pipeline exists; deploy triggered by pipeline, not manual command; Jenkins not in pipeline
+    by end-Oct 2026'
+  methods:
+  - deterministic
+  acceptance_criteria: Automated pipeline exists for all 63 FSI applications; zero manual deploy-to-production steps; zero
+    Jenkins usage
+  default_risk: Critical
+  default_risk_assumed: false
+  accountable_owner: Application Engineering / Platform Engineering
+  reassessment: ''
+  example_risk: Critical — 100% manual deployment; 28/35 apps still on Jenkins past decommission deadline
+  example_recommendation: Escalate Jenkins migration daily; require pipeline automation as gate for any new release
+  references: []
+- id: SRE-AT-12-C02
+  number: 2
+  name: Quality Gate Coverage
+  standard_ref: ITPN G-08, IO-08; DORA Metrics — Change Failure Rate
+  applicability: All CI/CD pipelines
+  required_evidence: 'Pipeline configuration: SAST, unit test, integration test, and smoke test stages present and required
+    to pass'
+  evaluation_method: 'Deterministic: pipeline cannot deploy to production without SAST pass, unit test pass, and smoke test
+    pass'
+  methods:
+  - deterministic
+  acceptance_criteria: SAST, unit tests, and smoke tests required to pass before production deploy; no bypass path
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: Application Engineering
+  reassessment: ''
+  example_risk: High — no quality gates mean defects reach production without detection; change failure rate is unmeasured
+  example_recommendation: Define minimum quality gate set for FSI pipelines; enforce in all pipeline configurations
+  references: []
+- id: SRE-AT-12-C03
+  number: 3
+  name: Deployment Traceability
+  standard_ref: ITPN G-08, G-03; ITIL Change Enablement
+  applicability: All production deployments
+  required_evidence: Pipeline execution log linked to Change Record; artifact version traceable from ServiceNow to deployment
+  evaluation_method: 'Deterministic: every production deployment has a pipeline run ID linked to a ServiceNow Change Record'
+  methods:
+  - deterministic
+  acceptance_criteria: Pipeline run ID recorded in Change Record for 100% of production deployments
+  default_risk: Critical
+  default_risk_assumed: false
+  accountable_owner: Application Engineering / Change Management
+  reassessment: ''
+  example_risk: Critical — no deployment traceability means deployment-caused incidents cannot be identified
+  example_recommendation: Inject CHG number into pipeline at deployment trigger; record run ID in Change Record post-deploy
+  references: []
+- id: SRE-AT-12-C04
+  number: 4
+  name: Deployment Frequency & Cycle Time
+  standard_ref: DORA Metrics — Deployment Frequency / Lead Time; ITPN G-08
+  applicability: All FSI REO production applications
+  required_evidence: 'Pipeline deployment log: deployment count per month; average lead time from code commit to production'
+  evaluation_method: 'Deterministic: deployment frequency and lead time measured from pipeline logs'
+  methods:
+  - deterministic
+  acceptance_criteria: Deployment frequency and lead time measured and reported; baseline established; improvement targets
+    set
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: Application Engineering / SRE
+  reassessment: ''
+  example_risk: Medium — unmeasured deployment frequency prevents DORA maturity assessment
+  example_recommendation: Extract deployment frequency and lead time from pipeline logs; include in monthly engineering metrics
+  references: []
+- id: SRE-AT-12-C05
+  number: 5
+  name: Rollback Automation
+  standard_ref: ITPN G-04; ITIL Change Enablement — Rollback
+  applicability: All CI/CD pipelines for P1/P2 applications
+  required_evidence: 'Pipeline configuration: rollback stage defined and tested; rollback time documented'
+  evaluation_method: 'Human review: rollback procedure tested; executed within documented time target; no manual steps required'
+  methods:
+  - human
+  acceptance_criteria: Rollback stage present in pipeline for all P1/P2 applications; rollback tested within past 6 months
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: Application Engineering
+  reassessment: ''
+  example_risk: High — 3 of 15 backout plans reference wrong CHG numbers; manual rollback is error-prone under pressure
+  example_recommendation: Automate rollback in pipeline; test rollback for all P1/P2 applications; remove manual backout plan
+    dependency
+  references: []
+source_file: SRE-AT-12 — Deployment Pipeline & Release Readiness Assessment.docx
+references: []

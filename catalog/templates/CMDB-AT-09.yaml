@@ -1,0 +1,114 @@
+id: CMDB-AT-09
+title: End-of-Life & Technical Debt Registration Assessment
+domain: CMDB
+variant: A
+priority: P2
+applicability: All FSI REO applications and infrastructure with known or suspected EOL dates; immediate focus on Jenkins (G-17)
+  and any other platforms past or approaching vendor EOL
+accountable_owner: CMDB / Application Engineering / Platform Engineering
+purpose: Evaluate whether End-of-Life and technical debt items for FSI REO applications and infrastructure are formally registered,
+  risk-assessed, and managed through a governed remediation process. Unmanaged EOL items represent known, quantifiable risks
+  that require explicit acceptance or remediation.
+relevance: 28/35 FSI apps still on Jenkins past end-Oct 2026 decommission deadline (G-17 High Severity). No EOL register found.
+  No technical debt register found. This is the highest-severity near-term risk in the portfolio.
+reassessment_trigger: Major release, architecture change, or Post-Incident Review recommendation
+scope: []
+signoff_roles:
+- Assessment Lead
+- Domain Reviewer
+- Engineering / Service Owner
+- PSE Representative
+criteria:
+- id: CMDB-AT-09-C01
+  number: 1
+  name: EOL Register Completeness
+  standard_ref: ITIL Asset Management; ITPN G-17
+  applicability: All software platforms, middleware, and infrastructure components with vendor EOL dates
+  required_evidence: 'EOL register: each component with vendor EOL date, affected application count, and remediation plan'
+  evaluation_method: 'Deterministic: EOL register covers all components with known EOL dates; Jenkins listed as critical overdue'
+  methods:
+  - deterministic
+  acceptance_criteria: EOL register complete for all production components; Jenkins and any other past-EOL items listed as
+    P1
+  default_risk: Critical
+  default_risk_assumed: false
+  accountable_owner: CMDB / Application Engineering
+  reassessment: ''
+  example_risk: Critical — Jenkins EOL is confirmed overdue with 28/35 FSI apps not migrated as of Oct 2026
+  example_recommendation: Create EOL register immediately; list Jenkins, verify all other platforms; assign owner per item
+  references: []
+- id: CMDB-AT-09-C02
+  number: 2
+  name: Technical Debt Inventory
+  standard_ref: FSI Engineering Standards; ITPN G-17, G-22, G-23
+  applicability: All known technical debt items in FSI REO applications
+  required_evidence: 'Technical debt register or engineering backlog: each item with risk classification, estimated effort,
+    and owner'
+  evaluation_method: 'Human review: technical debt register exists; each item risk-classified and owned'
+  methods:
+  - human
+  acceptance_criteria: Technical debt register exists; all known items risk-classified (Critical / High / Medium / Low) and
+    owned
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: Application Engineering / REO leadership
+  reassessment: ''
+  example_risk: High — unregistered technical debt accumulates without visibility or governance
+  example_recommendation: Facilitate technical debt inventory workshop per application team; consolidate into single register
+  references: []
+- id: CMDB-AT-09-C03
+  number: 3
+  name: EOL Remediation Plan Quality
+  standard_ref: ITIL Asset Management; ITPN G-17
+  applicability: All past-EOL and within-6-month EOL components
+  required_evidence: 'Remediation plan: target date, migration path, testing plan, rollback plan, and owner for each past/near-EOL
+    item'
+  evaluation_method: 'Human review: remediation plan is specific, tested, and achievable within target date'
+  methods:
+  - human
+  acceptance_criteria: Each past-EOL item has a remediation plan with target date, tested migration path, and named owner
+  default_risk: Critical
+  default_risk_assumed: false
+  accountable_owner: Application Engineering / Platform Engineering
+  reassessment: ''
+  example_risk: Critical — Jenkins migration plan missing for 28 apps with an already-missed deadline
+  example_recommendation: Produce app-by-app Jenkins migration plan within 5 days; escalate to REO leadership daily until
+    done
+  references: []
+- id: CMDB-AT-09-C04
+  number: 4
+  name: Risk Acceptance for Deferred Remediation
+  standard_ref: FSI IT Risk Framework; ITPN G-17
+  applicability: Any EOL or technical debt item where remediation is deferred beyond the original target date
+  required_evidence: 'Risk acceptance record: each deferred item has a signed risk acceptance with residual risk, compensating
+    control, and new target date'
+  evaluation_method: 'Deterministic: no deferred EOL item without a signed risk acceptance'
+  methods:
+  - deterministic
+  acceptance_criteria: All deferred EOL items have a signed risk acceptance from an authorized risk owner
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: REO leadership / Compliance
+  reassessment: ''
+  example_risk: High — deferred Jenkins migration is currently an unacknowledged risk at executive level
+  example_recommendation: Obtain signed risk acceptance for Jenkins deferral from REO leadership immediately
+  references: []
+- id: CMDB-AT-09-C05
+  number: 5
+  name: Technical Debt Reduction Velocity
+  standard_ref: ITIL CSI; ITPN G-22, G-23
+  applicability: All active technical debt remediation efforts
+  required_evidence: 'Technical debt register: items closed per quarter; planned vs. actual closure rate'
+  evaluation_method: 'Deterministic: > 20% of critical/high technical debt items resolved per quarter'
+  methods:
+  - deterministic
+  acceptance_criteria: '> 20% of Critical/High technical debt items resolved per quarter; progress reported to REO leadership'
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: Application Engineering / REO leadership
+  reassessment: ''
+  example_risk: Medium — without measuring reduction velocity, technical debt accrual rate cannot be assessed
+  example_recommendation: Report technical debt burn-down in monthly REO governance meeting; celebrate reductions
+  references: []
+source_file: CMDB-AT-09 — End-of-Life & Technical Debt Registration Assessment.docx
+references: []

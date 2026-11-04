@@ -1,0 +1,115 @@
+id: CMDB-AT-11
+title: CMDB Certification & Audit Assessment
+domain: CMDB
+variant: B
+priority: ''
+applicability: All FSI REO-managed applications and services within scope of the Reliability by Design initiative Production
+  and pre-production environments where the assessed capability is required Application Engineering, SRE, PSE, CMDB, and Architecture
+  teams responsible for the assessed capability
+accountable_owner: CMDB Standards / Practice Owner
+purpose: This assessment evaluates whether CMDB records for managed applications and services are subject to periodic owner
+  certification, whether audit findings are tracked and remediated, and whether data certification intervals and exception
+  thresholds are enforced. CMDB certification is the mechanism that prevents data staleness from accumulating silently.
+relevance: ''
+reassessment_trigger: ''
+scope:
+- All FSI REO-managed applications and services within scope of the Reliability by Design initiative
+- Production and pre-production environments where the assessed capability is required
+- Application Engineering, SRE, PSE, CMDB, and Architecture teams responsible for the assessed capability
+signoff_roles: []
+criteria:
+- id: CMDB-AT-11-C01
+  number: 1
+  name: CI ownership certification is current for all managed CIs
+  standard_ref: CMDB-STD-11 — CMDB Certification & Audit Standard; CMDB-POL-11
+  applicability: All CIs under active management in FSI REO scope
+  required_evidence: Owner attestation record or certification stamp on CMDB CI; last certification date within approved interval
+    (12 months for Tier 1, 24 months for Tier 2)
+  evaluation_method: Deterministic — check u_last_certified_date (or equivalent) on cmdb_ci; compare to certification interval
+    for service tier
+  methods:
+  - deterministic
+  acceptance_criteria: All managed CIs have been certified by accountable owner within the approved interval; certification
+    date and certifier are recorded
+  default_risk: High
+  default_risk_assumed: true
+  accountable_owner: CMDB Data Steward / CI Owner
+  reassessment: At each certification interval; when CI ownership changes; following CMDB audit
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-11
+  - CMDB-POL-11
+- id: CMDB-AT-11-C02
+  number: 2
+  name: CMDB audit findings are tracked with remediation owners and target dates
+  standard_ref: CMDB-STD-11; CMDB-PRC-11 — CMDB Certification & Audit Process
+  applicability: All CIs where CMDB audit activity has been conducted
+  required_evidence: Open audit finding records (ServiceNow task or equivalent) with assigned owner, severity, and target
+    remediation date; closed findings with resolution evidence
+  evaluation_method: Deterministic — count open audit findings for this application with no assigned owner or no target date;
+    count findings overdue (past target date)
+  methods:
+  - deterministic
+  acceptance_criteria: All open audit findings have an assigned owner and a target remediation date; no findings are overdue
+    beyond approved SLA (30 days for High, 60 days for Medium)
+  default_risk: High
+  default_risk_assumed: true
+  accountable_owner: CMDB Data Steward / Application Engineering
+  reassessment: Monthly during active remediation; after each audit cycle
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-11
+  - CMDB-PRC-11
+- id: CMDB-AT-11-C03
+  number: 3
+  name: CMDB completeness score meets threshold for service tier
+  standard_ref: CMDB-STD-05 — CMDB Data Quality Standard; CMDB-AT-04 (existing)
+  applicability: All managed CIs — assessed at the application level across all related CIs
+  required_evidence: CMDB Health dashboard or equivalent showing completeness score for required fields; list of null fields
+    per CI
+  evaluation_method: 'Deterministic — calculate completeness score: populated required fields / total required fields. Tier
+    1: >= 95%; Tier 2: >= 85%'
+  methods:
+  - deterministic
+  acceptance_criteria: Completeness score meets or exceeds threshold for service tier; all null required fields have a documented
+    remediation plan
+  default_risk: High
+  default_risk_assumed: true
+  accountable_owner: CMDB Data Steward / Application Engineering
+  reassessment: Monthly; after ownership changes; after CMDB discovery reconciliation run
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-05
+  - CMDB-AT-04
+- id: CMDB-AT-11-C04
+  number: 4
+  name: Exception thresholds are defined and deviations are approved
+  standard_ref: CMDB-POL-11 — CMDB Certification & Audit Policy
+  applicability: All managed CIs where exception requests have been submitted
+  required_evidence: Approved exception records with business justification, approver, approval date, and expiry date; no
+    exceptions past expiry without renewal
+  evaluation_method: Deterministic — count active exceptions past expiry date; AI-Assisted — review exception justifications
+    for completeness
+  methods:
+  - deterministic
+  - ai
+  acceptance_criteria: All active exceptions have valid business justification, named approver, and have not exceeded their
+    approved expiry date
+  default_risk: High
+  default_risk_assumed: true
+  accountable_owner: CMDB Standards Owner / Authorized Exception Approver
+  reassessment: At each exception expiry date; annually as part of certification cycle
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-POL-11
+source_file: CMDB-AT-11 — CMDB Certification & Audit Assessment.docx
+references:
+- CMDB-STD-11
+- CMDB-POL-11
+- CMDB-PRC-11
+- CMDB-STD-05
+- CMDB-AT-04

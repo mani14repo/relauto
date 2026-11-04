@@ -1,0 +1,110 @@
+id: CMDB-AT-03
+title: Asset Lifecycle Management Assessment
+domain: CMDB
+variant: A
+priority: P2
+applicability: All hardware and software assets supporting FSI REO production applications
+accountable_owner: CMDB / Application Engineering
+purpose: Evaluate whether IT assets are tracked through their full lifecycle in ServiceNow, from procurement through decommission.
+  Ensures asset lifecycle data supports capacity planning, EOL management, and cost attribution.
+relevance: Jenkins decommission deadline Oct 2026 (G-17 High Severity). No EOL register found in extract. Asset lifecycle
+  management maturity unknown. Supports CMDB completeness program.
+reassessment_trigger: Major release, architecture change, or Post-Incident Review recommendation
+scope: []
+signoff_roles:
+- Assessment Lead
+- Domain Reviewer
+- Engineering / Service Owner
+- PSE Representative
+criteria:
+- id: CMDB-AT-03-C01
+  number: 1
+  name: Asset Lifecycle State Accuracy
+  standard_ref: ServiceNow HAM; ITIL Asset Management
+  applicability: All hardware and software CIs in ServiceNow CMDB
+  required_evidence: 'ServiceNow asset records: install_status field distribution; comparison to known operational state'
+  evaluation_method: 'Deterministic: install_status accurately reflects operational state for > 95% of sampled assets'
+  methods:
+  - deterministic
+  acceptance_criteria: install_status accurate for > 95% of production assets; decommissioned assets in "Retired" state
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: CMDB
+  reassessment: ''
+  example_risk: Medium — inaccurate lifecycle state leads to cost attribution errors and capacity planning gaps
+  example_recommendation: Audit install_status for all production CIs; correct to match actual operational state
+  references: []
+- id: CMDB-AT-03-C02
+  number: 2
+  name: End-of-Life Tracking
+  standard_ref: ITIL Asset Management; ITPN G-17
+  applicability: All software assets with vendor EOL dates (including Jenkins)
+  required_evidence: 'EOL register: each asset with EOL date, migration plan, and owner; Jenkins decommission tracker'
+  evaluation_method: 'Deterministic: EOL register exists; assets past EOL have migration plans with owners and target dates'
+  methods:
+  - deterministic
+  acceptance_criteria: EOL register exists covering all software assets; each past-EOL asset has a migration plan
+  default_risk: Critical
+  default_risk_assumed: false
+  accountable_owner: CMDB / Application Engineering
+  reassessment: ''
+  example_risk: Critical — Jenkins is past decommission deadline with 28/35 FSI apps not migrated
+  example_recommendation: Create EOL register from CMDB software records; escalate Jenkins immediately as critical overdue
+    item
+  references: []
+- id: CMDB-AT-03-C03
+  number: 3
+  name: Software License Reconciliation
+  standard_ref: ServiceNow SAM; ITIL License Management
+  applicability: All licensed software used by FSI REO applications
+  required_evidence: 'ServiceNow SAM license records: entitlement vs. deployment count; under/over-license summary'
+  evaluation_method: 'Deterministic: license reconciliation run; no under-licensed software; over-licensed software reviewed
+    for optimization'
+  methods:
+  - deterministic
+  acceptance_criteria: Zero under-licensed software; over-licensed software reviewed for cost optimization quarterly
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: CMDB / Procurement
+  reassessment: ''
+  example_risk: Medium — unlicensed software creates compliance and audit risk
+  example_recommendation: Enable ServiceNow SAM; run license reconciliation quarterly; report to REO leadership
+  references: []
+- id: CMDB-AT-03-C04
+  number: 4
+  name: Asset-to-Application Linkage
+  standard_ref: ServiceNow CSDM; ITPN G-20
+  applicability: All production infrastructure assets
+  required_evidence: 'ServiceNow asset records: used_by and application_service fields linking assets to business applications'
+  evaluation_method: 'Deterministic: production assets linked to at least one business application in CMDB'
+  methods:
+  - deterministic
+  acceptance_criteria: '> 90% of production assets linked to at least one FSI application record'
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: CMDB / Application Engineering
+  reassessment: ''
+  example_risk: Medium — unlinked assets cannot be attributed in incident or change impact analysis
+  example_recommendation: Build asset-to-application mapping using CMDB_Mapping.xlsx as the master application list
+  references: []
+- id: CMDB-AT-03-C05
+  number: 5
+  name: Decommission Process Adherence
+  standard_ref: ITIL Asset Management — Disposal; ServiceNow Decommission Workflow
+  applicability: All assets decommissioned or scheduled for decommission
+  required_evidence: 'Decommission workflow records: each decommission has a Change Record, data wipe confirmation, and CMDB
+    update'
+  evaluation_method: 'Deterministic: decommission workflow completed for all retired assets; no active assets in "Retired"
+    state'
+  methods:
+  - deterministic
+  acceptance_criteria: All decommissions have a Change Record; data wipe confirmed; CMDB updated within 5 business days
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: CMDB / Platform Engineering
+  reassessment: ''
+  example_risk: Medium — unmanaged decommissions leave data on retired assets and CMDB in inconsistent state
+  example_recommendation: Implement ServiceNow decommission workflow; enforce Change Record requirement for all retirements
+  references: []
+source_file: CMDB-AT-03 — Asset Lifecycle Management Assessment.docx
+references: []

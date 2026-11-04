@@ -1,0 +1,236 @@
+templates:
+- id: CMDB-AT-01
+  title: CMDB & Service Mapping Assessment
+  domain: CMDB
+  variant: A
+  priority: P1
+  criteria: 5
+- id: CMDB-AT-02
+  title: CI Discovery & Reconciliation Assessment
+  domain: CMDB
+  variant: A
+  priority: P1
+  criteria: 5
+- id: CMDB-AT-03
+  title: Asset Lifecycle Management Assessment
+  domain: CMDB
+  variant: A
+  priority: P2
+  criteria: 5
+- id: CMDB-AT-04
+  title: CMDB Data Quality Governance Assessment
+  domain: CMDB
+  variant: A
+  priority: P1
+  criteria: 5
+- id: CMDB-AT-05
+  title: Infrastructure Configuration Accuracy Assessment
+  domain: CMDB
+  variant: A
+  priority: P2
+  criteria: 5
+- id: CMDB-AT-06
+  title: Application Service Dependency Mapping Assessment
+  domain: CMDB
+  variant: A
+  priority: P1
+  criteria: 5
+- id: CMDB-AT-07
+  title: Cloud & Hybrid Infrastructure Registration Assessment
+  domain: CMDB
+  variant: A
+  priority: P2
+  criteria: 5
+- id: CMDB-AT-08
+  title: CMDB-Driven Change Impact Analysis Assessment
+  domain: CMDB
+  variant: A
+  priority: P1
+  criteria: 5
+- id: CMDB-AT-09
+  title: End-of-Life & Technical Debt Registration Assessment
+  domain: CMDB
+  variant: A
+  priority: P2
+  criteria: 5
+- id: CMDB-AT-10
+  title: Service Criticality & Operational Risk Assessment
+  domain: CMDB
+  variant: B
+  priority: ''
+  criteria: 4
+- id: CMDB-AT-11
+  title: CMDB Certification & Audit Assessment
+  domain: CMDB
+  variant: B
+  priority: ''
+  criteria: 4
+- id: ITSM-AT-01
+  title: Change & Production Readiness Assessment
+  domain: ITSM
+  variant: A
+  priority: P1
+  criteria: 5
+- id: ITSM-AT-02
+  title: Incident Management Quality Assessment
+  domain: ITSM
+  variant: A
+  priority: P1
+  criteria: 5
+- id: ITSM-AT-03
+  title: Problem Management Effectiveness Assessment
+  domain: ITSM
+  variant: A
+  priority: P1
+  criteria: 5
+- id: ITSM-AT-04
+  title: Service Desk Capability & Tier-1 Resolution Assessment
+  domain: ITSM
+  variant: A
+  priority: P2
+  criteria: 5
+- id: ITSM-AT-05
+  title: Service Catalog Completeness & Accuracy Assessment
+  domain: ITSM
+  variant: A
+  priority: P2
+  criteria: 5
+- id: ITSM-AT-06
+  title: SLA Compliance & OLA Governance Assessment
+  domain: ITSM
+  variant: A
+  priority: P1
+  criteria: 5
+- id: ITSM-AT-07
+  title: Knowledge Management & Self-Service Effectiveness Assessment
+  domain: ITSM
+  variant: A
+  priority: P2
+  criteria: 5
+- id: ITSM-AT-08
+  title: Continuous Improvement & Service Improvement Plan Assessment
+  domain: ITSM
+  variant: A
+  priority: P2
+  criteria: 5
+- id: ITSM-AT-09
+  title: IT Governance, Risk & Compliance Assessment
+  domain: ITSM
+  variant: A
+  priority: P2
+  criteria: 5
+- id: ITSM-AT-10
+  title: Vendor & Third-Party Service Management Assessment
+  domain: ITSM
+  variant: A
+  priority: P3
+  criteria: 5
+- id: ITSM-AT-11
+  title: Operational KPI & Reporting Assessment
+  domain: ITSM
+  variant: B
+  priority: ''
+  criteria: 4
+- id: ITSM-AT-12
+  title: Service Continuity Management Assessment
+  domain: ITSM
+  variant: B
+  priority: ''
+  criteria: 4
+- id: SRE-AT-01
+  title: Application Reliability Readiness Assessment
+  domain: SRE
+  variant: A
+  priority: P1
+  criteria: 6
+- id: SRE-AT-02
+  title: Architecture Reliability & Failure-Mode Assessment
+  domain: SRE
+  variant: A
+  priority: P1
+  criteria: 5
+- id: SRE-AT-03
+  title: Observability Coverage & Instrumentation Assessment
+  domain: SRE
+  variant: A
+  priority: P1
+  criteria: 5
+- id: SRE-AT-04
+  title: Service-Level Reliability Assessment
+  domain: SRE
+  variant: A
+  priority: P1
+  criteria: 5
+- id: SRE-AT-05
+  title: Application Resilience & Fault-Tolerance Assessment
+  domain: SRE
+  variant: A
+  priority: P1
+  criteria: 5
+- id: SRE-AT-06
+  title: Performance, Load & Capacity Readiness Assessment
+  domain: SRE
+  variant: A
+  priority: P1
+  criteria: 5
+- id: SRE-AT-07
+  title: Runbook Quality & Recovery Readiness Assessment
+  domain: SRE
+  variant: A
+  priority: P1
+  criteria: 5
+- id: SRE-AT-08
+  title: Operational Ownership & Supportability Assessment
+  domain: SRE
+  variant: A
+  priority: P1
+  criteria: 5
+- id: SRE-AT-09
+  title: Incident Response & Post-Mortem Quality Assessment
+  domain: SRE
+  variant: A
+  priority: P1
+  criteria: 5
+- id: SRE-AT-10
+  title: Toil Measurement & Automation Readiness Assessment
+  domain: SRE
+  variant: A
+  priority: P1
+  criteria: 5
+- id: SRE-AT-11
+  title: Security & Compliance Posture Assessment
+  domain: SRE
+  variant: A
+  priority: P1
+  criteria: 5
+- id: SRE-AT-12
+  title: Deployment Pipeline & Release Readiness Assessment
+  domain: SRE
+  variant: A
+  priority: P1
+  criteria: 5
+- id: SRE-AT-13
+  title: Application Dependency & Integration Health Assessment
+  domain: SRE
+  variant: A
+  priority: P1
+  criteria: 5
+- id: SRE-AT-14
+  title: Reliability Automation Readiness Assessment
+  domain: SRE
+  variant: B
+  priority: ''
+  criteria: 4
+- id: SRE-AT-15
+  title: Post-Release Reliability Effectiveness Assessment
+  domain: SRE
+  variant: B
+  priority: ''
+  criteria: 4
+- id: SRE-AT-16
+  title: SRE Toil & Engineering Capacity Assessment
+  domain: SRE
+  variant: B
+  priority: ''
+  criteria: 4
+total_criteria: 189

@@ -1,0 +1,106 @@
+id: SRE-AT-02
+title: Architecture Reliability & Failure-Mode Assessment
+domain: SRE
+variant: A
+priority: P1
+applicability: Applications undergoing architecture review or significant infrastructure changes
+accountable_owner: Architecture / SRE
+purpose: Identify single points of failure, unmitigated dependency risks, and missing fault-tolerance controls in application
+  architecture. Produces a risk-stormed failure map aligned to Golden Pathways resilience and continuity pillars.
+relevance: Supports Architecture / SRE Golden Pathways pillar. Relevant to COG v2 CI/CD gap (no CHG gate) and CFAO Eos dependency
+  chain.
+reassessment_trigger: Major release, architecture change, or Post-Incident Review recommendation
+scope: []
+signoff_roles:
+- Assessment Lead
+- SRE Reviewer
+- Engineering Owner
+- PSE Representative
+criteria:
+- id: SRE-AT-02-C01
+  number: 1
+  name: Single Points of Failure (SPOF) Identification
+  standard_ref: Google SRE Workbook Ch.14; Golden Pathways — Business Continuity
+  applicability: All production applications
+  required_evidence: Architecture diagram; dependency inventory; infrastructure configuration
+  evaluation_method: 'Human review: enumerate SPOFs; verify each has mitigation or accepted risk'
+  methods:
+  - human
+  acceptance_criteria: All SPOFs identified, each with a documented mitigation or accepted risk owner
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: Architecture / SRE
+  reassessment: ''
+  example_risk: High — unmitigated SPOFs = unplanned outage risk
+  example_recommendation: Conduct risk storming session with application and SRE leads; document all SPOFs
+  references: []
+- id: SRE-AT-02-C02
+  number: 2
+  name: Upstream / Downstream Dependency Mapping
+  standard_ref: ServiceNow CSDM — Application Service; ITPN G-12
+  applicability: Applications with cross-team or cross-portfolio dependencies
+  required_evidence: Service dependency map; ServiceNow service relationship records; CMDB_Mapping.xlsx
+  evaluation_method: 'AI-assisted: confirm all upstream and downstream dependencies are named and documented'
+  methods:
+  - ai
+  acceptance_criteria: All critical upstream dependencies named; failure propagation path documented for each
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: Architecture / Application Engineering
+  reassessment: ''
+  example_risk: High — RCI->GDX->CRS chain has no dependency map or escalation path
+  example_recommendation: Build service dependency map in ServiceNow; wire upstream CIs to shared incidents
+  references: []
+- id: SRE-AT-02-C03
+  number: 3
+  name: Failure Scenario Coverage
+  standard_ref: Google SRE — DiRT exercises; Golden Pathways — Incident Mgmt
+  applicability: All P1 applications
+  required_evidence: Failure scenario register; game-day records; DR test results
+  evaluation_method: 'Human review: validate failure scenarios cover top 5 incident root causes for this application'
+  methods:
+  - human
+  acceptance_criteria: At least 3 documented failure scenarios with defined detection, response, and recovery steps
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: SRE / Application Engineering
+  reassessment: ''
+  example_risk: Medium — low RCA maturity limits scenario identification
+  example_recommendation: Derive failure scenarios from top incident categories for this application family
+  references: []
+- id: SRE-AT-02-C04
+  number: 4
+  name: Recovery Design — RTO/RPO
+  standard_ref: Golden Pathways — Business Continuity; ITIL Service Continuity
+  applicability: All production applications
+  required_evidence: DR plan; RTO/RPO targets in CMDB or service tier documentation; failover test records
+  evaluation_method: 'Deterministic: RTO and RPO targets set, failover tested, recovery steps documented'
+  methods:
+  - deterministic
+  acceptance_criteria: RTO and RPO targets set; at least one DR test completed in past 12 months
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: Application Engineering / SRE
+  reassessment: ''
+  example_risk: High — no DR tests found for any FSI application in current extract
+  example_recommendation: Define RTO/RPO per application criticality tier; schedule annual DR test
+  references: []
+- id: SRE-AT-02-C05
+  number: 5
+  name: Risk Mitigation for Critical Paths
+  standard_ref: ITPN IO-01, IO-04; Google SRE — Eliminate Toil
+  applicability: Applications with identified high-risk failure paths
+  required_evidence: Risk register entries; mitigation action plans; engineering tickets for remediation
+  evaluation_method: 'Human review: each identified risk has a mitigation action, owner, and target date'
+  methods:
+  - human
+  acceptance_criteria: All High/Critical risks have documented mitigation plans with named owners and target dates
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: SRE / Architecture
+  reassessment: ''
+  example_risk: High — 27 gaps identified (G-01–G-27) with no formal risk register
+  example_recommendation: Create a risk register aligned to G-01–G-27; assign SRE risk owners per application family
+  references: []
+source_file: SRE-AT-02 — Architecture Reliability & Failure-Mode Assessment.docx
+references: []

@@ -1,0 +1,114 @@
+id: ITSM-AT-02
+title: Incident Management Quality Assessment
+domain: ITSM
+variant: A
+priority: P1
+applicability: All FSI REO production applications; immediate focus on Region A (86.2% incident volume) and monitoring-generated
+  incident pipeline
+accountable_owner: PSE / SRE
+purpose: Evaluate the quality, completeness, and operational value of incident records and the effectiveness of incident management
+  practices across the FSI REO portfolio. Covers classification accuracy, root-cause capture, and the integrity of MTTR measurement.
+relevance: 'Oct 29 extract: 14,034 total incidents (14,017 in-scope); 94.8% monitoring-generated; 39% with no subcategory;
+  99.1% cmdb_ci_business_app blank; 57 incidents linked to Problems (0.4%). G-05, G-06, G-18, G-20, G-21.'
+reassessment_trigger: Major release, architecture change, or Post-Incident Review recommendation
+scope: []
+signoff_roles:
+- Assessment Lead
+- Domain Reviewer
+- Engineering / Service Owner
+- PSE Representative
+criteria:
+- id: ITSM-AT-02-C01
+  number: 1
+  name: Incident Classification Completeness
+  standard_ref: ITIL Incident Management; ITPN G-20, G-21
+  applicability: All production incidents
+  required_evidence: ServiceNow incident extract showing category, subcategory, and cmdb_ci_business_app population rates
+  evaluation_method: 'Deterministic: measure % incidents with category, subcategory, and cmdb_ci_business_app populated'
+  methods:
+  - deterministic
+  acceptance_criteria: '> 90% of incidents have category + subcategory + cmdb_ci_business_app populated within 30 days of
+    remediation'
+  default_risk: Critical
+  default_risk_assumed: false
+  accountable_owner: PSE / ServiceNow Admin
+  reassessment: ''
+  example_risk: Critical — 39% no subcategory; 99.1% cmdb_ci_business_app blank — application-level analysis is impossible
+  example_recommendation: Enforce mandatory fields on closure; wire cmdb_ci_business_app in ServiceNow assignment routing
+  references: []
+- id: ITSM-AT-02-C02
+  number: 2
+  name: MTTR Accuracy & Measurement Integrity
+  standard_ref: ITPN G-18, G-19; REO Operating Model
+  applicability: All incidents with resolved_at timestamps
+  required_evidence: ServiceNow extract with opened_at, resolved_at, work_notes timeline; Rebates Batch auto-resolve timer
+    review
+  evaluation_method: 'Deterministic: measure MTTR outliers; identify auto-resolve timer distortions; validate human-resolved
+    vs. auto-resolved'
+  methods:
+  - deterministic
+  acceptance_criteria: MTTR reported separately for monitoring-generated (auto-resolved) and human-handled incidents; Rebates
+    Batch 48h timer documented as a known distortion
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: PSE / SRE
+  reassessment: ''
+  example_risk: High — Rebates Batch 48h auto-resolve timer inflates MTTR; distorts portfolio comparison
+  example_recommendation: Tag auto-resolved incidents; exclude from engineering MTTR KPI; report separately for monitoring
+    compliance
+  references: []
+- id: ITSM-AT-02-C03
+  number: 3
+  name: Work-Time Capture
+  standard_ref: ITPN G-19; IO-04 Score 20
+  applicability: All human-handled incidents
+  required_evidence: ServiceNow time-worked field population rate across human-handled incidents (non-auto-closed)
+  evaluation_method: 'Deterministic: measure % human-handled incidents with work_notes time entry > 0'
+  methods:
+  - deterministic
+  acceptance_criteria: '> 80% of human-handled incidents have time-worked captured within 90 days of mandate'
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: PSE / Engineering leads
+  reassessment: ''
+  example_risk: High — 5% work-time captured currently; engineering effort is unmeasured and unmanageable
+  example_recommendation: Make time-worked mandatory on all human-handled incident closures; report weekly until > 80%
+  references: []
+- id: ITSM-AT-02-C04
+  number: 4
+  name: Monitoring-Generated vs. Human-Reported Distinction
+  standard_ref: ITPN G-05, G-06, G-18
+  applicability: All production incidents
+  required_evidence: ServiceNow extract showing contact_type or caller_id pattern distinguishing monitoring vs. human origin
+  evaluation_method: 'AI-assisted: confirm classification logic correctly separates monitoring-generated from human-reported
+    incidents'
+  methods:
+  - ai
+  acceptance_criteria: Reliable flag distinguishing monitoring-generated from human-reported incidents applied to all records
+  default_risk: Critical
+  default_risk_assumed: false
+  accountable_owner: PSE / ServiceNow Admin
+  reassessment: ''
+  example_risk: Critical — 94.8% monitoring-generated but reported as one pool; inflates incident count and distorts MTTR
+  example_recommendation: Implement contact_type or u_source flag; apply retroactively where caller_id pattern is deterministic
+  references: []
+- id: ITSM-AT-02-C05
+  number: 5
+  name: Major Incident (P1) Process Adherence
+  standard_ref: ITIL Major Incident; ITPN G-12, G-13
+  applicability: All P1 incidents
+  required_evidence: 'P1 incident records: bridge opened within SLA, stakeholder notifications sent, timeline documented'
+  evaluation_method: 'Human review: P1 incident records show bridge time, stakeholder list, and resolution timeline'
+  methods:
+  - human
+  acceptance_criteria: All P1 incidents have documented bridge open time, stakeholder notification, and timeline within 1h
+    of detection
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: PSE
+  reassessment: ''
+  example_risk: High — ~20 handoffs with no SLA; P1 process not documented or measured
+  example_recommendation: Define P1 incident SLA (bridge < 15 min, notification < 30 min); measure and report monthly
+  references: []
+source_file: ITSM-AT-02 — Incident Management Quality Assessment.docx
+references: []

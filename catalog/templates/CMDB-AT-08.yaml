@@ -1,0 +1,111 @@
+id: CMDB-AT-08
+title: CMDB-Driven Change Impact Analysis Assessment
+domain: CMDB
+variant: A
+priority: P1
+applicability: All FSI REO production changes; immediate focus on the 52 Change Records with 0% Incident linkage
+accountable_owner: CMDB / Change Management
+purpose: Evaluate whether Change impact analysis in ServiceNow leverages CMDB relationship data to accurately predict the
+  scope and risk of proposed changes. Poor CMDB completeness directly degrades change impact analysis quality and drives undetected
+  production incidents.
+relevance: 0% Change-to-Incident linkage across 52 change records. 100% manual deployment. CMDB relationship data insufficient
+  for automated impact analysis. G-03, G-04, G-08, G-21.
+reassessment_trigger: Major release, architecture change, or Post-Incident Review recommendation
+scope: []
+signoff_roles:
+- Assessment Lead
+- Domain Reviewer
+- Engineering / Service Owner
+- PSE Representative
+criteria:
+- id: CMDB-AT-08-C01
+  number: 1
+  name: CMDB Relationship Data Sufficiency for Impact Analysis
+  standard_ref: ServiceNow Change Management — Impact Analysis; ITPN G-03
+  applicability: All Change Records for FSI REO applications
+  required_evidence: 'ServiceNow Change Record: impacted_cis field populated; impact analysis leverages CMDB relationships'
+  evaluation_method: 'Deterministic: impacted_cis populated on > 80% of standard Change Records using CMDB relationship data'
+  methods:
+  - deterministic
+  acceptance_criteria: impacted_cis populated on > 80% of Change Records; relationship data used for impact analysis
+  default_risk: Critical
+  default_risk_assumed: false
+  accountable_owner: CMDB / Change Management
+  reassessment: ''
+  example_risk: Critical — without CMDB relationships, impact analysis is manual and incomplete
+  example_recommendation: Remediate CMDB relationships for critical path first; enable automated impact analysis for Region
+    A changes
+  references: []
+- id: CMDB-AT-08-C02
+  number: 2
+  name: Change-to-Incident Traceability
+  standard_ref: ITPN G-03, G-04, G-08; ITIL Change Enablement
+  applicability: All Change Records where a change-caused incident occurred
+  required_evidence: ServiceNow Change Record rfc field on incidents; Change Records with linked incidents
+  evaluation_method: 'Deterministic: % incidents linked to Change Records within 24h of change window closing'
+  methods:
+  - deterministic
+  acceptance_criteria: Change-caused incidents identified and linked to Change Record within 24h; target > 50% within 90 days
+  default_risk: Critical
+  default_risk_assumed: false
+  accountable_owner: Change Management / PSE
+  reassessment: ''
+  example_risk: Critical — 0% Change-to-Incident linkage means no learning from change-caused incidents
+  example_recommendation: 'Implement post-change incident review: compare incident open timestamps against change windows
+    within 24h'
+  references: []
+- id: CMDB-AT-08-C03
+  number: 3
+  name: Change Freeze & High-Risk Period Management
+  standard_ref: ITIL Change Enablement; FSI Change Policy
+  applicability: All changes during peak business periods and declared freeze windows
+  required_evidence: 'Change Policy: freeze calendar defined; Change Records show freeze-period exception approvals'
+  evaluation_method: 'Deterministic: zero changes deployed during freeze windows without documented exception approval'
+  methods:
+  - deterministic
+  acceptance_criteria: Zero unapproved changes during declared freeze windows; exception approvals documented in Change Record
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: Change Management / REO leadership
+  reassessment: ''
+  example_risk: High — undocumented changes during high-risk periods cannot be tracked as a cause of incidents
+  example_recommendation: Define and publish annual freeze calendar; enforce via ServiceNow Change workflow
+  references: []
+- id: CMDB-AT-08-C04
+  number: 4
+  name: Standard Change Catalogue Coverage
+  standard_ref: ITIL Change Enablement — Standard Change; ITPN IO-08 Score 20
+  applicability: All repeatable, pre-approved change types in FSI REO
+  required_evidence: 'Standard Change catalogue: top-10 repeatable change types defined, tested, and approved for self-service'
+  evaluation_method: 'Human review: top-10 change types reviewed; standard change created for each where risk is well-understood'
+  methods:
+  - human
+  acceptance_criteria: Standard change catalogue exists with at least 10 entries for FSI REO common change types
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: Change Management / Application Engineering
+  reassessment: ''
+  example_risk: Medium — repeatable changes handled as Normal changes consume CAB time and delay deployments
+  example_recommendation: Identify top-10 repeatable FSI change types; create standard change models for each
+  references: []
+- id: CMDB-AT-08-C05
+  number: 5
+  name: Post-Change CMDB Update Compliance
+  standard_ref: ServiceNow CSDM; ITIL Configuration Management
+  applicability: All changes that modify infrastructure configuration
+  required_evidence: 'Change Record post-implementation review: CMDB update confirmation field; CMDB delta detected by Discovery
+    post-change'
+  evaluation_method: 'Deterministic: CMDB updated within 24h of change completion for all topology-changing changes'
+  methods:
+  - deterministic
+  acceptance_criteria: CMDB updated within 24h of change completion for 100% of topology-changing changes
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: Change Management / CMDB
+  reassessment: ''
+  example_risk: High — changes not reflected in CMDB cause CMDB drift and degrade all subsequent impact analyses
+  example_recommendation: Add CMDB update confirmation to Change closure checklist; auto-trigger Discovery post-change for
+    infrastructure changes
+  references: []
+source_file: CMDB-AT-08 — CMDB-Driven Change Impact Analysis Assessment.docx
+references: []

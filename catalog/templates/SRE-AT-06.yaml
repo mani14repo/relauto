@@ -1,0 +1,107 @@
+id: SRE-AT-06
+title: Performance, Load & Capacity Readiness Assessment
+domain: SRE
+variant: A
+priority: P1
+applicability: All FSI REO applications with peak-load or batch-processing risk; priority for Rebates Batch and GDX pipeline
+accountable_owner: Application Engineering / SRE
+purpose: Confirm that the application has been load-tested against expected and peak demand, has documented performance baselines,
+  and has a capacity plan that accounts for growth and seasonal peaks.
+relevance: Rebates Batch 48h auto-resolve timer distorts MTTR. No capacity plans found for any application. P90 MTTR for Mainframe
+  RPS = 21.2 days. G-18.
+reassessment_trigger: Major release, architecture change, or Post-Incident Review recommendation
+scope: []
+signoff_roles:
+- Assessment Lead
+- SRE Reviewer
+- Engineering Owner
+- PSE Representative
+criteria:
+- id: SRE-AT-06-C01
+  number: 1
+  name: Load Test Results
+  standard_ref: Golden Pathways — Quality & Performance; ITIL Capacity Management
+  applicability: All applications with production traffic above baseline
+  required_evidence: Load test report with tool, target TPS, response time results, and pass/fail against acceptance criteria
+  evaluation_method: 'Deterministic: load test completed within 6 months of last major release; results on file'
+  methods:
+  - deterministic
+  acceptance_criteria: Load test completed at 1.5x expected peak; P99 latency within SLO target
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: Application Engineering
+  reassessment: ''
+  example_risk: High — no load test evidence found in current extract
+  example_recommendation: Run load test before next major release; retain results in engineering artefacts
+  references: []
+- id: SRE-AT-06-C02
+  number: 2
+  name: Performance Baselines
+  standard_ref: Google SRE — Four Golden Signals; AppDynamics baselining
+  applicability: All production applications
+  required_evidence: AppDynamics dynamic baseline configuration; Splunk dashboard showing historical trend
+  evaluation_method: 'AI-assisted: confirm baseline established for response time and throughput; anomaly detection configured'
+  methods:
+  - ai
+  acceptance_criteria: Performance baseline established in monitoring tool; anomaly detection active for P1 transactions
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: Application Engineering / SRE
+  reassessment: ''
+  example_risk: Medium — without baselines, degradation goes undetected until user impact
+  example_recommendation: Enable AppDynamics dynamic baselines for all business transactions; alert on > 2-sigma deviation
+  references: []
+- id: SRE-AT-06-C03
+  number: 3
+  name: Capacity Forecast & Plan
+  standard_ref: ITIL Capacity Management; Golden Pathways — Capacity & Planning
+  applicability: Applications with growth risk or seasonal peaks
+  required_evidence: Capacity plan document showing current utilisation, forecast model, and headroom calculation
+  evaluation_method: 'Human review: capacity plan covers 12-month horizon; growth assumptions documented'
+  methods:
+  - human
+  acceptance_criteria: Capacity plan with current utilisation, 12-month forecast, and headroom threshold defined
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: Application Engineering / SRE
+  reassessment: ''
+  example_risk: High — Rebates Batch volume 86.2% of FSI with no capacity plan
+  example_recommendation: Document capacity plan for Region A; include Sep peak (4,684 burst records in 2 days) as planning
+    scenario
+  references: []
+- id: SRE-AT-06-C04
+  number: 4
+  name: Resource Limits & Throttling
+  standard_ref: Google SRE Workbook — Handling Overload
+  applicability: All containerised or cloud-hosted applications
+  required_evidence: Kubernetes/cloud configuration showing CPU/memory limits and request throttling
+  evaluation_method: 'Deterministic: resource limits set on all containers/instances; no unbounded resource requests'
+  methods:
+  - deterministic
+  acceptance_criteria: CPU and memory limits configured; throttling policy defined for inbound request rate
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: Application Engineering / Platform
+  reassessment: ''
+  example_risk: Medium — unbounded resource consumption causes neighbour impact on shared platforms
+  example_recommendation: Set resource limits in deployment configuration; enforce via platform policy
+  references: []
+- id: SRE-AT-06-C05
+  number: 5
+  name: Scaling Behaviour Tested
+  standard_ref: Google SRE Workbook — Load Management; AWS/Azure auto-scaling
+  applicability: Applications with horizontal or vertical auto-scaling
+  required_evidence: Auto-scaling configuration; test records showing scale-out triggered at defined threshold
+  evaluation_method: 'Deterministic: auto-scaling tested; scale-out threshold documented; scale-in tested'
+  methods:
+  - deterministic
+  acceptance_criteria: Auto-scaling triggers confirmed at 70% CPU utilisation; scale-in tested and safe
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: Application Engineering / Platform
+  reassessment: ''
+  example_risk: Medium — untested auto-scaling may fail under actual load
+  example_recommendation: Conduct scaling test in staging; confirm trigger thresholds and cool-down periods
+  references: []
+source_file: SRE-AT-06 — Performance, Load & Capacity Readiness Assessment.docx
+references: []

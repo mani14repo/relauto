@@ -1,0 +1,19 @@
+Metadata-Version: 2.4
+Name: sre-agent
+Version: 0.1.0
+Summary: Site Reliability Assessment Bot: template-driven reliability assessments with a local LLM.
+Requires-Python: >=3.13
+Requires-Dist: lxml>=5
+Requires-Dist: pyyaml>=6
+Requires-Dist: pydantic>=2
+Requires-Dist: fastapi>=0.115
+Requires-Dist: uvicorn>=0.30
+Requires-Dist: python-multipart>=0.0.9
+Requires-Dist: httpx>=0.27
+Requires-Dist: psycopg[binary]>=3.2
+Requires-Dist: aiokafka>=0.11
+Provides-Extra: retrieval
+Requires-Dist: fastembed>=0.4; extra == "retrieval"
+Requires-Dist: pgvector>=0.3; extra == "retrieval"
+Provides-Extra: dev
+Requires-Dist: pytest>=8; extra == "dev"

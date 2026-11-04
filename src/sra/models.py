@@ -1,0 +1,145 @@
+"""Runtime assessment models (what an assessment produces), separate from the catalog."""
+from __future__ import annotations
+
+import uuid
+import datetime as dt
+from enum import StrEnum
+
+from pydantic import BaseModel, Field
+
+from .catalog.models import Domain, Result, Risk
+
+
+def new_id(prefix: str) -> str:
+    return f"{prefix}-{uuid.uuid4().hex[:10]}"
+
+
+class Source(StrEnum):
+    RULE = "rule"        # deterministic detector
+    LLM = "llm"          # AI-assisted evaluation (verified)
+    HUMAN = "human"      # assessor entry or override
+    DERIVED = "derived"  # aggregated (e.g. rubric result from mapped criteria)
+
+
+class FindingType(StrEnum):
+    GAP = "gap"
+    VULNERABILITY = "vulnerability"
+    ANOMALY = "anomaly"
+    OBSERVATION = "observation"
+
+
+class FindingStatus(StrEnum):
+    OPEN = "open"
+    ACCEPTED = "accepted"     # assessor confirmed
+    DISPUTED = "disputed"     # assessor rejected, with reason
+    RESOLVED = "resolved"
+
+
+class Recommendation(BaseModel):
+    action: str
+    playbooks: list[str] = Field(default_factory=list)
+    playbook_steps: list[str] = Field(default_factory=list)
+    owner: str = ""
+    due_date: dt.date | None = None
+    source: Source = Source.RULE
+
+
+class Finding(BaseModel):
+    id: str = Field(default_factory=lambda: new_id("F"))
+    type: FindingType
+    severity: Risk
+    title: str
+    detail: str = ""
+    criterion_ids: list[str] = Field(default_factory=list)   # template criteria it affects
+    rubric_ids: list[str] = Field(default_factory=list)      # P1-xx / P2-xx it affects
+    evidence_refs: list[str] = Field(default_factory=list)
+    detector: str = ""                                       # rule id, "llm:<model>", "human"
+    confidence: float = 1.0
+    status: FindingStatus = FindingStatus.OPEN
+    recommendation: Recommendation | None = None
+
+
+class CriterionResult(BaseModel):
+    criterion_id: str
+    result: Result | None = None          # None = not yet evaluated
+    risk: Risk | None = None              # risk classification when Gap (defaults to catalog risk)
+    rationale: str = ""
+    evidence_refs: list[str] = Field(default_factory=list)
+    source: Source | None = None
+    confidence: float | None = None
+    needs_human_review: bool = False
+    na_justification: str = ""
+    na_approved: bool = False
+    reviewer: str = ""
+    recommendation: str = ""              # text for the template's Recommendation row
+    validation: str = ""                  # Variant B "Validation" row
+
+
+class ApplicationRef(BaseModel):
+    name: str
+    cmdb_id: str = ""
+
+
+class SignOff(BaseModel):
+    role: str
+    name: str = ""
+    date: dt.date | None = None
+    decision: str = ""
+
+
+class Assessment(BaseModel):
+    id: str = Field(default_factory=lambda: new_id("SRA"))
+    application: ApplicationRef
+    assessment_date: dt.date = Field(default_factory=dt.date.today)
+    assessor: str = ""
+    profile: dict = Field(default_factory=dict)
+    templates: list[str] = Field(default_factory=list)
+    results: dict[str, CriterionResult] = Field(default_factory=dict)          # by template criterion id
+    rubric_direct: dict[str, CriterionResult] = Field(default_factory=dict)    # direct rubric evaluations
+    findings: list[Finding] = Field(default_factory=list)
+    signoffs: list[SignOff] = Field(default_factory=list)
+    detector_runs: dict[str, str] = Field(default_factory=dict)  # detector -> "ran" | "skipped: reason"
+    matrix_version: str = ""
+    status: str = "draft"
+
+
+class TemplateScore(BaseModel):
+    template_id: str
+    domain: Domain
+    score: float | None          # None if nothing scorable (all N/A)
+    weight: float
+    met: int = 0
+    gaps: int = 0
+    insufficient: int = 0
+    na: int = 0
+    unevaluated: int = 0
+
+
+class RubricOutcome(BaseModel):
+    rubric_id: str
+    priority: str
+    domain: Domain
+    name: str
+    result: Result
+    contributing: list[str] = Field(default_factory=list)
+
+
+class ScoreCard(BaseModel):
+    matrix_version: str
+    template_scores: list[TemplateScore]
+    domain_scores: dict[Domain, float]
+    index: float | None
+    maturity_level: int | None
+    maturity_name: str | None
+    maturity_capped: bool = False
+    rating: str
+    rating_outcome: str
+    remediation_days: int | None
+    rubric: list[RubricOutcome]
+    p1_gaps: list[str]
+    p2_gaps: list[str]
+    met: list[str]
+    not_applicable: list[str]
+    insufficient: list[str]
+    evidence_coverage_pct: float
+    conflicts: list[str] = Field(default_factory=list)

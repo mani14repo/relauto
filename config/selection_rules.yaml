@@ -1,0 +1,130 @@
+# Template selection rules, derived from each template's Applicability text.
+#
+# Expressions: "<field> <op> <value>", ops: == != < <= > >= in not_in. Bare "<field>" means truthy.
+# Fields are ApplicationProfile attributes (see src/sra/selection/profile.py).
+# A template is selected when `always: true` or its summed rule weights >= threshold.
+# The SRE confirms or edits the final selection in the UI.
+threshold: 3
+
+templates:
+  SRE-AT-01: {always: true, reason: "Umbrella readiness assessment for every application"}
+  SRE-AT-02:
+    rules:
+      - {if: "trigger in [architecture_change, new_production]", weight: 3, reason: "Architecture review / new production entry"}
+      - {if: "cross_team_dependencies", weight: 1, reason: "Cross-team dependencies"}
+      - {if: "tier == 1", weight: 1, reason: "Tier 1 critical service"}
+  SRE-AT-03: {always: true, reason: "Applies to all production applications"}
+  SRE-AT-04:
+    rules:
+      - {if: "priority_class in [P1, P2]", weight: 3, reason: "P1/P2-class application"}
+      - {if: "tier in [1, 2]", weight: 3, reason: "Tier 1/2 service"}
+  SRE-AT-05:
+    rules:
+      - {if: "incidents_90d > 0", weight: 3, reason: "Production incident history"}
+      - {if: "external_integrations", weight: 1, reason: "External dependencies"}
+  SRE-AT-06:
+    rules:
+      - {if: "batch_or_peak_load", weight: 3, reason: "Peak-load or batch-processing risk"}
+      - {if: "containerized", weight: 1, reason: "Containerised / cloud workload"}
+  SRE-AT-07:
+    rules:
+      - {if: "p1_p2_incidents_90d > 0", weight: 3, reason: "P1/P2 incident history"}
+      - {if: "trigger == post_incident", weight: 2, reason: "Post-incident review trigger"}
+  SRE-AT-08: {always: true, reason: "Ownership applies to all applications"}
+  SRE-AT-09:
+    rules:
+      - {if: "trigger == post_incident", weight: 3, reason: "Post-incident review trigger"}
+      - {if: "p1_p2_incidents_90d > 0", weight: 2, reason: "P1/P2 incidents in last 90 days"}
+      - {if: "recurring_patterns >= 1", weight: 2, reason: "Recurring incident patterns"}
+  SRE-AT-10:
+    rules:
+      - {if: "sre_toil_work", weight: 2, reason: "SRE/AE operational toil"}
+      - {if: "trigger == periodic", weight: 1, reason: "Periodic assessment"}
+  SRE-AT-11: {always: true, reason: "Security posture applies to all production applications"}
+  SRE-AT-12:
+    rules:
+      - {if: "has_cicd", weight: 3, reason: "Active CI/CD pipeline"}
+      - {if: "ci_tool == jenkins", weight: 1, reason: "Jenkins (EOL) pipeline"}
+      - {if: "trigger in [deployment, major_change]", weight: 1, reason: "Release trigger"}
+  SRE-AT-13:
+    rules:
+      - {if: "external_integrations", weight: 3, reason: "External integrations"}
+      - {if: "cross_team_dependencies", weight: 3, reason: "Shared platform / cross-team dependencies"}
+  SRE-AT-14:
+    rules:
+      - {if: "has_reliability_automation", weight: 3, reason: "Production reliability automation in place"}
+  SRE-AT-15:
+    rules:
+      - {if: "trigger in [deployment, major_change, new_production]", weight: 3, reason: "Production deployment"}
+  SRE-AT-16:
+    rules:
+      - {if: "sre_toil_work", weight: 3, reason: "SRE/AE perform operational work for this service"}
+  ITSM-AT-01:
+    rules:
+      - {if: "trigger in [deployment, major_change, new_production]", weight: 3, reason: "Production deployment / significant change"}
+      - {if: "has_cicd", weight: 1, reason: "Deploys via pipeline"}
+  ITSM-AT-02: {always: true, reason: "Incident management applies to all production applications"}
+  ITSM-AT-03:
+    rules:
+      - {if: "recurring_patterns >= 1", weight: 3, reason: "Recurring incidents (>=3 of same root cause)"}
+  ITSM-AT-04:
+    rules:
+      - {if: "uses_pse_queue", weight: 3, reason: "Handled through the PSE (Tier-1) queue"}
+  ITSM-AT-05:
+    rules:
+      - {if: "service_catalog_scope", weight: 3, reason: "In (or missing from) the ServiceNow catalog scope"}
+  ITSM-AT-06:
+    rules:
+      - {if: "has_sla", weight: 3, reason: "Defined or implied SLAs"}
+  ITSM-AT-07:
+    rules:
+      - {if: "uses_pse_queue", weight: 1, reason: "PSE self-service relevance"}
+      - {if: "incidents_90d >= 10", weight: 2, reason: "Material incident volume needs KB coverage"}
+      - {if: "trigger == periodic", weight: 1, reason: "Periodic assessment"}
+  ITSM-AT-08:
+    rules:
+      - {if: "trigger == periodic", weight: 3, reason: "Periodic governance assessment"}
+  ITSM-AT-09:
+    rules:
+      - {if: "regulated", weight: 3, reason: "Subject to FSI regulatory controls"}
+  ITSM-AT-10:
+    rules:
+      - {if: "vendors", weight: 3, reason: "Third-party vendors support production"}
+  ITSM-AT-11:
+    rules:
+      - {if: "trigger == periodic", weight: 3, reason: "Periodic operational reporting review"}
+  ITSM-AT-12:
+    rules:
+      - {if: "tier in [1, 2]", weight: 3, reason: "Tier 1/2 service requires continuity management"}
+  CMDB-AT-01: {always: true, reason: "CMDB registration applies to all applications"}
+  CMDB-AT-02:
+    rules:
+      - {if: "hosting in [on_prem, hybrid]", weight: 2, reason: "Discovery-managed infrastructure"}
+      - {if: "trigger == periodic", weight: 1, reason: "Periodic assessment"}
+  CMDB-AT-03:
+    rules:
+      - {if: "eol_components", weight: 2, reason: "EOL software/hardware"}
+      - {if: "trigger == periodic", weight: 1, reason: "Periodic assessment"}
+  CMDB-AT-04:
+    rules:
+      - {if: "trigger == periodic", weight: 3, reason: "Periodic data quality governance"}
+  CMDB-AT-05:
+    rules:
+      - {if: "hosting in [on_prem, hybrid]", weight: 3, reason: "On-prem servers / databases / middleware"}
+  CMDB-AT-06:
+    rules:
+      - {if: "cross_team_dependencies", weight: 3, reason: "Cross-team / cross-portfolio dependencies"}
+  CMDB-AT-07:
+    rules:
+      - {if: "hosting in [cloud, hybrid]", weight: 3, reason: "Cloud or hybrid hosting"}
+      - {if: "containerized", weight: 1, reason: "Kubernetes / containers"}
+  CMDB-AT-08:
+    rules:
+      - {if: "trigger in [deployment, major_change]", weight: 3, reason: "Production change"}
+  CMDB-AT-09:
+    rules:
+      - {if: "eol_components", weight: 3, reason: "Components past or near EOL"}
+  CMDB-AT-10: {always: true, reason: "Service tier drives tier-dependent thresholds"}
+  CMDB-AT-11:
+    rules:
+      - {if: "trigger == periodic", weight: 3, reason: "Periodic CMDB certification"}

@@ -1,0 +1,118 @@
+id: SRE-AT-13
+title: Application Dependency & Integration Health Assessment
+domain: SRE
+variant: A
+priority: P1
+applicability: All FSI REO applications with external integrations or shared platform dependencies; immediate focus on GDX->RCI->CRS
+  revenue chain and CFAO->Eos chain
+accountable_owner: SRE / Application Engineering / Architecture
+purpose: Evaluate the health, observability, and resilience of application-to-application and application-to-platform integrations
+  in the FSI REO portfolio. Integration failures are a primary source of cascading incidents and are disproportionately difficult
+  to diagnose without dedicated instrumentation.
+relevance: 'RCI->GDX->CRS chain has no dependency map or escalation path. CFAO: 9 apps in CMDB with 0 linked to incidents.
+  COG v2 CI/CD pipeline has no Change gate (confirmed cascading risk). G-12, G-15, G-20.'
+reassessment_trigger: Major release, architecture change, or Post-Incident Review recommendation
+scope: []
+signoff_roles:
+- Assessment Lead
+- Domain Reviewer
+- Engineering / Service Owner
+- PSE Representative
+criteria:
+- id: SRE-AT-13-C01
+  number: 1
+  name: Integration Inventory Completeness
+  standard_ref: ServiceNow CSDM; ITPN G-12, G-20
+  applicability: All FSI REO applications with external or cross-team integrations
+  required_evidence: 'Integration inventory: each integration named with source, target, protocol, SLA, and owner'
+  evaluation_method: 'Deterministic: all integrations for each application enumerated; owner and SLA defined for each'
+  methods:
+  - deterministic
+  acceptance_criteria: Integration inventory complete for all P1/P2 applications; owner and SLA defined for each integration
+    point
+  default_risk: Critical
+  default_risk_assumed: false
+  accountable_owner: Architecture / CMDB
+  reassessment: ''
+  example_risk: Critical — GDX->RCI->CRS chain has no inventory; integration failures are invisible to incident response
+  example_recommendation: Enumerate all integrations for Region A applications first; document in CMDB as relationship records
+  references: []
+- id: SRE-AT-13-C02
+  number: 2
+  name: Integration Health Monitoring
+  standard_ref: Golden Pathways — Observability; ITPN G-05, G-06
+  applicability: All production integrations in the P1/P2 application inventory
+  required_evidence: 'Splunk/AppDynamics monitors for each integration: success rate, latency, and error count metrics'
+  evaluation_method: 'AI-assisted: confirm health monitor exists for each named integration; alert fires on error rate threshold
+    breach'
+  methods:
+  - ai
+  acceptance_criteria: Health monitor exists for each P1/P2 integration; alert fires at error rate > 5% or latency > 2x baseline
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: SRE / Application Engineering
+  reassessment: ''
+  example_risk: High — integration failures in the GDX chain propagate silently without integration-level monitoring
+  example_recommendation: Instrument each integration endpoint with success rate and latency monitors in Splunk or AppDynamics
+  references: []
+- id: SRE-AT-13-C03
+  number: 3
+  name: Integration Error Handling
+  standard_ref: Google SRE Workbook — Cascading Failures; ITPN G-12
+  applicability: All production integrations
+  required_evidence: 'Code or configuration review: error handling for each integration endpoint; retry policy; dead-letter
+    queue or alternative'
+  evaluation_method: 'Human review: all integration endpoints have explicit error handling; transient errors retried with
+    backoff; permanent errors routed to DLQ or alerting'
+  methods:
+  - human
+  acceptance_criteria: All integration endpoints have explicit error handling; transient errors retried; permanent errors
+    logged and alerted
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: Application Engineering
+  reassessment: ''
+  example_risk: High — missing error handling causes silent data loss or cascading failures
+  example_recommendation: Review error handling for all Region A integration endpoints; implement retry and DLQ for message-based
+    integrations
+  references: []
+- id: SRE-AT-13-C04
+  number: 4
+  name: Integration SLA Definition & Measurement
+  standard_ref: ITPN G-12, G-13; ITIL Service Level Management
+  applicability: All integration points with defined upstream/downstream SLAs
+  required_evidence: 'Integration SLA document: availability and latency targets for each named integration; measurement evidence'
+  evaluation_method: 'Deterministic: availability and latency SLA defined for each P1/P2 integration; measured in monitoring
+    tool'
+  methods:
+  - deterministic
+  acceptance_criteria: Availability and latency SLA defined for all P1/P2 integrations; measured and reported monthly
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: SRE / Application Engineering
+  reassessment: ''
+  example_risk: High — ~20 handoffs with no SLA includes integration-level commitments
+  example_recommendation: Define SLA for each integration in the GDX revenue chain; measure in AppDynamics; report monthly
+  references: []
+- id: SRE-AT-13-C05
+  number: 5
+  name: Integration Change Impact Coverage
+  standard_ref: ITIL Change Enablement; ITPN G-08, G-12
+  applicability: All changes to integration endpoints, contracts, or shared platforms
+  required_evidence: 'Change Records for integration changes: consumer applications listed in impacted_cis; consumer team
+    notification confirmed'
+  evaluation_method: 'Deterministic: all integration endpoint changes list consumer applications in impacted_cis and notify
+    consumer teams'
+  methods:
+  - deterministic
+  acceptance_criteria: 100% of integration endpoint changes notify all consumer teams before deployment
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: Change Management / Application Engineering
+  reassessment: ''
+  example_risk: High — unnotified integration changes cause unexpected consumer failures with no advance warning
+  example_recommendation: Add consumer notification to Change workflow for integration endpoint changes; use CMDB relationship
+    data
+  references: []
+source_file: SRE-AT-13 — Application Dependency & Integration Health Assessment.docx
+references: []

@@ -1,0 +1,111 @@
+id: ITSM-AT-09
+title: IT Governance, Risk & Compliance Assessment
+domain: ITSM
+variant: A
+priority: P2
+applicability: All FSI REO applications subject to FSI regulatory requirements and internal IT governance controls
+accountable_owner: REO leadership / Application Engineering
+purpose: Evaluate whether the FSI REO IT operations program has the governance structures, risk registers, and compliance
+  controls required to meet FSI regulatory obligations and internal IT standards. Covers policy adherence, audit readiness,
+  and risk management maturity.
+relevance: Jenkins decommission deadline Oct 2026 (G-17 High Severity — 28/35 apps not migrated). No risk register found for
+  the 27 gaps. Compliance posture unknown for regulatory obligations. G-08, G-17, G-22.
+reassessment_trigger: Major release, architecture change, or Post-Incident Review recommendation
+scope: []
+signoff_roles:
+- Assessment Lead
+- Domain Reviewer
+- Engineering / Service Owner
+- PSE Representative
+criteria:
+- id: ITSM-AT-09-C01
+  number: 1
+  name: IT Risk Register Existence & Coverage
+  standard_ref: ITIL Risk Management; FSI IT Risk Framework
+  applicability: All 27 identified FSI REO gaps (G-01–G-27)
+  required_evidence: Risk register with risk ID, description, likelihood, impact, mitigation, owner, and status for each gap
+  evaluation_method: 'Deterministic: risk register exists; each G-01–G-27 mapped to a risk record'
+  methods:
+  - deterministic
+  acceptance_criteria: Risk register exists covering all 27 gaps; each has likelihood, impact, mitigation, and named risk
+    owner
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: REO leadership
+  reassessment: ''
+  example_risk: High — no formal risk register found; 27 gaps have no governance accountability
+  example_recommendation: Create risk register from G-01–G-27 gap list; assign risk owners per sub-portfolio
+  references: []
+- id: ITSM-AT-09-C02
+  number: 2
+  name: Policy Compliance for Critical Controls
+  standard_ref: FSI IT Policy; ITPN G-08, G-17
+  applicability: Change management and CI/CD pipeline compliance
+  required_evidence: Change Record compliance rate; Jenkins migration status vs. end-Oct 2026 deadline
+  evaluation_method: 'Deterministic: 100% Change Records for production deployments; 0 active Jenkins pipelines for in-scope
+    apps'
+  methods:
+  - deterministic
+  acceptance_criteria: 'Change control: 100% compliance; Jenkins migration: 100% complete by end-Oct 2026'
+  default_risk: Critical
+  default_risk_assumed: false
+  accountable_owner: Application Engineering / Platform
+  reassessment: ''
+  example_risk: Critical — 28/35 FSI apps still on Jenkins past deadline; G-17 rated High Severity
+  example_recommendation: Escalate Jenkins migration to REO leadership immediately; daily burn-down tracking per app
+  references: []
+- id: ITSM-AT-09-C03
+  number: 3
+  name: Audit Readiness
+  standard_ref: FSI Internal Audit; ITPN G-03, G-04, G-08
+  applicability: All FSI REO change, incident, and problem records
+  required_evidence: Sample audit of last 10 Change Records, 10 Problem Records, and 20 Incident Records for completeness
+  evaluation_method: 'Human review: sampled records show required fields completed; evidence trail complete and retrievable'
+  methods:
+  - human
+  acceptance_criteria: '> 95% of sampled records meet completeness standard; evidence trail retrievable within 24h'
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: REO leadership / Change Management
+  reassessment: ''
+  example_risk: High — 0% Change-to-Incident linkage and incomplete records represent audit findings
+  example_recommendation: Conduct internal audit readiness review before next scheduled audit; remediate critical gaps first
+  references: []
+- id: ITSM-AT-09-C04
+  number: 4
+  name: Regulatory Control Mapping
+  standard_ref: FSI Regulatory Obligations; ITIL Governance
+  applicability: All regulatory controls applicable to FSI REO IT operations
+  required_evidence: Control register mapping each regulatory requirement to an IT control; evidence of control operation
+  evaluation_method: 'Human review: each regulatory obligation mapped to a specific IT control; control operation evidenced'
+  methods:
+  - human
+  acceptance_criteria: All applicable regulatory controls mapped; evidence of operation available for last review period
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: REO leadership / Compliance
+  reassessment: ''
+  example_risk: High — regulatory findings can arise from operational gaps already identified (G-08, G-17)
+  example_recommendation: Map G-01–G-27 gaps to applicable regulatory controls; prioritize remediation for regulated controls
+  references: []
+- id: ITSM-AT-09-C05
+  number: 5
+  name: Policy Exception Management
+  standard_ref: FSI IT Policy; ITIL Governance
+  applicability: Any deviation from required IT controls
+  required_evidence: 'Policy exception register: each deviation documented, risk-accepted, and time-limited'
+  evaluation_method: 'Deterministic: no undocumented policy exceptions; each exception has approval, expiry date, and compensating
+    control'
+  methods:
+  - deterministic
+  acceptance_criteria: All known policy exceptions documented; each has approval, expiry, and compensating control
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: REO leadership / Compliance
+  reassessment: ''
+  example_risk: Medium — undocumented exceptions create unmanaged risk and audit exposure
+  example_recommendation: Create policy exception register; grandfather existing known exceptions with 90-day remediation
+    timeline
+  references: []
+source_file: ITSM-AT-09 — IT Governance, Risk & Compliance Assessment.docx
+references: []

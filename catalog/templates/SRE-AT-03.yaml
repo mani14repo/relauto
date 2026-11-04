@@ -1,0 +1,106 @@
+id: SRE-AT-03
+title: Observability Coverage & Instrumentation Assessment
+domain: SRE
+variant: A
+priority: P1
+applicability: All FSI REO production applications
+accountable_owner: SRE / Application Engineering
+purpose: Evaluate the breadth, depth, and actionability of telemetry (logs, metrics, traces, alerts) for an application. Observability
+  is the foundational requirement for SLO measurement, incident detection, and AI-assisted reliability analysis.
+relevance: Weakest Golden Pathways pillar (avg 2.08). Directly maps to G-05, G-06, and IO-03 (alert noise reduction). 94.8%
+  of 14,034 incidents are monitoring-generated with high false-positive rates.
+reassessment_trigger: Major release, architecture change, or Post-Incident Review recommendation
+scope: []
+signoff_roles:
+- Assessment Lead
+- SRE Reviewer
+- Engineering Owner
+- PSE Representative
+criteria:
+- id: SRE-AT-03-C01
+  number: 1
+  name: Structured Log Coverage
+  standard_ref: Golden Pathways — Observability; Splunk FSI standards
+  applicability: All production applications
+  required_evidence: Splunk index confirmation; sample log showing structured fields (timestamp, severity, service, traceId)
+  evaluation_method: 'Deterministic: logs indexed in Splunk; structured format with at least 5 queryable fields'
+  methods:
+  - deterministic
+  acceptance_criteria: Application logs indexed in Splunk with structured JSON or key=value format; all environments covered
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: Application Engineering
+  reassessment: ''
+  example_risk: High — unstructured logs prevent root-cause correlation
+  example_recommendation: Enforce structured logging standard; validate in Splunk before production deploy
+  references: []
+- id: SRE-AT-03-C02
+  number: 2
+  name: Application Metrics Coverage
+  standard_ref: Google SRE — Four Golden Signals; AppDynamics
+  applicability: All production applications
+  required_evidence: AppDynamics / Splunk metric list; dashboard screenshots; metric naming standard compliance
+  evaluation_method: 'AI-assisted: verify latency, throughput, error rate, and saturation metrics present'
+  methods:
+  - ai
+  acceptance_criteria: All four golden signals (latency, traffic, errors, saturation) instrumented and queryable
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: Application Engineering / SRE
+  reassessment: ''
+  example_risk: High — only 5% work-time captured on human incidents
+  example_recommendation: Instrument golden signals per application service; align to AppDynamics business transactions
+  references: []
+- id: SRE-AT-03-C03
+  number: 3
+  name: Alert Actionability & Ownership
+  standard_ref: ITPN G-05, G-06; IO-03 Score 16
+  applicability: All production applications
+  required_evidence: Alert inventory with owner, threshold, and runbook link; false-positive rate from ServiceNow
+  evaluation_method: 'Human review: each alert has a named owner, documented threshold rationale, and linked runbook or procedure'
+  methods:
+  - human
+  acceptance_criteria: All production alerts have a named owner and linked runbook; false-positive rate < 20%
+  default_risk: Critical
+  default_risk_assumed: false
+  accountable_owner: SRE / PSE
+  reassessment: ''
+  example_risk: Critical — 4,066 auto-closed to 1 parent event; 94.8% monitoring-generated
+  example_recommendation: Audit and tune all alerts; implement correlation for Rebates Batch and similar high-volume sources
+  references: []
+- id: SRE-AT-03-C04
+  number: 4
+  name: Distributed Tracing Coverage
+  standard_ref: Google SRE Workbook — Distributed Systems; AppDynamics APM
+  applicability: Applications with multi-service or cross-portfolio dependencies
+  required_evidence: AppDynamics flow map; trace sample across service boundary; correlation ID propagation
+  evaluation_method: 'AI-assisted: confirm trace context propagates across service boundaries'
+  methods:
+  - ai
+  acceptance_criteria: Distributed traces available for top 3 transaction types; correlation IDs propagated end-to-end
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: Application Engineering / SRE
+  reassessment: ''
+  example_risk: Medium — upstream/downstream failures not traceable without distributed tracing
+  example_recommendation: Enable AppDynamics correlation ID propagation; instrument top transaction paths
+  references: []
+- id: SRE-AT-03-C05
+  number: 5
+  name: Executive / Leadership Dashboard Availability
+  standard_ref: ITPN G-18, G-19; IO-04 Score 20
+  applicability: All FSI REO applications
+  required_evidence: Splunk dashboard URL; confirmation that dashboard answers the 5 key exec questions (per G-18)
+  evaluation_method: 'Human review: dashboard answers availability, MTTR, error rate, SLO attainment, and incident trends'
+  methods:
+  - human
+  acceptance_criteria: At least one dashboard per application family answering all 5 executive reliability questions
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: SRE / PSE
+  reassessment: ''
+  example_risk: High — 4/5 exec questions unanswerable from live data
+  example_recommendation: Build per-family Splunk dashboard; distinguish monitoring-generated vs. human-reported incidents
+  references: []
+source_file: SRE-AT-03 — Observability Coverage & Instrumentation Assessment.docx
+references: []

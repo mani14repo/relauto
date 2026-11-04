@@ -1,0 +1,116 @@
+id: SRE-AT-10
+title: Toil Measurement & Automation Readiness Assessment
+domain: SRE
+variant: A
+priority: P1
+applicability: All FSI REO engineering teams; focus on high-toil areas confirmed in the SRE Golden Pathways assessment and
+  the 23 IO scoring model
+accountable_owner: SRE / AE / Application Engineering
+purpose: Quantify the volume and sources of operational toil in FSI REO engineering teams and identify the highest-value automation
+  opportunities. Toil elimination is the primary mechanism for reclaiming engineering capacity and is the foundation of the
+  AE (Automation Engineering) practice.
+relevance: 'SRE report: 100% manual deployments. 0 realized automation savings measured (G-22, G-23). IO-01 Score 25 (Problems
+  for recurring patterns — highest ROI). IO-03 Score 16 (alert noise reduction). IO-04 Score 20 (time-worked capture). AE
+  maturity assessment recommends toil quantification as P1.'
+reassessment_trigger: Major release, architecture change, or Post-Incident Review recommendation
+scope: []
+signoff_roles:
+- Assessment Lead
+- Domain Reviewer
+- Engineering / Service Owner
+- PSE Representative
+criteria:
+- id: SRE-AT-10-C01
+  number: 1
+  name: Toil Inventory by Category
+  standard_ref: Google SRE Workbook — Eliminating Toil; ITPN G-22, G-23
+  applicability: All engineering teams supporting FSI REO production applications
+  required_evidence: 'Toil inventory: manual task categories, frequency, and per-occurrence time estimated by team; validated
+    against ServiceNow time-worked'
+  evaluation_method: 'Human review: toil inventory completed; top-5 toil sources by total time estimated'
+  methods:
+  - human
+  acceptance_criteria: Toil inventory completed for each engineering team; top-5 sources identified with frequency and time
+    estimate
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: SRE / Application Engineering
+  reassessment: ''
+  example_risk: High — without toil inventory, automation investment is not directed at highest-ROI opportunities
+  example_recommendation: Facilitate toil identification workshop per team using Google SRE toil categories; complete within
+    30 days
+  references: []
+- id: SRE-AT-10-C02
+  number: 2
+  name: Toil-as-Percentage-of-Engineering-Capacity
+  standard_ref: Google SRE — Toil Budget; ITPN G-19
+  applicability: All engineering teams
+  required_evidence: Time-worked data from ServiceNow (once IO-04 is implemented); toil percentage calculated from work categories
+  evaluation_method: 'Deterministic: toil percentage calculated from work category time data; compared against 50% SRE toil
+    threshold'
+  methods:
+  - deterministic
+  acceptance_criteria: Toil percentage measured and reported quarterly; target < 50% per Google SRE guidance
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: SRE / PSE
+  reassessment: ''
+  example_risk: High — toil currently unmeasured; 5% work-time captured means engineering capacity is invisible
+  example_recommendation: Implement IO-04 (mandatory time-worked) first; use work category data to calculate toil percentage
+  references: []
+- id: SRE-AT-10-C03
+  number: 3
+  name: Automation Opportunity Scoring
+  standard_ref: ITPN IO-01, IO-03, IO-04, IO-08; AE Maturity Assessment
+  applicability: Top toil sources identified in the toil inventory
+  required_evidence: 'Automation opportunity register: each candidate scored by effort, value, and feasibility; aligned to
+    IO scoring model'
+  evaluation_method: 'Human review: automation candidates scored using IO scoring model dimensions; top-5 candidates identified'
+  methods:
+  - human
+  acceptance_criteria: Top-5 automation candidates scored and prioritized; top-2 in AE backlog with owner and target date
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: AE / SRE / Application Engineering
+  reassessment: ''
+  example_risk: High — 0 realized automation savings despite AE capability; scoring model not applied to backlog
+  example_recommendation: Score all automation candidates against IO model; ensure top-2 are in AE sprint within 30 days
+  references: []
+- id: SRE-AT-10-C04
+  number: 4
+  name: Automation Delivery & Realized Value
+  standard_ref: ITPN G-22, G-23; AE Maturity Assessment
+  applicability: All completed automation implementations
+  required_evidence: 'AE delivery record: automation deployed; before/after toil measurement; time-saved quantified'
+  evaluation_method: 'Deterministic: each delivered automation has a before/after toil measurement; realized value reported'
+  methods:
+  - deterministic
+  acceptance_criteria: All completed automations have a before/after measurement; realized savings reported to REO leadership
+    quarterly
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: AE / REO leadership
+  reassessment: ''
+  example_risk: High — without measurement, automation ROI cannot be claimed or used to justify further investment
+  example_recommendation: Require before/after measurement for every automation delivery; include in monthly REO governance
+    report
+  references: []
+- id: SRE-AT-10-C05
+  number: 5
+  name: Toil Reduction Trend
+  standard_ref: Google SRE — Toil Budget; ITPN G-23
+  applicability: All engineering teams with measured toil baseline
+  required_evidence: Quarterly toil percentage trend; direction of travel confirmed over 3+ quarters
+  evaluation_method: 'Deterministic: toil percentage decreasing quarter-over-quarter after automation program launch'
+  methods:
+  - deterministic
+  acceptance_criteria: Toil percentage decreasing quarter-over-quarter; year-over-year reduction > 10 percentage points
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: SRE / REO leadership
+  reassessment: ''
+  example_risk: Medium — toil that is not actively decreasing is implicitly growing as the portfolio grows
+  example_recommendation: Publish quarterly toil trend in REO governance report; celebrate measurable reductions publicly
+  references: []
+source_file: SRE-AT-10 — Toil Measurement & Automation Readiness Assessment.docx
+references: []

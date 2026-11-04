@@ -1,0 +1,116 @@
+id: SRE-AT-16
+title: SRE Toil & Engineering Capacity Assessment
+domain: SRE
+variant: B
+priority: ''
+applicability: All FSI REO-managed applications and services within scope of the Reliability by Design initiative Production
+  and pre-production environments where the assessed capability is required Application Engineering, SRE, PSE, CMDB, and Architecture
+  teams responsible for the assessed capability
+accountable_owner: SRE Standards / Practice Owner
+purpose: This assessment evaluates whether toil affecting SRE and Application Engineering teams is identified, classified,
+  and baselined; whether toil reduction targets are set and tracked; whether automation candidates are prioritized; and whether
+  engineering capacity released by automation is measured and reinvested in reliability improvements. Unmanaged toil crowds
+  out engineering work and degrades long-term reliability.
+relevance: ''
+reassessment_trigger: ''
+scope:
+- All FSI REO-managed applications and services within scope of the Reliability by Design initiative
+- Production and pre-production environments where the assessed capability is required
+- Application Engineering, SRE, PSE, CMDB, and Architecture teams responsible for the assessed capability
+signoff_roles: []
+criteria:
+- id: SRE-AT-16-C01
+  number: 1
+  name: Toil is identified, classified, and baselined for this service
+  standard_ref: SRE-STD-16 — Toil Reduction & Continuous Improvement Standard; SRE-POL-16
+  applicability: All FSI REO-managed services where SRE or Application Engineering spend time on recurring manual operational
+    work
+  required_evidence: 'Toil inventory or operational demand log showing: toil categories, estimated effort per week/sprint,
+    classification as manual/automatable/repetitive, and baseline date'
+  evaluation_method: AI-Assisted — review toil inventory or operational demand data; confirm toil items are classified as
+    manual, repetitive, automatable, and devoid of enduring value; confirm baseline effort is quantified
+  methods:
+  - ai
+  acceptance_criteria: Toil inventory exists with at least three identified toil items, each with estimated weekly effort
+    (hours), automatable flag, and a baseline date within 6 months
+  default_risk: High
+  default_risk_assumed: true
+  accountable_owner: SRE / Application Engineering
+  reassessment: Quarterly toil review; after operational demand increases significantly; after new automation is deployed
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - SRE-STD-16
+  - SRE-POL-16
+- id: SRE-AT-16-C02
+  number: 2
+  name: Toil reduction targets are set and tracked against the baseline
+  standard_ref: SRE-STD-16; SRE-PRC-16 — Toil Identification, Prioritization and Elimination Process
+  applicability: All services with an established toil baseline
+  required_evidence: 'Toil reduction plan with: target percentage reduction, target date, owner, and current progress; comparison
+    of current toil hours against baseline'
+  evaluation_method: Deterministic — confirm toil reduction target exists with a specific percentage and target date; AI-Assisted
+    — review progress against target; flag if toil is trending upward vs baseline
+  methods:
+  - deterministic
+  - ai
+  acceptance_criteria: A toil reduction target (minimum 20% reduction over 6 months) is documented, tracked quarterly, and
+    shows improvement or has a documented explanation for variance
+  default_risk: High
+  default_risk_assumed: true
+  accountable_owner: SRE / Application Engineering
+  reassessment: Quarterly; after major operational changes; after automation deployments
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - SRE-STD-16
+  - SRE-PRC-16
+- id: SRE-AT-16-C03
+  number: 3
+  name: Top toil items have identified automation candidates with prioritization rationale
+  standard_ref: SRE-STD-16; SRE-STD-14 — Reliability Automation Standard
+  applicability: Top three toil items by effort for each assessed service
+  required_evidence: 'Automation candidate list showing: toil item, estimated automation effort (story points or hours), estimated
+    toil reduction, priority ranking, and owner'
+  evaluation_method: AI-Assisted — review automation candidate list; confirm top toil items by effort have been evaluated
+    for automation; confirm prioritization is based on ROI (effort saved / automation effort)
+  methods:
+  - ai
+  acceptance_criteria: Top three toil items by effort have been evaluated for automation; at least one has an automation candidate
+    with documented ROI rationale and an assigned owner
+  default_risk: High
+  default_risk_assumed: true
+  accountable_owner: SRE / Automation Engineering
+  reassessment: After each toil review; when new toil items emerge above existing top-three threshold
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - SRE-STD-16
+  - SRE-STD-14
+- id: SRE-AT-16-C04
+  number: 4
+  name: Engineering capacity released by automation is measured and reinvested
+  standard_ref: SRE-POL-16 — Automation Qualification and Value Accountability Policy
+  applicability: All automation deployed to address identified toil
+  required_evidence: Before/after toil measurement showing capacity released; evidence that released capacity was reinvested
+    in reliability improvement work (architectural improvements, observability, SRE projects)
+  evaluation_method: AI-Assisted — review toil measurement before and after automation deployment; confirm capacity release
+    is quantified; review sprint/project records for evidence of reinvestment in reliability work
+  methods:
+  - ai
+  acceptance_criteria: Automation deployed for toil reduction shows measurable capacity release (at least 50% of estimated);
+    reinvestment of released capacity is documented in engineering backlog or sprint records
+  default_risk: High
+  default_risk_assumed: true
+  accountable_owner: SRE / Application Engineering / Engineering Manager
+  reassessment: Quarterly after automation deployment; at annual SRE engagement review
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - SRE-POL-16
+source_file: SRE-AT-16 — SRE Toil & Engineering Capacity Assessment.docx
+references:
+- SRE-STD-16
+- SRE-POL-16
+- SRE-PRC-16
+- SRE-STD-14

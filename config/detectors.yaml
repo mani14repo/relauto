@@ -1,0 +1,45 @@
+# Detector thresholds. Values tagged CONFIRM come from Evidence Catalog [CONFIRM] placeholders
+# and must be checked against the actual ServiceNow instance (CVS Field Confirmation Tracker).
+servicenow:
+  app_table: cmdb_ci                 # CONFIRM: or u_business_application (CSDM)
+  owner_field: owned_by              # CONFIRM
+  support_group_field: support_group # CONFIRM
+  slo_table: u_slo_definition        # CONFIRM: custom table or external SLO tool
+rubric_rules:
+  incident_window_days: 90           # P1-02, P2-02
+  alert_window_days: 30              # P1-03
+  runbook_max_age_months: 12         # P1-04 (SRE-AT-01-C05 says 6 - conflict is flagged)
+  slo_measurement_max_age_days: 7    # P1-05
+  change_window_days: 90             # P1-07 (falls back to 365)
+  change_fallback_days: 365
+  architecture_doc_max_age_months: 18  # P1-08
+  min_failure_scenarios: 2           # P1-08
+  dependency_review_max_age_months: 12 # P2-01
+  recurrence_min_incidents: 3        # P2-02
+  error_budget_review_max_age_days: 30 # P2-03
+  perf_test_max_age_days: 90         # P2-05
+  capacity_plan_max_age_months: 6    # P2-06
+  post_deploy_keywords: [slo, smoke test, health check, validated, post-deployment validation]
+  required_ci_fields: [name, owned_by, support_group, operational_status, business_criticality, environment, u_region]
+anomalies:
+  spike_window_weeks: 12
+  spike_mad_threshold: 3.5           # robust z-score
+  min_weekly_incidents: 5
+  false_positive_share_max: 0.30
+  monitoring_share_info: 0.50
+  mttr_outlier_factor: 3.0           # x median
+  change_induced_window_hours: 24
+  ci_linkage_min_pct: 90
+vulnerabilities:
+  report_min_severity: Low           # every scanner finding at or above this becomes a finding
+  block_severities: [Critical, High] # mapped onto SRE-AT-11 Gap
+  eol_products:                      # product -> EOL date (ISO); extend from CMDB-AT-09 register
+    jenkins: "2026-10-31"
+    python 3.8: "2024-10-07"
+    python 3.9: "2025-10-31"
+    node 18: "2025-04-30"
+    java 8: "2026-12-31"
+    centos 7: "2024-06-30"
+    rhel 7: "2024-06-30"
+config_checks:
+  min_replicas: 2

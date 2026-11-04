@@ -1,0 +1,109 @@
+id: ITSM-AT-05
+title: Service Catalog Completeness & Accuracy Assessment
+domain: ITSM
+variant: A
+priority: P2
+applicability: All FSI REO applications and services published in or missing from the ServiceNow Service Catalog
+accountable_owner: PSE / CMDB
+purpose: Confirm that the ServiceNow Service Catalog accurately represents the FSI REO service portfolio, with correct ownership,
+  SLAs, request fulfillment paths, and user-facing descriptions. An accurate catalog is a prerequisite for self-service and
+  automated fulfillment.
+relevance: No service catalog assessment found in current extract. Supports G-09 (value-based intake prioritization) and G-10
+  (RACI clarity). CMDB_Mapping.xlsx has 63 apps; alignment to catalog unknown.
+reassessment_trigger: Major release, architecture change, or Post-Incident Review recommendation
+scope: []
+signoff_roles:
+- Assessment Lead
+- Domain Reviewer
+- Engineering / Service Owner
+- PSE Representative
+criteria:
+- id: ITSM-AT-05-C01
+  number: 1
+  name: Service Coverage
+  standard_ref: ITIL Service Catalog Management; ServiceNow CSDM
+  applicability: All 63 FSI REO applications
+  required_evidence: ServiceNow Service Catalog item list; comparison against CMDB_Mapping.xlsx application list
+  evaluation_method: 'Deterministic: catalog item exists for each FSI application or service; no active service missing from
+    catalog'
+  methods:
+  - deterministic
+  acceptance_criteria: Catalog item exists for 100% of FSI REO production applications and shared services
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: PSE / CMDB
+  reassessment: ''
+  example_risk: Medium — services missing from catalog receive ad-hoc support without SLA or fulfillment path
+  example_recommendation: Create catalog items for all 63 FSI apps using CMDB_Mapping.xlsx as the master list
+  references: []
+- id: ITSM-AT-05-C02
+  number: 2
+  name: Ownership & SLA Assignment
+  standard_ref: ITIL Service Catalog; ITPN G-15
+  applicability: All catalog items
+  required_evidence: 'ServiceNow catalog item: fulfillment_team, service_owner, and SLA target populated'
+  evaluation_method: 'Deterministic: fulfillment_team, owner, and SLA target fields populated for all active catalog items'
+  methods:
+  - deterministic
+  acceptance_criteria: All active catalog items have fulfillment_team, named service owner, and SLA target
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: PSE / Application Engineering
+  reassessment: ''
+  example_risk: Medium — unclaimed catalog items receive best-effort fulfillment with no accountability
+  example_recommendation: Assign owners aligned to CMDB owned_by; set SLA targets consistent with service tier
+  references: []
+- id: ITSM-AT-05-C03
+  number: 3
+  name: Request Fulfillment Path Accuracy
+  standard_ref: ITIL Request Fulfillment; ServiceNow Catalog Workflows
+  applicability: All catalog items with automated or semi-automated fulfillment
+  required_evidence: ServiceNow workflow execution logs; sample fulfillment testing for top-5 request types
+  evaluation_method: 'Human review: fulfillment workflows tested; requests route to correct fulfillment team and complete
+    within SLA'
+  methods:
+  - human
+  acceptance_criteria: Top-5 request types tested; each routes correctly and completes within documented SLA
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: PSE / ServiceNow Admin
+  reassessment: ''
+  example_risk: Medium — broken fulfillment workflows create ticket backlogs and erode user trust
+  example_recommendation: Test fulfillment workflows quarterly; assign workflow owner per catalog category
+  references: []
+- id: ITSM-AT-05-C04
+  number: 4
+  name: User-Facing Description Quality
+  standard_ref: ITIL Service Catalog; HDI Self-Service Best Practices
+  applicability: All public-facing catalog items
+  required_evidence: Catalog item descriptions reviewed for clarity, completeness, and absence of internal jargon
+  evaluation_method: 'Human review: non-technical user can understand the service and when to request it'
+  methods:
+  - human
+  acceptance_criteria: All catalog items have a description a non-technical user can understand; jargon-free
+  default_risk: Low
+  default_risk_assumed: false
+  accountable_owner: PSE
+  reassessment: ''
+  example_risk: Low — poor descriptions drive unnecessary Tier-1 contacts and reduce self-service adoption
+  example_recommendation: Review and rewrite catalog descriptions with input from PSE front-line agents
+  references: []
+- id: ITSM-AT-05-C05
+  number: 5
+  name: Catalog-to-CMDB Alignment
+  standard_ref: ServiceNow CSDM — Service Relationships; ITPN G-20
+  applicability: All catalog items representing production services
+  required_evidence: ServiceNow catalog item linked to CI or Business Service record in CMDB
+  evaluation_method: 'Deterministic: each catalog item references the correct CI or Business Service in CMDB'
+  methods:
+  - deterministic
+  acceptance_criteria: All catalog items for production services linked to a CMDB record
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: CMDB / PSE
+  reassessment: ''
+  example_risk: Medium — unlinked catalog items generate orphan requests with no CMDB attribution
+  example_recommendation: Link catalog items to CMDB records as part of CMDB accuracy remediation
+  references: []
+source_file: ITSM-AT-05 — Service Catalog Completeness & Accuracy Assessment.docx
+references: []

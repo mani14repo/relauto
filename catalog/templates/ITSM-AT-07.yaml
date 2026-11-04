@@ -1,0 +1,109 @@
+id: ITSM-AT-07
+title: Knowledge Management & Self-Service Effectiveness Assessment
+domain: ITSM
+variant: A
+priority: P2
+applicability: All FSI REO application knowledge content in ServiceNow; includes PSE-accessible articles and user-facing self-service
+  content
+accountable_owner: PSE / Application Engineering
+purpose: Evaluate the completeness, currency, and operational usability of the FSI REO knowledge base. Effective knowledge
+  management reduces repeat escalations, accelerates incident resolution, and is a prerequisite for AI-assisted runbook generation
+  and PSE self-service.
+relevance: Runbooks found in OneNote and personal notes rather than ServiceNow (G-05). AE lead on leave with no successor
+  (G-26). Knowledge transfer gaps confirmed across all sub-portfolios (G-15, G-16).
+reassessment_trigger: Major release, architecture change, or Post-Incident Review recommendation
+scope: []
+signoff_roles:
+- Assessment Lead
+- Domain Reviewer
+- Engineering / Service Owner
+- PSE Representative
+criteria:
+- id: ITSM-AT-07-C01
+  number: 1
+  name: Knowledge Article Coverage for Top Incident Categories
+  standard_ref: ITIL Knowledge Management; ITPN G-05, IO-07
+  applicability: Top-20 incident categories by volume across FSI REO
+  required_evidence: ServiceNow KB article list for each top-20 incident category; article linked from incident record
+  evaluation_method: 'Deterministic: KB article exists for each top-20 category; linked in ServiceNow category configuration'
+  methods:
+  - deterministic
+  acceptance_criteria: KB article exists for 100% of top-20 incident categories; each linked to the relevant ServiceNow category
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: PSE / Application Engineering
+  reassessment: ''
+  example_risk: High — missing KB articles drive unnecessary L2 escalations
+  example_recommendation: Create KB stub articles for all top-20 categories; assign content owner; complete within 30 days
+  references: []
+- id: ITSM-AT-07-C02
+  number: 2
+  name: Article Currency & Review Cadence
+  standard_ref: ITIL Knowledge Management; ITPN IO-07
+  applicability: All published ServiceNow KB articles
+  required_evidence: ServiceNow article last-reviewed date; review owner assigned
+  evaluation_method: 'Deterministic: all articles reviewed within 6 months; review owner named'
+  methods:
+  - deterministic
+  acceptance_criteria: 100% of published articles reviewed within 6 months; each has a named review owner
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: Application Engineering / PSE
+  reassessment: ''
+  example_risk: Medium — stale articles mislead PSE and extend MTTR under pressure
+  example_recommendation: Assign review owner per article; enable ServiceNow review-due notification at 5 months
+  references: []
+- id: ITSM-AT-07-C03
+  number: 3
+  name: OneNote / Email Knowledge Migration
+  standard_ref: ITPN G-05; IO-07; ITIL Knowledge Management
+  applicability: All Rebates Batch and similar applications with OneNote/personal-note runbooks
+  required_evidence: Migration tracker showing count of OneNote procedures identified vs. migrated to ServiceNow
+  evaluation_method: 'Deterministic: zero open PSE-required procedures remaining in OneNote or personal email'
+  methods:
+  - deterministic
+  acceptance_criteria: 100% of PSE-required procedures migrated from OneNote/email to ServiceNow within 60 days
+  default_risk: Critical
+  default_risk_assumed: false
+  accountable_owner: Application Engineering / PSE
+  reassessment: ''
+  example_risk: Critical — 6 Rebates Batch defect patterns exist only in OneNote; PSE cannot resolve independently
+  example_recommendation: Index all OneNote runbooks; migrate to ServiceNow in order of incident frequency
+  references: []
+- id: ITSM-AT-07-C04
+  number: 4
+  name: Knowledge Contribution Rate
+  standard_ref: ITIL Knowledge Management; HDI KCS Practices
+  applicability: All PSE and engineering team members
+  required_evidence: ServiceNow KB contribution count per user over rolling 90 days; new articles vs. corrections
+  evaluation_method: 'Deterministic: at least 2 new or updated articles per team per month'
+  methods:
+  - deterministic
+  acceptance_criteria: At least 2 new or updated KB articles per application team per month
+  default_risk: Low
+  default_risk_assumed: false
+  accountable_owner: PSE / Application Engineering
+  reassessment: ''
+  example_risk: Low — zero contribution means the knowledge base decays as the application evolves
+  example_recommendation: Add KB contribution to engineering team sprint review; recognize contributions in team metrics
+  references: []
+- id: ITSM-AT-07-C05
+  number: 5
+  name: AI Readiness of Knowledge Content
+  standard_ref: ITPN IO-01, IO-03, IO-07; AE Maturity Assessment
+  applicability: All KB articles intended for AI-assisted runbook generation
+  required_evidence: 'KB article review for structured format: trigger, steps, expected outcome, validation — each as discrete
+    fields or headings'
+  evaluation_method: 'Human review: article has machine-parseable structure; no free-text ambiguity in remediation steps'
+  methods:
+  - human
+  acceptance_criteria: At least 50% of top-20 KB articles have structured format suitable for AI-assisted generation
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: AE / PSE / Application Engineering
+  reassessment: ''
+  example_risk: Medium — unstructured articles cannot be consumed by the AI Runbook Generator capability
+  example_recommendation: Apply structured article template to top-20 articles; validate with AE team
+  references: []
+source_file: ITSM-AT-07 — Knowledge Management & Self-Service Effectiveness Assessment.docx
+references: []

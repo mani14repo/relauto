@@ -1,0 +1,116 @@
+id: SRE-AT-11
+title: Security & Compliance Posture Assessment
+domain: SRE
+variant: A
+priority: P1
+applicability: All FSI REO production applications; immediate focus on applications past Jenkins EOL deadline and those with
+  change governance gaps
+accountable_owner: Application Engineering / Security / SRE
+purpose: Evaluate the security posture of FSI REO applications from an SRE perspective, focusing on vulnerability management,
+  secrets management, dependency security, and the security controls embedded in the CI/CD pipeline. Security findings in
+  production represent latent reliability risks.
+relevance: Jenkins EOL creates vulnerability surface (G-17 High Severity). Change governance gaps mean security patches may
+  not be deployed with proper controls (G-08). 100% manual deployment increases human error risk. No secrets management assessment
+  found.
+reassessment_trigger: Major release, architecture change, or Post-Incident Review recommendation
+scope: []
+signoff_roles:
+- Assessment Lead
+- Domain Reviewer
+- Engineering / Service Owner
+- PSE Representative
+criteria:
+- id: SRE-AT-11-C01
+  number: 1
+  name: Vulnerability Management
+  standard_ref: FSI Security Policy; NIST SP 800-53 RA-5; ITPN G-17
+  applicability: All production applications and infrastructure
+  required_evidence: Vulnerability scan results (last 30 days); critical and high CVE remediation SLAs; Jenkins CVE list
+  evaluation_method: 'Deterministic: vulnerability scans run at least monthly; Critical CVEs remediated within 14 days'
+  methods:
+  - deterministic
+  acceptance_criteria: Monthly vulnerability scan; zero Critical CVEs unpatched > 14 days; High CVEs < 30 days
+  default_risk: Critical
+  default_risk_assumed: false
+  accountable_owner: Security / Application Engineering
+  reassessment: ''
+  example_risk: Critical — Jenkins is past EOL with active CVEs; 28/35 FSI apps running on vulnerable platform
+  example_recommendation: Prioritize Jenkins CVE remediation; scan all FSI production components immediately; track remediation
+    SLA
+  references: []
+- id: SRE-AT-11-C02
+  number: 2
+  name: Secrets & Credential Management
+  standard_ref: FSI Security Policy; CIS Controls 3.11; ITPN G-08
+  applicability: All applications with credentials, API keys, or service accounts
+  required_evidence: Secrets management tooling (Vault or equivalent) in use; no hardcoded credentials in source code (SAST
+    confirmed)
+  evaluation_method: 'Deterministic: no hardcoded credentials in source code; all secrets in approved secrets manager; rotation
+    policy defined'
+  methods:
+  - deterministic
+  acceptance_criteria: Zero hardcoded credentials found in SAST scan; all production secrets stored in approved secrets manager
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: Application Engineering / Security
+  reassessment: ''
+  example_risk: High — hardcoded credentials in Jenkins pipelines (EOL) represent a confirmed class of exposure
+  example_recommendation: Run SAST scan for hardcoded credentials; migrate all secrets to Vault or equivalent before Jenkins
+    decommission
+  references: []
+- id: SRE-AT-11-C03
+  number: 3
+  name: Dependency & Third-Party Library Security
+  standard_ref: OWASP Dependency Check; FSI Security Policy; ITPN G-17
+  applicability: All applications with third-party library dependencies
+  required_evidence: Software composition analysis (SCA) results; known-vulnerable library count; license compliance
+  evaluation_method: 'Deterministic: SCA scan run on each build; Critical/High vulnerable libraries remediated within SLA'
+  methods:
+  - deterministic
+  acceptance_criteria: SCA integrated in CI/CD pipeline; zero Critical/High vulnerable libraries in production
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: Application Engineering / Security
+  reassessment: ''
+  example_risk: High — EOL platforms typically carry vulnerable transitive dependencies
+  example_recommendation: Integrate SCA tool in CI/CD pipeline; remediate Critical/High findings before each release
+  references: []
+- id: SRE-AT-11-C04
+  number: 4
+  name: CI/CD Pipeline Security Controls
+  standard_ref: NIST SP 800-204C; ITPN G-08, G-17
+  applicability: All CI/CD pipelines deploying to FSI REO production
+  required_evidence: 'Pipeline configuration: SAST, SCA, and Change gate all present; no manual override path to production'
+  evaluation_method: 'Deterministic: pipeline requires SAST, SCA, and approved Change Record before deploy; confirmed for
+    both Jenkins-migrated and new pipelines'
+  methods:
+  - deterministic
+  acceptance_criteria: SAST, SCA, and Change gate all present in pipeline; no unguarded path to production
+  default_risk: Critical
+  default_risk_assumed: false
+  accountable_owner: Application Engineering / Security / Platform
+  reassessment: ''
+  example_risk: Critical — 100% manual deployments with no pipeline security gates; Change gate absent (G-08)
+  example_recommendation: Add SAST, SCA, and Change gate to every pipeline as part of Jenkins migration; block deploy without
+    all three
+  references: []
+- id: SRE-AT-11-C05
+  number: 5
+  name: Access Control & Privilege Review
+  standard_ref: CIS Controls 5; FSI Security Policy; ITPN G-15
+  applicability: All production system access for FSI REO engineering teams
+  required_evidence: 'Access review records: production access reviewed quarterly; least-privilege principle confirmed'
+  evaluation_method: 'Deterministic: production access reviewed quarterly; no users with production access beyond role requirement'
+  methods:
+  - deterministic
+  acceptance_criteria: Production access reviewed quarterly; least-privilege confirmed; shared accounts eliminated
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: Security / Application Engineering
+  reassessment: ''
+  example_risk: High — AE lead on leave with persistent access and no successor confirmed (G-26)
+  example_recommendation: Conduct emergency access review for AE lead on leave; ensure shared accounts are removed; schedule
+    quarterly reviews
+  references: []
+source_file: SRE-AT-11 — Security & Compliance Posture Assessment.docx
+references: []

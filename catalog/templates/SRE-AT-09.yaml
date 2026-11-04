@@ -1,0 +1,117 @@
+id: SRE-AT-09
+title: Incident Response & Post-Mortem Quality Assessment
+domain: SRE
+variant: A
+priority: P1
+applicability: All FSI REO P1 and significant P2 incidents; immediate focus on EosUW (539 P2s), RD_GDX3M (981 incidents),
+  and any incident with 3+ recurrences
+accountable_owner: SRE / PSE / Application Engineering
+purpose: Evaluate the quality of incident response practices and post-incident review processes. Effective incident response
+  minimizes MTTR; high-quality post-mortems prevent recurrence. Both are prerequisites for the AI-Assisted Incident Intelligence
+  capability.
+relevance: 'RD_GDX3M: 981 incidents / 248 days with 0 Problem records and no post-mortems. PRB0047400 and PRB0047644 recurred
+  15 days apart with identical root cause. G-02, G-03. Blameless post-mortem culture not confirmed.'
+reassessment_trigger: Major release, architecture change, or Post-Incident Review recommendation
+scope: []
+signoff_roles:
+- Assessment Lead
+- Domain Reviewer
+- Engineering / Service Owner
+- PSE Representative
+criteria:
+- id: SRE-AT-09-C01
+  number: 1
+  name: Post-Mortem Coverage for Significant Incidents
+  standard_ref: Google SRE Workbook — Postmortems; ITPN G-02, G-03
+  applicability: All P1 incidents and P2 incidents with > 1h downtime or 3+ recurrences
+  required_evidence: Post-mortem register or ServiceNow Problem record with root cause, contributing factors, and action items
+  evaluation_method: 'Deterministic: post-mortem exists for 100% of P1 incidents and significant P2s within 5 business days'
+  methods:
+  - deterministic
+  acceptance_criteria: Post-mortem completed within 5 business days for 100% of P1 incidents; significant P2s within 10 days
+  default_risk: Critical
+  default_risk_assumed: false
+  accountable_owner: SRE / PSE
+  reassessment: ''
+  example_risk: Critical — zero post-mortems found for RD_GDX3M (981 incidents); pattern will recur
+  example_recommendation: Start post-mortems for RD_GDX3M and the 6 Rebates Batch patterns immediately; assign facilitator
+    per incident
+  references: []
+- id: SRE-AT-09-C02
+  number: 2
+  name: Post-Mortem Quality — Root Cause Specificity
+  standard_ref: Google SRE Workbook — Postmortems; ITPN G-03
+  applicability: All completed post-mortems
+  required_evidence: 'Post-mortem document: root cause names a specific technical condition; 5-why or timeline used'
+  evaluation_method: 'Human review: root cause is specific (names a system, condition, and trigger); not a symptom statement'
+  methods:
+  - human
+  acceptance_criteria: Root cause states specific technical condition, system, and contributing factors; timeline reconstructed
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: SRE
+  reassessment: ''
+  example_risk: High — vague root causes produce ineffective action items and allow recurrence
+  example_recommendation: Train incident facilitators on blameless post-mortem format; review all root causes in governance
+    meeting
+  references: []
+- id: SRE-AT-09-C03
+  number: 3
+  name: Post-Mortem Action Item Completion
+  standard_ref: Google SRE Workbook — Postmortems; ITPN G-03
+  applicability: All action items from post-mortems
+  required_evidence: 'Post-mortem action item register: each item has owner, due date, and completion status'
+  evaluation_method: 'Deterministic: > 80% of post-mortem action items completed by committed due date'
+  methods:
+  - deterministic
+  acceptance_criteria: '> 80% of post-mortem action items completed on time; overdue items escalated to SRE lead'
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: SRE / Application Engineering
+  reassessment: ''
+  example_risk: High — PRB0047400 and PRB0047644 recurred 15 days apart — action items from the first did not complete before
+    the second
+  example_recommendation: Track post-mortem action items in ServiceNow Problem record; include completion rate in weekly SRE
+    review
+  references: []
+- id: SRE-AT-09-C04
+  number: 4
+  name: Blameless Post-Mortem Culture
+  standard_ref: Google SRE Workbook — Postmortems; Psychological Safety
+  applicability: All teams performing post-mortems
+  required_evidence: 'Post-mortem document tone: no individual blame; systems thinking applied; contributing factors include
+    process and tooling'
+  evaluation_method: 'Human review: post-mortem focuses on system and process factors; no individual blamed by name as root
+    cause'
+  methods:
+  - human
+  acceptance_criteria: All post-mortems meet blameless standard; facilitator confirmation; team retrospective on quality quarterly
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: SRE / Engineering management
+  reassessment: ''
+  example_risk: Medium — blame culture suppresses honest incident reporting and reduces learning
+  example_recommendation: Train all facilitators on blameless post-mortem standards; review post-mortem quality in quarterly
+    SRE retrospective
+  references: []
+- id: SRE-AT-09-C05
+  number: 5
+  name: Incident Timeline Accuracy & Tooling
+  standard_ref: Google SRE Workbook — Postmortems; ITPN G-19
+  applicability: All P1 and significant P2 post-mortems
+  required_evidence: Incident timeline reconstructed from log, alert, and ServiceNow timestamps; Splunk or equivalent used
+    for reconstruction
+  evaluation_method: 'Human review: timeline accurate to < 5-minute resolution; tool-sourced rather than recalled from memory'
+  methods:
+  - human
+  acceptance_criteria: Incident timeline reconstructed from log data with < 5-minute resolution; Splunk query documented
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: SRE / Application Engineering
+  reassessment: ''
+  example_risk: Medium — memory-reconstructed timelines are inaccurate and miss critical decision points
+  example_recommendation: Use Splunk query and ServiceNow timestamp export for timeline reconstruction; document query in
+    post-mortem
+  references: []
+source_file: SRE-AT-09 — Incident Response & Post-Mortem Quality Assessment.docx
+references: []

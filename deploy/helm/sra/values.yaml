@@ -1,0 +1,63 @@
+# Values for the CAP (GKE) namespace. Items marked [confirm] depend on CAP conventions.
+image:
+  repository: cvsh.jfrog.io/cvsdigital-docker/sra
+  tag: sra-1                      # set by CI: sra-<run_number>
+  pullPolicy: IfNotPresent
+imagePullSecrets: [{name: jfrog-pull}]   # [confirm]
+
+serviceAccount:
+  name: sra
+  gcpServiceAccount: sra@PROJECT_ID.iam.gserviceaccount.com   # Workload Identity: Cloud SQL client + GCS object admin
+
+cloudSql:
+  instance: PROJECT_ID:REGION:INSTANCE        # [confirm] CAP-provisioned Cloud SQL Postgres (pgvector enabled)
+  database: sra
+  user: sra@PROJECT_ID.iam                    # IAM database user, no password
+  proxyImage: cvsh.jfrog.io/cvsdigital-docker/cloud-sql-proxy:2.14.1
+
+kafka:
+  bootstrap: kafka-bootstrap.kafka.svc:9092   # [confirm]
+  securityProtocol: ""                        # e.g. SASL_SSL
+  saslMechanism: ""
+  existingSecret: ""                          # keys: username, password
+  group: sra-worker
+
+gcs:
+  bucket: sra-evidence-PROJECT_ID             # uploaded evidence + generated reports
+
+llm:
+  provider: ollama
+  model: qwen2.5:7b-instruct                  # choose by eval
+  timeoutSeconds: 600
+  numCtx: 8192
+
+api:
+  replicas: 2
+  resources:
+    requests: {cpu: 250m, memory: 512Mi}
+    limits: {cpu: "1", memory: 1Gi}
+  ingress:
+    enabled: false                            # [confirm] CAP ingress + IAP; the UI has no login of its own
+    host: sra.example.internal
+    className: ""
+
+worker:
+  replicas: 1                                 # one LLM job at a time per worker; scale with Ollama replicas
+  resources:
+    requests: {cpu: 500m, memory: 1Gi}        # includes the local ONNX embedding model
+    limits: {cpu: "2", memory: 2Gi}
+
+ollama:
+  enabled: true
+  image: cvsh.jfrog.io/cvsdigital-docker/ollama:0.5.4
+  replicas: 1
+  nodeSelector: {}                            # e.g. {cloud.google.com/gke-nodepool: llm-cpu} (c3/n2 highmem)
+  tolerations: []
+  resources:
+    requests: {cpu: "8", memory: 16Gi}        # 7-8B Q4 model on CPU
+    limits: {cpu: "16", memory: 24Gi}
+  storage: 30Gi
+  # Model weights cannot be pulled from the internet: mirror an `ollama pull` models/ directory to GCS once;
+  # the init container copies it into the PVC.
+  modelMirror: gs://sra-models-PROJECT_ID/ollama/models
+  gcloudImage: cvsh.jfrog.io/cvsdigital-docker/google-cloud-cli:slim

@@ -1,0 +1,111 @@
+id: ITSM-AT-06
+title: SLA Compliance & OLA Governance Assessment
+domain: ITSM
+variant: A
+priority: P1
+applicability: All FSI REO applications with defined or implied SLAs; covers P1–P4 incident response and resolution targets
+  and all inter-team Operational Level Agreements
+accountable_owner: PSE / SRE / REO leadership
+purpose: Confirm that SLA targets are defined, measured, and reported for all production applications, and that Operational
+  Level Agreements governing inter-team handoffs are formalized and met. Addresses the ~20-handoff / no-SLA gap identified
+  in the FSI REO assessment.
+relevance: No SLA defined for ~20 handoffs across 6 workflows. Corrective actions have no SLA. G-12, G-13. REO Operating Model
+  defines service tiers but no associated SLAs were found in the extract.
+reassessment_trigger: Major release, architecture change, or Post-Incident Review recommendation
+scope: []
+signoff_roles:
+- Assessment Lead
+- Domain Reviewer
+- Engineering / Service Owner
+- PSE Representative
+criteria:
+- id: ITSM-AT-06-C01
+  number: 1
+  name: SLA Definition & Applicability
+  standard_ref: ITIL Service Level Management; REO Operating Model
+  applicability: All P1–P4 incidents for all production applications
+  required_evidence: ServiceNow SLA Definition records; priority matrix with response and resolution targets
+  evaluation_method: 'Deterministic: SLA records exist in ServiceNow for each priority level; auto-applied to incidents on
+    creation'
+  methods:
+  - deterministic
+  acceptance_criteria: Response and resolution SLAs defined for P1–P4; auto-applied in ServiceNow on incident creation
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: PSE / REO leadership
+  reassessment: ''
+  example_risk: High — no SLA framework means no accountability baseline; corrective actions have no SLA
+  example_recommendation: 'Define SLA targets: P1 response 15min/resolution 4h; P2 30min/8h; P3 4h/3d; P4 8h/5d'
+  references: []
+- id: ITSM-AT-06-C02
+  number: 2
+  name: SLA Measurement & Reporting
+  standard_ref: ITIL Service Level Management; ITPN G-18
+  applicability: All incidents with active SLA records
+  required_evidence: ServiceNow SLA Task records with elapsed_percentage; monthly SLA attainment report
+  evaluation_method: 'Deterministic: SLA attainment rate measured and reported monthly; breaches tracked and root-caused'
+  methods:
+  - deterministic
+  acceptance_criteria: SLA attainment reported monthly; P1 attainment > 95%; breach root cause documented
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: PSE / REO leadership
+  reassessment: ''
+  example_risk: High — without measurement, SLAs are aspirational targets with no operational force
+  example_recommendation: Enable ServiceNow SLA reporting; include in monthly REO governance review
+  references: []
+- id: ITSM-AT-06-C03
+  number: 3
+  name: OLA Formalization for Inter-Team Handoffs
+  standard_ref: ITIL Service Level Management — OLA; ITPN G-12, G-13
+  applicability: All ~20 inter-team handoff points across PSE, SRE, and Engineering
+  required_evidence: Written OLA documents or ServiceNow assignment group SLA configurations for each handoff
+  evaluation_method: 'Human review: each handoff point has a documented response commitment; commitment is measurable in ServiceNow'
+  methods:
+  - human
+  acceptance_criteria: OLA defined for each of the ~20 handoff points; each has a response SLA < 30 min for P1/P2
+  default_risk: Critical
+  default_risk_assumed: false
+  accountable_owner: REO leadership / PSE / SRE
+  reassessment: ''
+  example_risk: Critical — ~20 handoffs with no SLA; corrective action delivery has no commitment
+  example_recommendation: Conduct OLA workshop with PSE, SRE, and Engineering leads; document and ratify within 30 days
+  references: []
+- id: ITSM-AT-06-C04
+  number: 4
+  name: SLA Breach Trending & Root Cause
+  standard_ref: ITIL CSI; ITPN G-18
+  applicability: All SLA breaches
+  required_evidence: SLA breach register; trend analysis over 3-month rolling window; root-cause category for each breach
+    type
+  evaluation_method: 'Human review: breach trends analyzed; systemic causes identified; improvement actions tracked'
+  methods:
+  - human
+  acceptance_criteria: SLA breach root causes categorized; top-3 systemic causes each have a tracked improvement action
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: PSE / REO leadership
+  reassessment: ''
+  example_risk: Medium — without breach trending, the same causes recur without systemic remediation
+  example_recommendation: Create SLA breach register in ServiceNow; review in monthly governance meeting
+  references: []
+- id: ITSM-AT-06-C05
+  number: 5
+  name: Corrective Action SLA Compliance
+  standard_ref: ITPN G-13; REO Operating Model
+  applicability: All corrective actions assigned through the REO governance process
+  required_evidence: 'Corrective action register: each item has owner, due date, and completion status'
+  evaluation_method: 'Deterministic: % corrective actions completed by committed due date measured monthly'
+  methods:
+  - deterministic
+  acceptance_criteria: '> 90% of corrective actions completed by committed due date; overdue items escalated to REO leadership'
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: REO leadership / PSE
+  reassessment: ''
+  example_risk: High — corrective actions currently have no SLA; improvement commitments cannot be enforced
+  example_recommendation: Add due date and owner fields to corrective action register; measure and publish completion rate
+    monthly
+  references: []
+source_file: ITSM-AT-06 — SLA Compliance & OLA Governance Assessment.docx
+references: []

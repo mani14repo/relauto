@@ -1,0 +1,1901 @@
+playbooks:
+- id: CMDB-PB-01
+  title: CI Discovery & Onboarding Playbook
+  objective: Ensure every FSI REO production CI is registered in ServiceNow with mandatory attributes populated, correctly
+    classified, and linked to its parent application service.
+  triggers:
+  - A new application or service is approved for production deployment.
+  - Infrastructure is provisioned (physical server, VM, cloud resource, database).
+  - An incident reveals a CI that exists in production but is not registered in CMDB.
+  - A CMDB audit or discovery scan identifies an unregistered asset.
+  - A decommissioned CI is replaced by a new component.
+  steps:
+  - n: 1
+    action: 'Confirm the CI type: Application Service, Business Application, Server (Physical/Virtual), Database, Middleware,
+      or Network Component.'
+  - n: 2
+    action: Search the CMDB for an existing record using the application name, hostname, or IP address. If a duplicate exists,
+      reconcile before creating a new record.
+  - n: 3
+    action: Create the CI record using the correct CI class in ServiceNow. Do not use generic or catch-all classes.
+  - n: 4
+    action: 'Populate mandatory attributes: Name, CI Class, Operational Status, Environment (Production/Non-Prod), Managed
+      By, Owned By, Assignment Group, and Support Group.'
+  - n: 5
+    action: 'Populate the Application field: link the CI to its parent Business Application record.'
+  - n: 6
+    action: Link the CI to its parent Application Service in the CSDM hierarchy (Business Application → Application Service
+      → Technical Service).
+  - n: 7
+    action: 'If the application service record does not exist: create it before completing the CI record. Do not link CIs
+      to generic or placeholder service records.'
+  - n: 8
+    action: 'Add the hosting infrastructure relationship: map the application CI to the server, database, and network CIs
+      it depends on.'
+  - n: 9
+    action: 'Set the environment attribute correctly: Production, Pre-Production, UAT, or Development. Never default to Production
+      without confirmation.'
+  - n: 10
+    action: 'Confirm the CI discovery source: ServiceNow Discovery (auto-populated), manual entry, or integration import.
+      Document the source in the CI attributes.'
+  - n: 11
+    action: Notify the application owner that the CI is registered. Provide the CI sys_id for use in incident, problem, and
+      change records.
+  - n: 12
+    action: 'Run a post-registration validation: confirm the CI appears in the CMDB service map and is linked to the correct
+      application service.'
+  - n: 13
+    action: Set the CI review date 6 months from registration. Assign the review to the application owner.
+  decisions:
+  - - CI already exists with different attributes
+    - 'Reconcile the duplicate: review both records, retain the most accurate one, and merge or retire the other. Document
+      the reconciliation in the CI work notes.'
+  - - Application Service record does not exist
+    - Create the Application Service record first. Link the CI after the service record is complete. Do not proceed with a
+      blank or generic service link.
+  - - CI ownership is disputed between two teams
+    - Escalate to the CMDB Manager and the SRE Lead. Temporarily assign to the SRE On-Call group until ownership is resolved.
+  - - ServiceNow Discovery auto-creates the CI incorrectly
+    - Correct the CI class and attributes manually. Raise a Discovery rule update task to prevent recurrence.
+  validation:
+  - CI record exists in ServiceNow with all mandatory attributes populated.
+  - CI is linked to its parent Application Service and Business Application in the CSDM hierarchy.
+  - Environment attribute is set to Production (confirmed by the application owner).
+  - CI appears in the CMDB service map with at least one infrastructure dependency relationship.
+  - Application owner has acknowledged CI registration.
+  source_file: CMDB-PB-01 — CI Discovery & Onboarding Playbook.docx
+- id: CMDB-PB-02
+  title: CMDB Data Quality Management Playbook
+  objective: Maintain CMDB data quality above the agreed threshold (90% completeness, 95% accuracy for production CIs) and
+    provide a structured remediation path for identified gaps.
+  triggers:
+  - Monthly CMDB health check is due.
+  - An incident or change is assigned to the wrong team due to an incorrect CI attribute.
+  - ServiceNow Discovery reconciliation report shows a high number of orphan or conflicting CIs.
+  - A new application is onboarded and post-registration validation reveals gaps.
+  - An SRE reliability assessment identifies CMDB gaps as a blocking factor.
+  steps:
+  - n: 1
+    action: Run the ServiceNow CMDB Health Dashboard for the FSI REO application scope. Export the completeness, accuracy,
+      and staleness scores.
+  - n: 2
+    action: 'Identify CIs with critical gaps: missing Owned By, missing Assignment Group, missing Environment, or missing
+      Application Service relationship.'
+  - n: 3
+    action: 'Prioritise CIs by operational impact: P1/P2 incident volume, active change records, and application criticality
+      tier.'
+  - n: 4
+    action: 'For each critical gap: raise a CMDB Data Quality Task in ServiceNow. Assign to the CI owner or application team.
+      Set a 5-business-day due date.'
+  - n: 5
+    action: 'For blank Owned By or Assignment Group: use the FSI REO Application Ownership Matrix to identify the correct
+      owner. Update the CI and notify the owner.'
+  - n: 6
+    action: 'For stale CIs (last updated more than 90 days ago): contact the application owner to confirm the CI is still
+      active and accurate.'
+  - n: 7
+    action: 'For duplicate CIs: identify the authoritative record (Discovery-sourced records take precedence over manually
+      created ones). Merge or retire the duplicate.'
+  - n: 8
+    action: 'For incorrect Environment values (e.g., Development CIs marked as Production): correct immediately. These directly
+      distort incident priority and routing.'
+  - n: 9
+    action: Re-run the CMDB Health Dashboard after remediation. Confirm the completeness score has improved.
+  - n: 10
+    action: 'Publish the monthly CMDB Quality Report: scope, before/after scores, tasks raised, tasks closed, and remaining
+      open gaps.'
+  - n: 11
+    action: Escalate persistent gaps (unresolved > 10 business days) to the SRE Lead and the application manager.
+  - n: 12
+    action: Update the CMDB Data Quality baseline at the end of each monthly cycle. Track the trend over time.
+  decisions:
+  - - CI owner cannot be determined after CMDB review
+    - Assign to the SRE On-Call group. Raise a governance escalation to the SRE Director. Do not leave the CI unowned for
+      more than 5 business days.
+  - - CMDB completeness falls below 80% for a specific application
+    - Raise a CMDB Remediation Sprint for that application. Assign a dedicated CMDB engineer and complete within 10 business
+      days.
+  - - Discovery is creating duplicate CIs at scale
+    - Pause Discovery for the affected CI class. Raise a Discovery rule correction task. Run manual reconciliation.
+  validation:
+  - Monthly CMDB Health Dashboard score meets the agreed threshold (90% completeness).
+  - No production CI has a blank Owned By or Assignment Group.
+  - Monthly CMDB Quality Report is published and shared with SRE and engineering leads.
+  - All CMDB Data Quality Tasks are tracked in ServiceNow with owners and due dates.
+  source_file: CMDB-PB-02 — CMDB Data Quality Management Playbook.docx
+- id: CMDB-PB-03
+  title: Application-to-Service Mapping Playbook
+  objective: Ensure every FSI REO business application has a complete CSDM service map showing its application services, technical
+    dependencies, and infrastructure CIs.
+  triggers:
+  - A new application is onboarded to FSI REO (CMDB-PB-01 triggers this).
+  - A major architecture change modifies application dependencies.
+  - An incident reveals an undocumented dependency between two application services.
+  - A CMDB audit shows broken or missing service map relationships.
+  - An AI reliability assessment is blocked due to missing service context.
+  steps:
+  - n: 1
+    action: Open the Business Application CI record in ServiceNow. Confirm the name, owner, and criticality tier.
+  - n: 2
+    action: Create an Application Service CI linked to the Business Application. The Application Service represents the runtime
+      service that the application provides.
+  - n: 3
+    action: 'Identify the technical services the Application Service depends on: databases, messaging platforms, APIs, identity
+      services, and shared infrastructure.'
+  - n: 4
+    action: Create Technical Service CIs for each dependency that does not already exist. Link each to the Application Service.
+  - n: 5
+    action: 'Map infrastructure CIs to their parent Technical Service: server CIs, database CIs, load balancer CIs.'
+  - n: 6
+    action: 'Document upstream consumers: which other Application Services call this one? Add the upstream relationships.'
+  - n: 7
+    action: 'Document downstream dependencies: which services does this Application Service call? Add the downstream relationships.'
+  - n: 8
+    action: 'Verify the map with the application architect: walk through each relationship and confirm it reflects the current
+      production architecture.'
+  - n: 9
+    action: 'Add the SRE region to the Application Service CI: link to the correct SRE region (A=Harpreet Magaw, B=Ana Kumar,
+      C=Bennita Lyke, D=Ana Kumar).'
+  - n: 10
+    action: 'Set the criticality tier on the Application Service CI: Tier 1 (mission-critical), Tier 2 (business-important),
+      Tier 3 (supporting).'
+  - n: 11
+    action: Publish the service map in ServiceNow. Notify the PSE and SRE teams that the map is available.
+  - n: 12
+    action: Set a 6-month review date on the Application Service CI.
+  decisions:
+  - - A dependency does not have a CI record
+    - Create the dependency CI per CMDB-PB-01 before adding the relationship. Do not create dangling relationships.
+  - - Architect and CMDB map disagree on a dependency
+    - Escalate to the SRE Lead. Hold the relationship as Proposed until confirmed. Document the dispute in the CI work notes.
+  - - Circular dependency detected in the map
+    - Flag for architecture review. Document as a Known Risk. Raise an architecture review task.
+  validation:
+  - Every FSI REO Business Application has at least one linked Application Service CI.
+  - Every Application Service CI has at least one infrastructure dependency relationship.
+  - The SRE region and criticality tier are set on every Application Service CI.
+  - The application architect has signed off the service map.
+  - Service map appears correctly in the ServiceNow dependency views.
+  source_file: CMDB-PB-03 — Application-to-Service Mapping Playbook.docx
+- id: CMDB-PB-04
+  title: CI Ownership & Lifecycle Management Playbook
+  objective: Ensure every FSI REO production CI has a named owner, a support group, a lifecycle state, and a documented decommission
+    process.
+  triggers:
+  - A CI is newly registered and requires an owner assignment.
+  - An engineer leaves the team or changes role, making their CIs unowned.
+  - An application is transferred between SRE regions or portfolio teams.
+  - A CMDB audit identifies unowned or incorrectly owned CIs.
+  - An application reaches end-of-life and requires decommission planning.
+  steps:
+  - n: 1
+    action: Open the CI record in ServiceNow. Check the Owned By, Managed By, and Assignment Group fields.
+  - n: 2
+    action: 'For a new CI: use the FSI REO Application Ownership Matrix to identify the correct technical owner and support
+      group.'
+  - n: 3
+    action: Set Owned By to the named engineer or manager responsible for the CI.
+  - n: 4
+    action: Set Assignment Group to the team that handles incidents and changes for this CI.
+  - n: 5
+    action: Set Managed By to the team that manages the CI’s configuration (may differ from the incident team).
+  - n: 6
+    action: 'Confirm the lifecycle state: Installed (active production), Maintenance (planned outage), Retired (decommissioned).'
+  - n: 7
+    action: 'For an ownership transfer: notify the outgoing owner and the incoming owner in writing (email or Teams). Document
+      the transfer in the CI work notes with the date and reason.'
+  - n: 8
+    action: 'For a CI where the owner is leaving the organisation: CMDB Manager reassigns the CI to the team lead or SRE Lead
+      as an interim owner. Raise an ownership confirmation task within 5 business days.'
+  - n: 9
+    action: 'For decommission: set the lifecycle state to Retirement in Progress. Link the decommission Change record to the
+      CI.'
+  - n: 10
+    action: 'After decommission confirmation: set the lifecycle state to Retired. Remove all incident and change routing relationships.
+      Do not delete the CI record — retain for 12 months for audit purposes.'
+  - n: 11
+    action: Run a monthly unowned CI report. Escalate any CI unowned for more than 5 business days to the SRE Lead.
+  decisions:
+  - - No owner can be identified for a CI
+    - Assign to the SRE On-Call group. Escalate to the SRE Director within 5 business days. Raise a governance task.
+  - - Application is transferred between SRE regions
+    - Update the CI’s Assignment Group, Owned By, and SRE region simultaneously. Notify the PSE and SRE teams of the transfer.
+  - - CI is decommissioned without a Retirement Change record
+    - Create the Change record retrospectively. Set the CI state to Retired. Raise a process compliance task.
+  validation:
+  - Every production CI has a named Owned By, an Assignment Group, and a lifecycle state.
+  - No CI has been unowned for more than 5 business days.
+  - Ownership transfers are documented in the CI work notes with dates.
+  - Retired CIs are not included in incident routing or active change approvals.
+  - Monthly unowned CI report is run and any gaps are resolved within 5 business days.
+  source_file: CMDB-PB-04 — CI Ownership & Lifecycle Management Playbook.docx
+- id: CMDB-PB-05
+  title: Service Dependency Mapping Playbook
+  objective: Ensure every FSI REO Application Service CI has documented upstream and downstream dependencies so that the blast
+    radius of any failure can be assessed in under 5 minutes.
+  triggers:
+  - An incident has cascading impact beyond the directly affected application.
+  - A change impact analysis cannot be completed due to missing dependency information.
+  - A new integration between two FSI REO services is deployed.
+  - An architectural review identifies undocumented runtime dependencies.
+  - A CMDB audit shows Application Service CIs with no dependency relationships.
+  steps:
+  - n: 1
+    action: Open the Application Service CI record for the service being mapped.
+  - n: 2
+    action: 'List all outbound calls: which services does this application call? Include API endpoints, database connections,
+      message queue producers, and file system integrations.'
+  - n: 3
+    action: 'For each outbound call: confirm the target service has a CI record in ServiceNow. Create it per CMDB-PB-01 if
+      missing.'
+  - n: 4
+    action: Add a ‘Depends on’ relationship from this Application Service CI to each downstream dependency CI.
+  - n: 5
+    action: 'List all inbound calls: which services call this application? Add ‘Used by’ relationships from upstream caller
+      CIs.'
+  - n: 6
+    action: 'Classify each dependency: Critical (failure of this dependency causes full outage), Important (degraded functionality),
+      or Informational (no direct runtime impact).'
+  - n: 7
+    action: Validate dependencies against AppDynamics application flow maps or Splunk service call logs. Confirm that every
+      documented dependency shows observable traffic.
+  - n: 8
+    action: 'Identify single points of failure: dependencies with no redundancy or circuit breaker. Flag these as SPOF in
+      the CI relationship attributes.'
+  - n: 9
+    action: 'Document the failure propagation scenario for each Critical dependency: what happens to this service if the dependency
+      fails?'
+  - n: 10
+    action: Review the dependency map with the SRE team in the next operational review. Confirm accuracy.
+  - n: 11
+    action: Set a 6-month review date on the Application Service CI.
+  decisions:
+  - - AppDynamics shows a dependency not documented in CMDB
+    - Add the relationship to CMDB. Notify the application architect of the undocumented dependency. Raise an architecture
+      review task if the dependency was unintentional.
+  - - A Critical dependency has no redundancy
+    - Flag as a Single Point of Failure. Raise an Architecture Risk item in the SRE reliability backlog (SRE-PB-02).
+  - - Dependency map contradicts the architecture diagram
+    - Treat the observed runtime data (AppDynamics) as authoritative. Raise an architecture documentation update task.
+  validation:
+  - Every FSI REO Application Service CI has at least one documented dependency relationship.
+  - All Critical dependencies are classified and their failure scenarios documented.
+  - AppDynamics or Splunk traffic data confirms at least one observed dependency for each documented relationship.
+  - Single Points of Failure are flagged in the CI record and tracked in the SRE reliability backlog.
+  - Dependency map is reviewed and signed off by the SRE Lead.
+  source_file: CMDB-PB-05 — Service Dependency Mapping Playbook.docx
+- id: CMDB-PB-06
+  title: CI-to-Incident-Problem-Change Association Playbook
+  objective: Ensure 100% of P1/P2 incidents and all Normal changes have a correctly populated CI field before the record is
+    assigned or approved.
+  triggers:
+  - An engineer is assigned an Incident, Problem, or Change record with a blank or incorrect CI field.
+  - A CMDB audit finds records where the CI is set to a generic group rather than a specific application.
+  - An alert-generated incident arrives with the CI populated from the monitoring event but unverified.
+  - A change request is submitted without a CI and is returned by the Change Manager for correction.
+  steps:
+  - n: 1
+    action: Open the record. Check the Configuration Item field. If blank or set to a generic value (e.g., ‘FSI REO’ or ‘Unknown’),
+      proceed to correct it.
+  - n: 2
+    action: Identify the affected application from the incident description, alert name, or change scope.
+  - n: 3
+    action: Search ServiceNow CMDB for the application CI using the application name. Use a partial search if the exact name
+      is unknown.
+  - n: 4
+    action: 'If the CI is found: select it and populate the Configuration Item field. Verify the CI’s Assignment Group matches
+      the intended team.'
+  - n: 5
+    action: 'If the CI is not found: do not leave the field blank. Use the closest parent Application Service CI and raise
+      a CMDB gap task (CMDB-PB-01).'
+  - n: 6
+    action: 'For incidents: update the Assignment Group to match the CI’s Assignment Group if they differ.'
+  - n: 7
+    action: 'For changes: confirm the CI’s dependency map to ensure the change impact assessment is accurate.'
+  - n: 8
+    action: 'For problems: link all related incident records that share the same CI.'
+  - n: 9
+    action: 'Add a Work Note documenting the CI selection: ‘CI updated from [blank/generic] to [CI name] based on [reason].’'
+  - n: 10
+    action: 'If the alert-generated CI is incorrect (wrong application from Event Management): update the CI and raise an
+      alert mapping correction task in ServiceNow.'
+  decisions:
+  - - Two CIs are potentially affected
+    - Set the primary CI to the most directly impacted application. Add the secondary affected CI in the Affected CIs related
+      list.
+  - - Alert-generated CI is consistently wrong for a specific alert
+    - Raise a Splunk/Event Management mapping correction task. Document the pattern in the CI’s work notes.
+  - - CMDB has no CI for the affected application
+    - Use the parent Application Service CI as a temporary placeholder. Raise a CMDB-PB-01 onboarding task. Notify the CMDB
+      team.
+  validation:
+  - 100% of P1/P2 incidents have a specific (non-generic) CI populated before assignment.
+  - All Normal Change records have a CI populated before CAB submission.
+  - Monthly CMDB association quality report shows < 5% blank CI rate for P1/P2 incidents.
+  - CI correction work notes are present on all records where the CI was updated post-creation.
+  source_file: CMDB-PB-06 — CI-to-Incident-Problem-Change Association Playbook.docx
+- id: CMDB-PB-07
+  title: Infrastructure Change Impact Analysis Playbook
+  objective: Ensure every infrastructure change has a documented impact assessment listing all potentially affected application
+    services, with explicit sign-off from each affected application team.
+  triggers:
+  - A Change record is submitted for an infrastructure CI that is a dependency for one or more Application Services.
+  - A platform maintenance window is being planned.
+  - An emergency infrastructure change is required during a P1 incident.
+  - A CMDB dependency map is updated and reveals new application consumers of a shared infrastructure component.
+  steps:
+  - n: 1
+    action: Open the Change record. Identify the infrastructure CI being modified.
+  - n: 2
+    action: Navigate to the CI’s dependency map in ServiceNow. Expand all ‘Used By’ relationships to identify every Application
+      Service that depends on this CI.
+  - n: 3
+    action: 'For each dependent Application Service: identify the application owner and SRE region.'
+  - n: 4
+    action: 'Assess the impact type for each dependent application: Full Outage, Degraded Performance, Increased Latency,
+      or No Expected Impact (with justification).'
+  - n: 5
+    action: 'For each Full Outage or Degraded Performance impact: obtain written sign-off from the application owner before
+      the change is approved.'
+  - n: 6
+    action: 'Identify the maintenance window impact: confirm that planned downtime does not conflict with any application’s
+      blackout periods (month-end, regulatory deadlines, peak trading hours).'
+  - n: 7
+    action: Document the impact assessment in the Change record’s Impact field and attach the full assessment as a document.
+  - n: 8
+    action: 'For changes affecting more than 5 application services: escalate to the SRE Director and CAB for a broader review.'
+  - n: 9
+    action: 'Confirm rollback impact: if the change must be rolled back, what is the impact on dependent applications?'
+  - n: 10
+    action: Update the Change record’s Risk Assessment to reflect the number of affected applications.
+  - n: 11
+    action: 'After the change: validate that all previously impacted application services have been confirmed healthy.'
+  decisions:
+  - - A dependent application owner has not responded within 2 business days
+    - Escalate to the application manager. Do not approve the change until sign-off is received.
+  - - Impact analysis reveals more than 10 affected applications
+    - Escalate to SRE Director. Schedule a dedicated CAB review. Consider splitting the change into smaller, lower-impact
+      steps.
+  - - CMDB dependency map is incomplete for the infrastructure CI
+    - Halt the change approval. Raise a CMDB mapping task (CMDB-PB-05). Complete the dependency map before impact analysis.
+  validation:
+  - Change record contains a complete infrastructure impact assessment.
+  - All Full Outage and Degraded Performance impacts have written application owner sign-off.
+  - No blackout period conflicts identified or explicitly waived with business approval.
+  - Post-change validation confirms all dependent application services are healthy.
+  - Change record is closed with impact assessment attached.
+  source_file: CMDB-PB-07 — Infrastructure Change Impact Analysis Playbook.docx
+- id: CMDB-PB-08
+  title: CMDB Discovery Reconciliation Playbook
+  objective: Achieve and maintain a Discovery coverage rate of 95% for FSI REO production infrastructure, with all conflicts
+    resolved within 10 business days of identification.
+  triggers:
+  - Weekly ServiceNow Discovery reconciliation report is available.
+  - A new infrastructure provisioning batch has been completed.
+  - An incident reveals a production CI not present in the CMDB.
+  - Discovery coverage drops below 90% in the monthly health check.
+  steps:
+  - n: 1
+    action: Run the ServiceNow Discovery Reconciliation report for the FSI REO production scope.
+  - n: 2
+    action: 'Identify the three reconciliation categories: New (discovered but not in CMDB), Stale (in CMDB but not discovered
+      in the last 30 days), and Conflict (attributes differ between discovered and registered).'
+  - n: 3
+    action: 'For New CIs: review each item. If it is a legitimate production asset, onboard it per CMDB-PB-01. If it is a
+      rogue or shadow IT asset, escalate to the CMDB Manager and the Security team.'
+  - n: 4
+    action: 'For Stale CIs: contact the CI owner. Confirm whether the asset has been decommissioned or has moved outside the
+      Discovery scope. Update the lifecycle state accordingly.'
+  - n: 5
+    action: 'For Conflicting CIs: compare the Discovery-sourced attribute with the manually registered value. Treat the Discovery
+      value as authoritative for hardware attributes (IP, OS version, hostname). Treat the manual value as authoritative for
+      ownership and classification attributes.'
+  - n: 6
+    action: Resolve all conflicts using the ServiceNow CI Reconciliation rules. Document the resolution rationale in the CI
+      work notes.
+  - n: 7
+    action: Update the Discovery coverage metric after reconciliation.
+  - n: 8
+    action: 'Publish the weekly reconciliation summary: new CIs onboarded, stale CIs updated, conflicts resolved, and open
+      items.'
+  - n: 9
+    action: Escalate to Infrastructure Engineering any CIs that cannot be reached by Discovery (network scope gaps, agent
+      issues).
+  decisions:
+  - - New CI is an unrecognised asset (shadow IT)
+    - Flag as Unauthorised Asset. Notify the Security team. Do not onboard to CMDB without application owner confirmation.
+  - - Stale CI is confirmed decommissioned
+    - Set lifecycle state to Retired. Link to the decommission Change record. Remove from active incident routing.
+  - - Discovery and manual records cannot be reconciled
+    - Escalate to the CMDB Manager. Hold both records in a Reconciliation Pending state until resolved.
+  validation:
+  - Discovery coverage is 95% or above for FSI REO production infrastructure.
+  - No CI is in conflict state for more than 10 business days.
+  - Weekly reconciliation report is published and shared with the SRE and Infrastructure teams.
+  - All shadow IT discoveries are escalated to the Security team within 24 hours.
+  source_file: CMDB-PB-08 — CMDB Discovery Reconciliation Playbook.docx
+- id: CMDB-PB-09
+  title: Application Criticality & Service Tiering Playbook
+  objective: Assign a documented criticality tier (Tier 1, 2, or 3) to every FSI REO production Application Service CI, with
+    RTO/RPO targets and SRE coverage expectations defined for each tier.
+  triggers:
+  - A new application is onboarded to production.
+  - Business priorities change (e.g., a new regulatory requirement elevates an application’s criticality).
+  - An annual application criticality review is due.
+  - A P1 incident reveals that an application’s current tier does not reflect its business impact.
+  steps:
+  - n: 1
+    action: 'Identify the application’s business function: what business process does this application support?'
+  - n: 2
+    action: 'Assess the impact of a full outage: financial loss per hour, regulatory impact, customer impact, and operational
+      dependency.'
+  - n: 3
+    action: 'Assess the frequency of use: is this application active 24x7, business hours only, or batch/periodic?'
+  - n: 4
+    action: 'Assess the recovery complexity: how long would it take to restore the application from a cold start?'
+  - n: 5
+    action: 'Apply the tiering criteria: Tier 1 (mission-critical, 24x7, RTO < 4h, RPO < 1h), Tier 2 (business-important,
+      RTO < 24h, RPO < 4h), Tier 3 (supporting, RTO < 72h, RPO < 24h).'
+  - n: 6
+    action: Confirm the tier with the business owner. Obtain written approval for the assigned tier.
+  - n: 7
+    action: 'Update the Application Service CI in ServiceNow: set the Criticality Tier, RTO, and RPO attributes.'
+  - n: 8
+    action: 'Update the incident priority mapping: Tier 1 application incidents default to P2 minimum, P1 if full outage.
+      Tier 3 default to P3.'
+  - n: 9
+    action: 'Update the SRE coverage requirement: Tier 1 requires dedicated SRE on-call coverage. Tier 3 can use shared coverage.'
+  - n: 10
+    action: Notify the PSE team of the tier assignment. Update the assignment group routing rules if needed.
+  - n: 11
+    action: Set an annual review date on the Application Service CI.
+  decisions:
+  - - Business owner and SRE Lead disagree on the tier
+    - Escalate to the SRE Director and Business Relationship Manager. Use the financial impact data as the deciding factor.
+  - - Application’s observed incident impact exceeds its current tier
+    - Initiate an out-of-cycle tier review. Elevate the tier pending the full review.
+  - - Tier 1 application has no DR plan
+    - Raise a DR gap as a critical SRE risk. Assign a DR planning task per SRE-PB-10.
+  validation:
+  - Every FSI REO production Application Service CI has a criticality tier, RTO, and RPO set in ServiceNow.
+  - Business owner sign-off is attached for each Tier 1 assignment.
+  - Annual criticality review is completed and evidenced.
+  - Incident priority routing and SRE coverage align with the assigned tier.
+  source_file: CMDB-PB-09 — Application Criticality & Service Tiering Playbook.docx
+- id: ITSM-PB-01
+  title: Incident Detection, Triage & Resolution Playbook
+  objective: Restore service to normal operation as quickly as possible; ensure every incident is correctly classified, assigned,
+    worked, and closed with full evidence.
+  triggers:
+  - Automated alert fires in Splunk or AppDynamics and creates a ServiceNow incident record.
+  - PSE or engineer manually raises an incident in ServiceNow.
+  - A change record post-implementation review identifies a production defect.
+  - A user or stakeholder reports a service degradation via the Service Desk.
+  - A scheduled job fails and the failure is detected by monitoring or a downstream consumer.
+  steps:
+  - n: 1
+    action: Confirm the incident record is open in ServiceNow. Note the INC number, creation time, and source (automated /
+      manual).
+  - n: 2
+    action: Review the short description and any alert payload. Identify the affected application and service from the Configuration
+      Item (CI) field.
+  - n: 3
+    action: If the CI field is blank or set to a generic group, update it to the correct application CI before proceeding.
+  - n: 4
+    action: 'Classify the incident: Priority P1 (critical — full outage or data loss risk), P2 (major — significant degradation),
+      P3 (moderate — partial degradation), P4 (low — cosmetic or low-impact).'
+  - n: 5
+    action: Assign the incident to the correct assignment group. Use the CMDB service map or the FSI REO Application Ownership
+      matrix to identify the owning team.
+  - n: 6
+    action: If this is a monitoring-generated incident (source = Event Management), confirm whether the alert is actionable.
+      If the alert is a known false positive, document the reason in the Work Notes and close as Cancelled.
+  - n: 7
+    action: Open the relevant Splunk dashboard and AppDynamics APM trace. Capture screenshots of the error spike, latency
+      anomaly, or infrastructure metric deviation.
+  - n: 8
+    action: Check for related open incidents on the same CI or shared infrastructure (use the 'Related Records' tab). If a
+      parent incident exists, relate this incident to it.
+  - n: 9
+    action: 'Post an initial Work Note within 15 minutes of assignment: current symptoms, affected users/services, initial
+      hypothesis, and next action.'
+  - n: 10
+    action: Execute the recovery procedure from the application runbook. If no runbook exists, escalate to the application
+      engineer and document that the runbook is missing.
+  - n: 11
+    action: 'For P1/P2 incidents: open a Teams bridge or Zoom war room and notify the SRE lead, PSE lead, and application
+      owner within 10 minutes of triage completion.'
+  - n: 12
+    action: Apply the fix, workaround, or restart procedure. Document each command or configuration change in the Work Notes
+      with timestamp.
+  - n: 13
+    action: Confirm service restoration by validating the Splunk health dashboard and executing the application smoke test
+      (documented in the runbook).
+  - n: 14
+    action: 'Update the Resolution Code field: select the most specific code (e.g., Software Fix, Configuration Change, Workaround
+      Applied, Monitoring Noise).'
+  - n: 15
+    action: If the incident recurred or required a workaround, create or update the Problem record and link it from the incident's
+      Problem field.
+  - n: 16
+    action: 'Complete the Closure Notes field with: root cause summary, resolution action taken, and whether a Problem record
+      has been raised.'
+  - n: 17
+    action: Set the incident state to Resolved. The affected user or service owner has 3 business days to reopen before auto-closure.
+  decisions:
+  - - P1 or P2 after classification
+    - Invoke Major Incident Management Playbook (ITSM-PB-02) immediately in parallel.
+  - - CI field blank or incorrect
+    - Do not proceed with assignment until CI is corrected. Notify the CMDB team if CI does not exist.
+  - - No application runbook found
+    - Escalate to application engineer. Log a gap in the Work Notes. Raise a Problem task to create the runbook.
+  - - Monitoring-generated, no user impact confirmed
+    - Investigate root cause. If alert is a false positive, close as Cancelled and raise alert-quality improvement task.
+  - - Workaround applied but root cause not resolved
+    - Raise a Problem record. Document the workaround in the Known Error Database.
+  validation:
+  - ServiceNow incident is in Resolved or Closed state with a completed Resolution Code.
+  - CI field correctly identifies the affected application service.
+  - Work Notes contain timestamped investigation steps and resolution evidence.
+  - Splunk / AppDynamics screenshot or link is attached to the incident.
+  - 'If a workaround was applied: a linked Problem record exists.'
+  - MTTR is recorded and the incident appears in the weekly SRE reliability dashboard.
+  source_file: ITSM-PB-01 — Incident Detection, Triage & Resolution Playbook.docx
+- id: ITSM-PB-02
+  title: Major Incident Management Playbook
+  objective: Minimise business impact, maintain stakeholder communication, coordinate cross-team recovery, and capture learning
+    outcomes from every major incident.
+  triggers:
+  - Incident classified as P1 at any point during triage.
+  - SRE Lead or PSE Lead declares a P2 as major due to scope, duration, or business impact.
+  - Two or more P2 incidents on the same platform or dependency within a 30-minute window.
+  - Automated escalation rule in ServiceNow promotes the incident to Major based on impact thresholds.
+  steps:
+  - n: 1
+    action: Assign the Incident Commander (IC). The IC owns the bridge, tracks time, and makes escalation decisions. The IC
+      does not perform hands-on troubleshooting.
+  - n: 2
+    action: Open the pre-provisioned Teams war room for the affected portfolio region. Post the INC number, P1 declaration
+      time, and initial impact statement.
+  - n: 3
+    action: 'Send the T+0 notification to the executive distribution list: application name, impact summary, region affected,
+      and estimated time to next update.'
+  - n: 4
+    action: Assign a dedicated scribe to log all actions, decisions, and timestamps in the ServiceNow Work Notes.
+  - n: 5
+    action: 'Assemble the technical team: application engineer, SRE on-call, PSE lead, and platform/infrastructure owner if
+      required.'
+  - n: 6
+    action: 'The technical team begins parallel investigation: application logs in Splunk, transaction traces in AppDynamics,
+      infrastructure health in ServiceNow CMDB.'
+  - n: 7
+    action: IC issues a status update every 30 minutes to the executive distribution list until the incident is contained.
+  - n: 8
+    action: 'If root cause is identified and a fix is available: the IC approves the change. Document the emergency change
+      approval in the Work Notes referencing the Change record number.'
+  - n: 9
+    action: 'If root cause is not identified within 60 minutes: escalate to the SRE Director and application architect. Consider
+      invoking DR procedures (SRE-PB-10).'
+  - n: 10
+    action: Once service is restored, confirm via the Splunk health dashboard and application smoke test.
+  - n: 11
+    action: 'Issue the resolution notification to the executive distribution list: resolution time, root cause summary (preliminary),
+      and next steps.'
+  - n: 12
+    action: Close the war room. Ensure the ServiceNow incident contains the full Work Notes, CI, resolution code, and all
+      attachments.
+  - n: 13
+    action: Schedule the Post-Incident Review (PIR) within 5 business days. Assign the PIR owner in ServiceNow as a Child
+      Task.
+  - n: 14
+    action: 'Complete the PIR document: timeline, contributing factors, corrective actions, and assigned owners with due dates.'
+  - n: 15
+    action: Link all corrective action tasks to a Problem record in ServiceNow. Verify that each action has an owner and due
+      date.
+  decisions:
+  - - Root cause not identified within 60 minutes
+    - Escalate to SRE Director and application architect. Evaluate DR invocation.
+  - - Emergency change is required
+    - IC approves verbally on the bridge. Engineer raises an Emergency Change record in ServiceNow and links it to the incident.
+  - - Multiple portfolios affected
+    - Elevate to cross-portfolio bridge. Notify all four SRE region leads.
+  - - PIR identifies a systemic risk
+    - Raise a formal Problem record with a P-Task for engineering remediation. Assign to the application architect and SRE
+      lead.
+  validation:
+  - ServiceNow incident has the Major Incident flag set and is in Resolved state.
+  - All bridge updates are recorded in Work Notes with timestamps.
+  - Executive notifications sent at T+0, T+30, T+60 and at resolution are attached or linked.
+  - Post-Incident Review document is complete and linked as a ServiceNow attachment.
+  - All corrective action tasks are linked to a Problem record and have assigned owners.
+  - Incident timeline appears in the SRE monthly reliability report.
+  source_file: ITSM-PB-02 — Major Incident Management Playbook.docx
+- id: ITSM-PB-03
+  title: Problem Management & RCA Playbook
+  objective: Eliminate recurrence by identifying and addressing root causes; maintain a current Known Error database; ensure
+    every corrective action is tracked to completion.
+  triggers:
+  - The same CI or application service experiences three or more incidents within 30 days.
+  - A P1 incident is resolved with a workaround rather than a permanent fix.
+  - An SRE reliability review identifies a recurring error pattern in Splunk or AppDynamics.
+  - A Post-Incident Review (PIR) recommends a Problem record be raised.
+  - A proactive trend analysis identifies a degradation trajectory before an outage occurs.
+  steps:
+  - n: 1
+    action: Open a Problem record in ServiceNow. Link all related incident records in the Related Records tab.
+  - n: 2
+    action: Assign the Problem to the correct assignment group and name a Problem Manager as the accountable owner.
+  - n: 3
+    action: Confirm the affected CI is correctly populated. Update the CMDB record if the CI or service relationship is missing.
+  - n: 4
+    action: Conduct the RCA using the Five Whys or Fishbone (Ishikawa) method. Document each level of causal analysis in the
+      RCA Notes field.
+  - n: 5
+    action: 'Identify the contributing factors: application defect, configuration drift, missing monitoring, infrastructure
+      constraint, or process gap.'
+  - n: 6
+    action: Search the KEDB for existing Known Errors on the same CI or error pattern. If found, update the Known Error record
+      rather than creating a duplicate.
+  - n: 7
+    action: 'If no Known Error exists: create a Known Error record with the symptom description, approved workaround, and
+      CI relationship.'
+  - n: 8
+    action: 'Create Problem Tasks (P-Tasks) for each corrective action: code fix, configuration change, runbook update, monitoring
+      improvement, or architecture change.'
+  - n: 9
+    action: 'Assign each P-Task to the accountable engineer. Set a due date based on the Problem priority (P1 Problem: 10
+      business days; P2: 20 business days).'
+  - n: 10
+    action: Track P-Task progress in the weekly SRE operational review. Escalate overdue tasks to the engineering manager.
+  - n: 11
+    action: 'Once all P-Tasks are complete: verify in production that the error pattern is gone (check Splunk — 14 days without
+      recurrence).'
+  - n: 12
+    action: 'Update the Known Error record: set the status to Known Error — Resolved, document the permanent fix, and note
+      the date.'
+  - n: 13
+    action: Close the Problem record with the Root Cause field completed and all P-Tasks in Closed state.
+  - n: 14
+    action: 'If the RCA reveals a systemic risk beyond this application: raise a separate Problem for the shared platform
+      and assign to the infrastructure or platform team.'
+  decisions:
+  - - Permanent fix requires a production change
+    - Raise a Change record and link it to the P-Task. Follow ITSM-PB-05 for change planning and approval.
+  - - Root cause cannot be determined with available data
+    - Raise a monitoring improvement task. Add observability requirements to the SRE backlog (SRE-PB-03).
+  - - Issue is a shared platform defect affecting multiple portfolios
+    - Escalate to the platform owner. Raise a cross-portfolio Problem and assign to the SRE Director.
+  - - Workaround is the only viable option long-term
+    - Document in the KEDB as a Permanent Workaround. Set a calendar reminder for annual review.
+  validation:
+  - Problem record is Closed with Root Cause field completed.
+  - All linked P-Tasks are in Closed state.
+  - Known Error record updated to Resolved status with permanent fix documented.
+  - Splunk shows 14 consecutive days with no recurrence of the error pattern.
+  - Related incidents are linked to the Problem record in ServiceNow.
+  - RCA document is attached to the Problem record or referenced by URL.
+  source_file: ITSM-PB-03 — Problem Management & RCA Playbook.docx
+- id: ITSM-PB-04
+  title: Corrective & Preventive Action (CAPA) Playbook
+  objective: Ensure every RCA corrective action is implemented, tested, and validated; provide auditable evidence linking
+    Problem records to engineering outcomes.
+  triggers:
+  - A Problem record P-Task enters In Progress state.
+  - A Post-Incident Review assigns a corrective action to an engineer.
+  - An SRE audit or reliability review identifies a gap requiring remediation.
+  - A preventive action is raised to address a risk identified before an incident occurs.
+  steps:
+  - n: 1
+    action: Review the P-Task description. Confirm you understand the root cause, the expected fix, and the acceptance criteria.
+  - n: 2
+    action: 'Confirm the fix type: code change, configuration update, runbook improvement, monitoring enhancement, or architecture
+      change.'
+  - n: 3
+    action: 'For code changes: create a feature branch, implement the fix, and submit a pull request with the Problem record
+      number in the PR description.'
+  - n: 4
+    action: 'For configuration changes: document the before and after configuration state in the P-Task Work Notes before
+      making any change.'
+  - n: 5
+    action: Raise a Normal or Standard Change record in ServiceNow. Link the Change to the P-Task and the parent Problem record.
+  - n: 6
+    action: Complete peer review and testing in the non-production environment. Document test results in the Change record's
+      Test Evidence field.
+  - n: 7
+    action: Deploy the fix to production per the approved Change record schedule.
+  - n: 8
+    action: 'After deployment: execute the validation procedure (smoke test, monitoring check, or load test as appropriate).'
+  - n: 9
+    action: 'Attach validation evidence to the P-Task: Splunk dashboard screenshot, test report, or AppDynamics health confirmation.'
+  - n: 10
+    action: Monitor the affected service for 14 days post-deployment. Check Splunk daily for recurrence of the original error
+      pattern.
+  - n: 11
+    action: 'If no recurrence in 14 days: update the P-Task state to Closed — Validated. Add a closure note referencing the
+      Change record and Splunk evidence.'
+  - n: 12
+    action: Confirm the parent Problem record's Known Error entry is updated to Resolved status.
+  - n: 13
+    action: 'If this was a preventive action: document the risk that was mitigated and the measurement used to confirm mitigation.'
+  - n: 14
+    action: Report the closed CAPA in the next SRE operational review, noting the time from Problem creation to validated
+      resolution.
+  decisions:
+  - - Fix introduces unexpected behaviour in testing
+    - Stop deployment. Revert to the workaround. Update the P-Task with test failure evidence. Revisit the RCA.
+  - - Production validation shows recurrence within 14 days
+    - Reopen the Problem record. Escalate to the SRE Lead for a deeper RCA session.
+  - - Fix requires architectural change beyond the sprint scope
+    - Raise a separate engineering initiative. Retain the P-Task as a tracking vehicle with a revised due date approved by
+      the engineering manager.
+  validation:
+  - P-Task is Closed — Validated with evidence attached.
+  - Change record is Closed with post-implementation review completed.
+  - Splunk shows no recurrence of the original error pattern for 14 days post-deployment.
+  - Known Error record updated to Resolved.
+  - CAPA outcome reported in SRE monthly reliability report.
+  source_file: ITSM-PB-04 — Corrective & Preventive Action (CAPA) Playbook.docx
+- id: ITSM-PB-05
+  title: Change Enablement & Release Management Playbook
+  objective: Prevent change-induced outages; ensure every production change has appropriate risk assessment, approval, test
+    evidence, rollback procedure, and post-deployment validation.
+  triggers:
+  - An engineer raises a Change Request (CHG) in ServiceNow for a planned production deployment.
+  - A Problem P-Task requires a production fix (ITSM-PB-04).
+  - An emergency fix is required to restore service during a P1 incident (Emergency Change).
+  - A scheduled maintenance window is approaching for a platform or infrastructure component.
+  steps:
+  - n: 1
+    action: 'Raise a Change Request in ServiceNow. Select the change type: Standard (pre-approved, low-risk), Normal (requires
+      CAB approval), or Emergency (P1-linked, IC-approved).'
+  - n: 2
+    action: 'Complete the Change Description field: what is changing, which CI is affected, and why the change is necessary.'
+  - n: 3
+    action: 'Complete the Risk Assessment: select the impact (1–4) and likelihood (1–4) scores. Document the basis for the
+      risk score in the Risk Notes field.'
+  - n: 4
+    action: 'Attach or link the test evidence: non-production test summary, performance test results (if applicable), and
+      peer review approval.'
+  - n: 5
+    action: Document the rollback plan in the Backout Plan field. The rollback must be executable within the maintenance window.
+  - n: 6
+    action: 'Document the implementation plan in the Implementation Plan field: step-by-step deployment instructions with
+      time estimates for each step.'
+  - n: 7
+    action: 'For Normal changes: submit for CAB review at least 5 business days before the target deployment date.'
+  - n: 8
+    action: 'For Emergency changes: obtain verbal approval from the Incident Commander and the SRE Lead. Raise the Change
+      record immediately and link to the P1 incident.'
+  - n: 9
+    action: Confirm SRE on-call availability and notify the PSE team of the deployment window.
+  - n: 10
+    action: Execute the deployment per the implementation plan. Document the actual start time, each step completion, and
+      any deviations in the Work Notes.
+  - n: 11
+    action: Execute the smoke test and confirm application health via Splunk and AppDynamics.
+  - n: 12
+    action: 'If the smoke test fails or an alert fires within 15 minutes of deployment: execute the rollback plan immediately.
+      Notify SRE on-call and open a P2 incident.'
+  - n: 13
+    action: 'If the smoke test passes: continue to monitor for 30 minutes before declaring the deployment successful.'
+  - n: 14
+    action: 'Complete the Post-Implementation Review (PIR) section in the Change record: actual vs. planned duration, any
+      issues encountered, and whether the rollback was invoked.'
+  - n: 15
+    action: Update the CI record in ServiceNow CMDB to reflect any configuration changes made during the deployment.
+  - n: 16
+    action: Set the Change state to Closed.
+  decisions:
+  - - Smoke test fails post-deployment
+    - Invoke rollback immediately. Raise a P2 incident linked to the Change record. Do not attempt further fixes until the
+      rollback is confirmed.
+  - - Deployment exceeds the maintenance window
+    - 'IC or SRE Lead decides: proceed with rollback, or extend the window with stakeholder notification.'
+  - - Emergency change required during P1
+    - IC approves verbally. Engineer raises the CHG and links to the INC. CAB post-review within 2 business days.
+  - - CMDB CI does not exist for the deployed application
+    - Halt deployment until CI is registered. Raise a CMDB onboarding task (CMDB-PB-01).
+  validation:
+  - Change record is Closed with completed PIR section.
+  - Rollback plan is documented and was not invoked (or if invoked, the reason is recorded).
+  - Splunk and AppDynamics confirm no error spike within 30 minutes post-deployment.
+  - CMDB CI record updated to reflect post-change configuration state.
+  - Post-deployment validation evidence (smoke test result or monitoring screenshot) is attached to the Change record.
+  source_file: ITSM-PB-05 — Change Enablement & Release Management Playbook.docx
+- id: ITSM-PB-06
+  title: Event & Alert Management Playbook
+  objective: Ensure every alert is reviewed, classified as actionable or noise, and either drives an incident to resolution
+    or is suppressed with documented justification.
+  triggers:
+  - An automated alert creates a ServiceNow incident via the Event Management integration.
+  - A PSE or SRE engineer notices an alert pattern during a morning health check.
+  - A recurring alert fires more than three times in 24 hours on the same CI.
+  - An alert suppression rule expires and requires review.
+  steps:
+  - n: 1
+    action: Open the ServiceNow incident created by the alert. Review the alert name, source, CI, severity, and time of first
+      occurrence.
+  - n: 2
+    action: Navigate to the Splunk alert definition. Confirm the alert condition, threshold, and last-modified date.
+  - n: 3
+    action: 'Check the CI field. If it is blank or generic: look up the application from the alert payload and update the
+      CI.'
+  - n: 4
+    action: 'Evaluate actionability: Does this alert indicate a real service degradation that requires engineer action? Check
+      Splunk for corroborating signals (error rate, latency, throughput).'
+  - n: 5
+    action: 'If actionable: proceed with the Incident Detection, Triage & Resolution Playbook (ITSM-PB-01). Leave the Event
+      Management source visible in the Work Notes.'
+  - n: 6
+    action: 'If not actionable (false positive, known transient, or test noise): document the reason in the Work Notes. Close
+      the incident as Cancelled with the reason code ''Monitoring Noise''.'
+  - n: 7
+    action: 'For a recurring false positive (same alert, same result, 3+ times in 7 days): raise an alert improvement task
+      in the SRE backlog. Assign to the monitoring engineer.'
+  - n: 8
+    action: Review the alert threshold and suppression configuration in Splunk. Determine if the threshold is appropriate
+      for the current service baseline.
+  - n: 9
+    action: 'If the threshold is incorrect: raise a ServiceNow Change record to update the Splunk alert definition.'
+  - n: 10
+    action: Document the alert review outcome in the Event Management correlation rule (if applicable) to prevent duplicate
+      incident creation.
+  - n: 11
+    action: 'Report the weekly alert quality metrics in the SRE operational review: total alerts, actionable %, false positive
+      %, suppressed %.'
+  decisions:
+  - - Alert is actionable
+    - Proceed to ITSM-PB-01 triage. Keep the Event Management incident open.
+  - - Alert is a recurring false positive (3+ in 7 days)
+    - Raise an alert improvement task. Suppress the alert temporarily pending threshold review.
+  - - Alert has no named owner
+    - Assign to SRE On-Call group immediately. Raise a governance task to assign a permanent alert owner.
+  - - Alert fires during a known maintenance window
+    - Close as Cancelled — Planned Maintenance. Ensure a maintenance suppression rule is in place for future windows.
+  validation:
+  - 'Every ServiceNow incident from Event Management has a disposition: Actionable (linked to investigation) or Cancelled
+    (reason documented).'
+  - No alert fires for more than 7 days as a recurring false positive without an improvement task being raised.
+  - Alert ownership matrix is reviewed and updated at least monthly.
+  - Weekly alert quality metrics are reported in the SRE operational review.
+  source_file: ITSM-PB-06 — Event & Alert Management Playbook.docx
+- id: ITSM-PB-07
+  title: Known Error & Workaround Management Playbook
+  objective: Maintain an accurate KEDB so that any engineer can apply an approved workaround within minutes of a recurring
+    incident being identified.
+  triggers:
+  - A Problem record is raised and a workaround is identified before a permanent fix is available.
+  - An incident is resolved with a workaround and the Problem record is created (ITSM-PB-03).
+  - The KEDB quarterly review identifies stale or unapproved entries.
+  - An engineer cannot find an existing workaround during an active incident.
+  steps:
+  - n: 1
+    action: Confirm a ServiceNow Problem record exists. If not, raise one per ITSM-PB-03 before creating the Known Error.
+  - n: 2
+    action: In ServiceNow, create a Known Error record linked to the Problem record.
+  - n: 3
+    action: 'Populate the Symptom Description: the observable user or system behaviour that engineers will see during a recurrence.'
+  - n: 4
+    action: 'Populate the Root Cause Summary: a plain-language explanation of why the error occurs (from the RCA).'
+  - n: 5
+    action: 'Document the approved workaround: step-by-step instructions that any engineer can follow without specialist knowledge.'
+  - n: 6
+    action: 'Specify the workaround limitations: time required, service impact during execution, prerequisites, and any conditions
+      under which the workaround does not apply.'
+  - n: 7
+    action: Set the Known Error status to Known Error — Active — Awaiting Permanent Fix.
+  - n: 8
+    action: Link the Known Error record to all related incident records. This enables the Incident team to find the workaround
+      by searching the CI.
+  - n: 9
+    action: Notify the PSE and SRE teams that the Known Error is active. Post the INC-search path in the Teams SRE operations
+      channel.
+  - n: 10
+    action: Review the Known Error every 30 days. If a permanent fix has been deployed (ITSM-PB-04), update the status to
+      Resolved and document the fix.
+  - n: 11
+    action: 'If no permanent fix is possible: classify as Permanent Workaround and set an annual review date.'
+  - n: 12
+    action: 'During the quarterly KEDB review: identify stale entries (no update in 90 days), orphaned entries (no linked
+      Problem), and duplicates. Archive or resolve as appropriate.'
+  decisions:
+  - - Workaround has been applied more than 5 times in 30 days
+    - Escalate the Problem to high priority. Raise a request to accelerate the permanent fix with the engineering manager.
+  - - Permanent fix is deployed
+    - Validate the fix per ITSM-PB-04. Update the Known Error status to Resolved.
+  - - Workaround is no longer effective due to a system change
+    - Update the Known Error immediately. Notify the PSE team. Raise a new P-Task for a revised workaround or permanent fix.
+  validation:
+  - Known Error record is linked to a Problem record in ServiceNow.
+  - Workaround steps are documented and have been validated by at least one engineer other than the author.
+  - Known Error status reflects the current state (Active / Resolved / Permanent Workaround).
+  - Quarterly KEDB review is completed and evidenced with a review note.
+  - All incident records for the affected CI reference the Known Error in their Work Notes.
+  source_file: ITSM-PB-07 — Known Error & Workaround Management Playbook.docx
+- id: ITSM-PB-08
+  title: Knowledge Management & SOP Maintenance Playbook
+  objective: Maintain a complete, accurate, and reviewed knowledge base so that any engineer can perform any documented operational
+    procedure without escalation.
+  triggers:
+  - A new application is onboarded to FSI REO production support.
+  - 'An incident reveals a procedural gap: the engineer could not find or follow the runbook.'
+  - A change or deployment modifies application behaviour not reflected in the current SOP.
+  - A knowledge article reaches its scheduled review date.
+  - An RCA or PIR identifies missing operational knowledge as a contributing factor.
+  steps:
+  - n: 1
+    action: 'Select the appropriate template: Incident Recovery Runbook, Deployment Runbook, Operational SOP, or Troubleshooting
+      Guide.'
+  - n: 2
+    action: Draft the content. Use plain language and numbered steps. Avoid jargon that is not defined within the article.
+  - n: 3
+    action: 'For recovery runbooks: include the trigger condition, preconditions, step-by-step procedure, expected output
+      at each step, rollback, and escalation path.'
+  - n: 4
+    action: 'For deployment runbooks: include the pre-deployment checklist, deployment steps, smoke test, rollback plan, and
+      post-deployment validation.'
+  - n: 5
+    action: Include the CI name, application version, last-tested environment and date, and the author name.
+  - n: 6
+    action: Submit the draft for peer review. The reviewer must be an engineer who has not authored the document.
+  - n: 7
+    action: Incorporate reviewer feedback. Resolve all comments before advancing to approval.
+  - n: 8
+    action: Submit for SRE Lead or technical manager approval in ServiceNow.
+  - n: 9
+    action: Publish the approved article in ServiceNow Knowledge or the designated SharePoint library.
+  - n: 10
+    action: Notify PSE and on-call SRE engineers that the runbook is available. Post the link in the Teams SRE operations
+      channel.
+  - n: 11
+    action: 'Set the review date: 12 months from publication, or immediately after any major application release.'
+  - n: 12
+    action: 'At review date: the assigned owner reviews the article against the current application configuration and deployment
+      evidence. Update or retire as appropriate.'
+  - n: 13
+    action: Mark articles that are no longer applicable as Retired. Do not delete — retain for audit purposes.
+  decisions:
+  - - Runbook cannot be validated because the application has changed significantly
+    - Mark as Draft — Under Revision. Assign a new author. Set a 2-week revision deadline.
+  - - Review date is missed by more than 30 days
+    - Escalate to SRE Lead. Mark the article as Unreviewed — Use With Caution. Remove from the Active SOP list.
+  - - Two engineers report the runbook does not work
+    - Immediately flag as Unvalidated. Raise a P-Task for urgent revision. Notify the PSE team.
+  validation:
+  - Every FSI REO application has at least one incident recovery runbook and one deployment runbook in ServiceNow or SharePoint.
+  - All runbooks have a review date and a named owner.
+  - No active runbook is more than 12 months old without a review note.
+  - New runbooks are validated by an engineer other than the author before publication.
+  - 'SRE monthly report includes the runbook currency metric: % of runbooks reviewed within the last 12 months.'
+  source_file: ITSM-PB-08 — Knowledge Management & SOP Maintenance Playbook.docx
+- id: ITSM-PB-09
+  title: Operational Handoff & Escalation Playbook
+  objective: Ensure every shift handoff and on-call transition is documented, acknowledged, and traceable; prevent open incidents
+    or unresolved risks from being lost during team transitions.
+  triggers:
+  - End of PSE or SRE on-call shift.
+  - On-call engineer is unavailable and escalation to the next level is required.
+  - A P1/P2 incident spans a shift boundary.
+  - A cross-region escalation is required because the incident affects a shared platform component.
+  steps:
+  - n: 1
+    action: '15 minutes before the handoff: the outgoing engineer prepares the handoff note using the standard template.'
+  - n: 2
+    action: 'Handoff note must include: all open P1/P2 incidents (INC number, status, last action, next action), any active
+      changes in the deployment window, known risks or pending alerts requiring monitoring, and any KEDB entries relevant
+      to open work.'
+  - n: 3
+    action: Send the handoff note to the incoming engineer via the Teams SRE operations channel. CC the SRE Lead.
+  - n: 4
+    action: The incoming engineer confirms receipt and acknowledges understanding of each open item.
+  - n: 5
+    action: 'For any open P1 incident: the incoming engineer joins the active bridge before the outgoing engineer leaves.'
+  - n: 6
+    action: 'The outgoing engineer updates ServiceNow: reassign all open incidents to the incoming engineer''s group and add
+      a Work Note: ''Handoff to [name] at [time]. See handoff note [link].'''
+  - n: 7
+    action: The incoming engineer verifies the ServiceNow assignment queue. Confirm no incident is in an unassigned or defaulted
+      state.
+  - n: 8
+    action: 'Post the handoff completion note in Teams: ''Handoff complete. [Name] is on-call from [time].'''
+  - n: 9
+    action: 'For cross-region escalations: the escalating engineer contacts the target region SRE Lead directly (Teams or
+      phone). Does not rely on ServiceNow routing alone.'
+  - n: 10
+    action: The receiving region acknowledges and takes ownership. The originating region remains available for context for
+      30 minutes.
+  decisions:
+  - - Incoming engineer cannot be reached at handoff time
+    - Outgoing engineer contacts the SRE Lead immediately. Extends shift until relief is confirmed. Does not leave incidents
+      unassigned.
+  - - Open P1 incident at handoff time
+    - Outgoing engineer stays on the bridge until the incoming engineer has confirmed they understand the current status and
+      next action.
+  - - No on-call cover identified for a region
+    - SRE Director is notified immediately. Cross-region cover is arranged from an adjacent region.
+  validation:
+  - Handoff note is posted in the Teams SRE channel and acknowledged by the incoming engineer.
+  - All open incidents are reassigned in ServiceNow with a handoff Work Note.
+  - No incident is in an unassigned or default group state at the end of the handoff window.
+  - Cross-region escalations are acknowledged within 15 minutes.
+  source_file: ITSM-PB-09 — Operational Handoff & Escalation Playbook.docx
+- id: ITSM-PB-10
+  title: Continual Improvement & Operational Toil Playbook
+  objective: Systematically identify and eliminate toil; track toil reduction as a measurable reliability improvement metric;
+    ensure engineering capacity is redirected toward sustainable reliability engineering.
+  triggers:
+  - SRE engineer reports more than 2 hours per week on the same manual task.
+  - The same alert or incident type has been manually resolved more than 10 times in a month.
+  - An on-call engineer reports feeling overwhelmed by repetitive work during a retrospective.
+  - An SRE quarterly review includes a toil measurement exercise.
+  - A new automation candidate is identified during a Post-Incident Review.
+  steps:
+  - n: 1
+    action: 'Conduct a toil inventory exercise with the SRE and PSE teams: each engineer lists their top 5 repetitive manual
+      tasks and the time spent per week.'
+  - n: 2
+    action: 'Categorise each toil item: Incident Response Toil, Deployment Toil, Alert Triage Toil, Reporting Toil, or Configuration
+      Management Toil.'
+  - n: 3
+    action: 'Quantify the toil: hours per week, frequency of occurrence, and estimated full-year cost in engineer hours.'
+  - n: 4
+    action: 'Prioritise toil items by: (1) frequency × time, (2) engineer frustration level, (3) automation feasibility.'
+  - n: 5
+    action: 'For the top 3 toil items: raise a Reliability Improvement Story in the engineering backlog. Assign an owner and
+      a target completion quarter.'
+  - n: 6
+    action: 'Design the automation or process improvement: runbook automation in ServiceNow, Splunk scheduled search, CI/CD
+      pipeline enhancement, or alert suppression rule.'
+  - n: 7
+    action: Build and test the automation in a non-production environment. Document the expected time saving per week.
+  - n: 8
+    action: Deploy the automation and monitor for the first 30 days. Track the actual time saving against the estimate.
+  - n: 9
+    action: 'Report the toil reduction in the SRE monthly reliability report: before/after engineer hours, automation coverage,
+      and remaining toil backlog.'
+  - n: 10
+    action: 'Repeat the toil inventory quarterly. Track the trend: total toil hours per on-call week should decrease by at
+      least 10% per quarter.'
+  - n: 11
+    action: Celebrate toil elimination wins in the SRE quarterly review. Recognise engineers who contributed automation improvements.
+  decisions:
+  - - Toil item cannot be automated (manual judgement required)
+    - Document why automation is not feasible. Investigate process simplification or decision-tree tooling instead.
+  - - Toil reduction automation causes an incident
+    - Disable the automation immediately. Raise a P2 incident. Review the automation design before re-enabling.
+  - - Engineering capacity is insufficient for toil reduction work
+    - Escalate to Engineering Manager. Present the toil cost in hours and its impact on reliability investment capacity.
+  validation:
+  - Toil inventory is conducted and documented at least quarterly.
+  - At least one toil reduction automation is delivered per quarter.
+  - Total on-call toil hours decrease quarter-over-quarter.
+  - Toil reduction outcomes are reported in the SRE monthly reliability report.
+  - Every automation has a named owner and a fallback procedure if it fails.
+  source_file: ITSM-PB-10 — Continual Improvement & Operational Toil Playbook.docx
+- id: ITSM-PB-11
+  title: Alert Noise Management Runbook
+  objective: ''
+  triggers:
+  - 'This runbook is triggered by any of the following:'
+  - Monthly alert noise ratio in any region exceeds 20% (measured from ServiceNow monthly report)
+  - A single alert source generates > 500 alerts in a 24-hour window without a linked P1 or P2 incident
+  - Operations team reports > 30% of on-call alerts acknowledged but resolved with no action taken
+  - Post-incident review (PIR) identifies a true positive buried in noise that caused delayed response
+  - SRE or ITSM Manager requests a noise reduction sprint
+  - Alert Correlation funding is approved and onboarding begins (triggers Section 6 Step 7)
+  steps:
+  - n: 1
+    action: 'Pull Alert Noise Report: Export all monitoring-generated incidents from ServiceNow for the target month; Filter:
+      incident_source IN (Dynatrace, AppDynamics, PagerDuty, Splunk); Calculate: (incidents with no work notes AND resolved
+      without SRE action) / total monitoring incidents; Segment by region and by alert source tool; Compare to 20% threshold;
+      flag regions exceeding it'
+  - n: 2
+    action: 'Classify Alert Categories: Category A — True noise: alert fires but no human action ever taken across 30+ consecutive
+      occurrences; Category B — Duplicate / storm: same CI firing > 5 alerts within 10 minutes; Category C — Threshold miscalibration:
+      alert fires outside business hours for a non-critical service; Category D — Correlation candidate: multiple alerts precede
+      a single P1/P2 incident; Tag each alert rule with its category before proceeding'
+  - n: 3
+    action: 'Validate with On-Call Engineers: Share the classified list with the regional on-call leads (Region A, B, C, D);
+      On-call leads confirm: "Have you ever taken action on this alert in the past 90 days?"; Any alert confirmed as never
+      actioned AND with no open linked incident is eligible for suppression; Document validation sign-off: on-call lead name,
+      region, date confirmed'
+  - n: 4
+    action: 'Raise Change Ticket for Suppression Rules: Open a Standard Change in ServiceNow for each batch of alert rule
+      modifications; Change description must include: alert rule name, source tool, affected region, business justification;
+      Attach the validation sign-off from Step 3 as evidence; Change requires approval from ITSM Platform Owner AND regional
+      SRE lead; Implementation window: low-traffic hours (weekday 02:00-04:00 local region time)'
+  - n: 5
+    action: 'Implement Suppression Rules: Dynatrace: Settings > Anomaly Detection > Custom Events > [rule] > set Maintenance
+      Window or suppress; PagerDuty: Services > [service] > Alert Grouping > adjust grouping window or silence rule; AppDynamics:
+      Alert & Respond > Policies > [policy] > edit trigger threshold; Document the exact change made (before/after config
+      export) in the change ticket; Do NOT bulk-suppress entire alert categories without per-rule review'
+  - n: 6
+    action: 'Monitor Post-Suppression for 5 Business Days: Pull daily alert noise counts for the affected region for 5 business
+      days post-change; Confirm: no new P1/P2 incidents opened manually that match the suppressed alert pattern; If a true
+      positive is missed within the 5-day window: immediately re-enable the suppressed rule and escalate to SRE Manager; Record:
+      actual noise reduction achieved (target: each batch reduces noise by >= 5pp)'
+  - n: 7
+    action: 'Alert Correlation Onboarding (When Funded): Engage the monitoring platform vendor (Dynatrace / PagerDuty) for
+      correlation rule design; Map Category D alerts (Step 2) as the initial correlation candidates; Pilot in Region B (lowest
+      total volume) before rolling out to Region A and C; Success criterion: > 40% reduction in alert-to-incident ratio within
+      60 days of activation; Update ITSM-AT-06 baseline after each major change'
+  - n: 8
+    action: 'Monthly Governance Review: Owner presents updated noise ratio by region to ITSM Operations Review; Report format:
+      current ratio, 3-month rolling trend, rules added/removed, missed true positives; Escalate to ITSM Director if any region
+      remains above 20% for 3 consecutive months; Update this runbook if new monitoring tools are onboarded or platform architecture
+      changes'
+  decisions: []
+  validation: []
+  source_file: ITSM-PB-11 — Alert Noise Management Runbook.docx
+- id: SRE-PB-01
+  title: Reliability by Design Playbook
+  objective: Ensure every FSI REO production application has documented reliability requirements, failure-handling design,
+    and production readiness evidence before its first production deployment.
+  triggers:
+  - A new application is proposed for FSI REO production.
+  - A major architecture change is approved (new service, new integration, platform migration).
+  - An SRE assessment identifies that an existing application lacks baseline reliability requirements.
+  - The Production Readiness Review (SRE-PB-07) flags reliability gaps that must be addressed.
+  steps:
+  - n: 1
+    action: 'At project intake: schedule a Reliability by Design kick-off with the application engineer, SRE Lead, and architect.'
+  - n: 2
+    action: 'Define the reliability requirements: availability target (e.g., 99.9%), latency SLO (P99 response time), error
+      budget, and recovery time objective.'
+  - n: 3
+    action: 'Review the architecture for reliability patterns: redundancy, circuit breakers, timeouts, retry logic, graceful
+      degradation, and dependency isolation.'
+  - n: 4
+    action: Identify and document every external dependency. Classify each as Critical or Non-Critical (CMDB-PB-05).
+  - n: 5
+    action: 'Define the observability requirements: structured logging schema, key metrics (request rate, error rate, latency,
+      saturation), and distributed tracing.'
+  - n: 6
+    action: 'Confirm the alerting strategy: what conditions must alert? Who is the alert owner? What is the initial response
+      action?'
+  - n: 7
+    action: Create the SLI definitions and SLO targets in the SRE governance record. Assign an error budget owner.
+  - n: 8
+    action: 'Review the deployment architecture: how will the application be deployed without downtime? What is the rollback
+      plan?'
+  - n: 9
+    action: 'Document the failure scenarios: for each Critical dependency, what happens to this application if that dependency
+      is unavailable?'
+  - n: 10
+    action: 'Create the runbook skeleton: incident recovery procedure, deployment runbook, and dependency failure response.'
+  - n: 11
+    action: 'At the sprint demo before production release: present the completed reliability checklist to the SRE Lead for
+      review.'
+  - n: 12
+    action: Obtain SRE Lead sign-off before the Production Readiness Review (SRE-PB-07) is scheduled.
+  - n: 13
+    action: 'After go-live: review the reliability requirements at the first monthly SRE operational review. Confirm SLOs
+      are being measured.'
+  decisions:
+  - - Architecture review identifies a SPOF with no mitigation
+    - Raise an Architecture Risk item. Do not proceed to production until the SPOF is addressed or the risk is formally accepted
+      by the SRE Director.
+  - - SLO targets cannot be agreed between engineering and business
+    - Escalate to the SRE Director. Use the application’s business impact and incident history as the basis for negotiation.
+  - - Observability tooling is not in place for the new application
+    - Raise an onboarding task for Splunk and AppDynamics instrumentation. Block the Production Readiness Review until observability
+      is confirmed.
+  validation:
+  - SLI and SLO definitions are documented in the SRE governance record.
+  - Architecture review confirms resilience patterns are implemented.
+  - Observability coverage includes logs, metrics, traces, and at least one actionable alert.
+  - Runbook skeleton is created in ServiceNow Knowledge or SharePoint.
+  - SRE Lead has signed off the reliability requirements before the Production Readiness Review.
+  source_file: SRE-PB-01 — Reliability by Design Playbook.docx
+- id: SRE-PB-02
+  title: Architecture Risk Storming Playbook
+  objective: Identify and document all material reliability risks in the application architecture; produce a risk register
+    with owners, mitigations, and timelines.
+  triggers:
+  - A new application or major architecture change is proposed.
+  - A production incident reveals an unaddressed architectural SPOF.
+  - The SRE quarterly review identifies an application with elevated incident frequency and no risk review on record.
+  - An application approaches end-of-life for a critical dependency (e.g., a platform version going unsupported).
+  steps:
+  - n: 1
+    action: 'Schedule the risk storming session (60–90 minutes). Participants: application engineer, SRE Lead, independent
+      SRE engineer, and optionally the application architect.'
+  - n: 2
+    action: Open the architecture diagram. Walk through each component from the user entry point to the data layer.
+  - n: 3
+    action: 'For each component: ask ‘What happens if this fails?’ Document the failure scenario, affected users, and expected
+      impact.'
+  - n: 4
+    action: 'Identify single points of failure: components with no redundancy, no circuit breaker, or no fallback path.'
+  - n: 5
+    action: 'Identify dependency risks: external services, shared databases, or identity providers with no SLA or no circuit
+      breaker.'
+  - n: 6
+    action: 'Identify fault propagation paths: can a failure in one component cascade to unrelated services?'
+  - n: 7
+    action: 'Score each risk: Likelihood (1–4) × Impact (1–4) = Risk Score (1–16). Prioritise risks scoring 9 or above.'
+  - n: 8
+    action: 'For each high-priority risk: agree a mitigation strategy (implement circuit breaker, add redundancy, create a
+      fallback, accept and monitor).'
+  - n: 9
+    action: 'For accepted risks: document the acceptance rationale and the engineer who accepted the risk.'
+  - n: 10
+    action: Create Architecture Risk items in the ServiceNow SRE backlog for each mitigation. Assign owners and due dates.
+  - n: 11
+    action: Publish the Architecture Risk Register and share with the SRE Director and engineering manager.
+  - n: 12
+    action: Schedule a follow-up review 30 days after the session to confirm mitigations are in progress.
+  decisions:
+  - - A risk score of 16 (maximum) is identified
+    - Halt new feature development on the affected component. Escalate to the SRE Director. Treat as a critical reliability
+      debt item.
+  - - Application owner refuses to accept the risk mitigation
+    - Escalate to the SRE Director and engineering manager. The risk cannot be marked as accepted without management sign-off.
+  - - Risk storming reveals a systemic risk across multiple applications
+    - Raise a platform-level Architecture Risk item. Assign to the SRE Director and Infrastructure Engineering.
+  validation:
+  - Architecture Risk Register is published with all identified risks, scores, owners, and mitigations.
+  - All risks scoring 9+ have a mitigation plan with a named owner and due date.
+  - Accepted risks have documented rationale and management sign-off.
+  - 30-day follow-up review confirms mitigations are in progress.
+  - Risk Register is linked to the application’s CI record in ServiceNow.
+  source_file: SRE-PB-02 — Architecture Risk Storming Playbook.docx
+- id: SRE-PB-03
+  title: Observability Engineering Playbook
+  objective: Ensure every FSI REO production application has structured logging, key application metrics, distributed tracing,
+    and at least one actionable alert configured and owned.
+  triggers:
+  - A new application is onboarding to FSI REO production.
+  - An existing application generates Splunk alerts with no structured log data.
+  - An SRE assessment identifies observability gaps (missing metrics, missing traces, or unowned alerts).
+  - AppDynamics APM is not configured for a Tier 1 or Tier 2 application.
+  - An incident is resolved with ‘insufficient log data’ cited as a contributing factor.
+  steps:
+  - n: 1
+    action: Confirm Splunk index allocation for the application. Verify that log forwarding is configured and test logs are
+      arriving.
+  - n: 2
+    action: 'Implement structured JSON logging in the application. Required fields: timestamp (ISO 8601), log level, service
+      name, trace ID, correlation ID, message, and error detail (if applicable).'
+  - n: 3
+    action: 'Instrument the application with AppDynamics APM: install the agent, configure the application name, and verify
+      that transactions are being captured.'
+  - n: 4
+    action: 'Define the four golden signals for this application: Latency (P50, P95, P99 response time), Traffic (requests
+      per second), Errors (error rate %), and Saturation (thread pool, connection pool utilisation).'
+  - n: 5
+    action: Create the AppDynamics health rules for the four golden signals. Set baseline thresholds using 4 weeks of historical
+      data.
+  - n: 6
+    action: Create the Splunk saved search for error rate. Set an alert to fire when the error rate exceeds the SLO threshold.
+  - n: 7
+    action: 'Create the Splunk dashboard: include the four golden signals, top error messages, and dependency call success
+      rates.'
+  - n: 8
+    action: 'Configure distributed tracing: ensure every inbound request generates a trace ID that is propagated to all downstream
+      calls.'
+  - n: 9
+    action: Assign an owner to every alert. No alert without a named owner and assignment group is accepted.
+  - n: 10
+    action: 'Conduct a 30-minute observability walkthrough with the PSE team: demonstrate the dashboard, show how to navigate
+      from an alert to the root cause in logs, and confirm the escalation path.'
+  - n: 11
+    action: Document the observability configuration in the application runbook (SRE-PB-08).
+  - n: 12
+    action: Verify the Splunk and AppDynamics configuration is reflected in the CMDB CI record.
+  decisions:
+  - - Application cannot emit structured logs (legacy system)
+    - Implement a log normalisation pattern in Splunk (field extraction). Raise a technical debt item to upgrade the logging
+      framework.
+  - - AppDynamics agent cannot be installed (containerised or serverless environment)
+    - Use OpenTelemetry SDK for instrumentation. Export traces and metrics to AppDynamics via the OTLP endpoint. Confirm with
+      the SRE Lead.
+  - - Baseline data insufficient for threshold setting (new application)
+    - Set conservative initial thresholds. Review and tighten after 4 weeks of production data.
+  validation:
+  - Splunk logs are arriving in the correct index with structured JSON format.
+  - AppDynamics is capturing transactions with at least 95% instrumentation coverage.
+  - Four golden signal metrics are visible on the Splunk dashboard.
+  - At least one actionable alert is configured with a named owner for each application.
+  - PSE team has completed the observability walkthrough.
+  - Observability configuration is documented in the runbook and reflected in the CI record.
+  source_file: SRE-PB-03 — Observability Engineering Playbook.docx
+- id: SRE-PB-04
+  title: SLI-SLO & Error Budget Engineering Playbook
+  objective: Ensure every FSI REO Tier 1 and Tier 2 application has at least one SLI and one SLO defined, measured, and reviewed
+    monthly.
+  triggers:
+  - A new application is being onboarded (SRE-PB-01).
+  - An existing application has no defined SLO.
+  - A post-incident review identifies that the incident breached an undocumented reliability expectation.
+  - The monthly SLO review shows an application is consuming its error budget faster than planned.
+  steps:
+  - n: 1
+    action: 'Define the SLI: identify the measurable property that best represents the user experience. Common SLIs: availability
+      (% of successful requests), latency (P99 response time), error rate (% of requests returning errors).'
+  - n: 2
+    action: 'Express the SLI as a ratio: ‘good events / total events.’ Define what constitutes a ‘good event’ for this application.'
+  - n: 3
+    action: 'Set the SLO target: the percentage of time the SLI must be within the acceptable range (e.g., 99.9% of requests
+      must complete within 500ms).'
+  - n: 4
+    action: 'Calculate the error budget: Error Budget = 1 - SLO. For a 99.9% SLO over 30 days, the error budget is 43.2 minutes
+      of downtime.'
+  - n: 5
+    action: 'Implement the SLI measurement in Splunk: write the saved search that computes the SLI ratio from application
+      logs.'
+  - n: 6
+    action: 'Create the SLO dashboard in Splunk: show the rolling 28-day SLI trend, current error budget remaining, and burn
+      rate.'
+  - n: 7
+    action: 'Set an error budget alert: fire when the burn rate indicates the error budget will be exhausted before the end
+      of the window.'
+  - n: 8
+    action: 'Document the SLO in the SRE governance record: SLI definition, SLO target, measurement method, error budget,
+      and owner.'
+  - n: 9
+    action: 'Define the error budget policy: when the error budget is > 50%, feature velocity proceeds normally. When 25-50%,
+      SRE reviews all new releases. When < 25%, new feature deployments are paused and reliability work is prioritised.'
+  - n: 10
+    action: 'Review the SLO monthly: compare the actual SLI against the SLO target. Adjust if the target is consistently trivially
+      met or consistently breached.'
+  - n: 11
+    action: 'After the first 3 months: review whether the SLO reflects the actual user experience. Refine if needed.'
+  decisions:
+  - - Error budget is exhausted mid-month
+    - 'Invoke the error budget policy: pause non-critical deployments. Convene an SRE reliability review. Prioritise reliability
+      work in the next sprint.'
+  - - SLO target is trivially met every month (no budget consumed)
+    - Review whether the target is too loose. Tighten the SLO to reflect the actual business expectation.
+  - - SLI measurement is technically infeasible from current logs
+    - Raise an observability improvement task (SRE-PB-03). Use a proxy SLI temporarily. Document the proxy in the governance
+      record.
+  validation:
+  - SLI is defined as a measurable ratio and is being computed from Splunk data.
+  - SLO target is agreed by the SRE Lead and the application business owner.
+  - Splunk SLO dashboard is live and shows the rolling 28-day trend.
+  - Error budget policy is documented and the engineering team has been briefed.
+  - Monthly SLO review is on the SRE calendar.
+  - SLO definition is recorded in the SRE governance record and linked to the application CI.
+  source_file: SRE-PB-04 — SLI-SLO & Error Budget Engineering Playbook.docx
+- id: SRE-PB-05
+  title: Application Resilience Engineering Playbook
+  objective: Ensure every FSI REO Tier 1 application implements at least three resilience patterns with validated configurations,
+    and every Tier 2 application implements at least one.
+  triggers:
+  - A new application is onboarding and the architecture review (SRE-PB-02) identifies missing resilience patterns.
+  - A production incident is caused by a cascade failure from a missing timeout or circuit breaker.
+  - An SRE assessment identifies that a Tier 1 application lacks resilience patterns.
+  - A critical dependency’s SLA is reduced and the application must tolerate increased failure rates.
+  steps:
+  - n: 1
+    action: Review the architecture dependency map (CMDB-PB-05). Identify every external call made by this application.
+  - n: 2
+    action: 'For each external call: determine the current timeout, retry, and circuit breaker configuration. Document the
+      current state.'
+  - n: 3
+    action: Set explicit timeouts on every outbound HTTP, database, and message queue call. Use the dependency’s P99 response
+      time as the timeout baseline, with a 3x multiplier.
+  - n: 4
+    action: Implement retry logic with exponential backoff and jitter on transient failure codes (HTTP 429, 503). Cap retries
+      at 3 attempts.
+  - n: 5
+    action: Implement circuit breakers on calls to Critical dependencies (CMDB-PB-05). Configure the circuit to open after
+      5 consecutive failures within a 30-second window.
+  - n: 6
+    action: 'Implement bulkhead isolation: use separate thread pools for calls to each Critical dependency so one dependency’s
+      slowness does not exhaust the shared thread pool.'
+  - n: 7
+    action: 'Define graceful degradation behaviour: if a Non-Critical dependency is unavailable, what does the application
+      return to the user? Implement and test the degraded response.'
+  - n: 8
+    action: Deploy the resilience configuration to the non-production environment.
+  - n: 9
+    action: 'Run chaos engineering tests: simulate dependency failures using a timeout injection or connection refusal in
+      the test environment. Confirm the circuit breaker opens and the fallback is invoked.'
+  - n: 10
+    action: Review chaos test results with the SRE Lead. Confirm the application behaves as designed under failure conditions.
+  - n: 11
+    action: Deploy to production per ITSM-PB-05. Monitor AppDynamics and Splunk for 30 minutes post-deployment.
+  - n: 12
+    action: Document the resilience configuration in the application runbook (SRE-PB-08).
+  decisions:
+  - - Circuit breaker cannot be implemented in the current framework version
+    - Raise a technical upgrade task. Implement a manual timeout and retry pattern as an interim measure. Document the gap
+      in the Architecture Risk Register (SRE-PB-02).
+  - - Chaos test reveals the circuit breaker does not open correctly
+    - Do not deploy to production. Fix the configuration and repeat the test. Do not accept a failed chaos test as ‘acceptable
+      risk.
+  - - Application framework does not support bulkhead isolation
+    - Use process-level isolation (separate service instances) as a bulkhead alternative. Document the design decision.
+  validation:
+  - Every external call has an explicit timeout configured.
+  - Retry logic with exponential backoff is implemented on all transient failure paths.
+  - Circuit breakers are configured for all Critical dependency calls.
+  - Chaos engineering test results confirm circuit breakers open and fallbacks are invoked.
+  - Resilience configuration is documented in the application runbook.
+  - SRE Lead has reviewed and approved the resilience configuration.
+  source_file: SRE-PB-05 — Application Resilience Engineering Playbook.docx
+- id: SRE-PB-06
+  title: Performance & Capacity Engineering Playbook
+  objective: Ensure every Tier 1 application has a documented performance baseline, a passing load test result, and a capacity
+    forecast updated at least quarterly.
+  triggers:
+  - A new application is preparing for production deployment.
+  - A significant traffic increase is anticipated (new integration, marketing campaign, regulatory deadline).
+  - A production incident is attributed to capacity exhaustion or performance degradation.
+  - Quarterly capacity review is due.
+  - A platform migration changes the application’s resource profile.
+  steps:
+  - n: 1
+    action: 'Establish the performance baseline: from 4 weeks of AppDynamics production data, compute the P50, P95, and P99
+      response times and the peak transactions per second (TPS).'
+  - n: 2
+    action: 'Define the performance acceptance criteria: the P99 response time must not exceed the SLO latency target at 1.5x
+      the current peak TPS.'
+  - n: 3
+    action: 'Design the load test scenario: model the representative user journey (read, write, search operations) with transaction
+      mix matching production.'
+  - n: 4
+    action: Run the baseline load test in the non-production environment at 1x peak TPS. Confirm the response times meet the
+      acceptance criteria.
+  - n: 5
+    action: Run the stress test at 1.5x peak TPS. Confirm the application degrades gracefully (latency increases but the circuit
+      breaker does not open and no errors occur).
+  - n: 6
+    action: 'Run the breaking point test: increase load until errors begin. Document the breaking point TPS. Confirm the breaking
+      point is at least 2x the expected peak.'
+  - n: 7
+    action: Review load test results with the SRE Lead. Identify bottlenecks (CPU, memory, thread pool, database connection
+      pool).
+  - n: 8
+    action: 'Resolve identified bottlenecks: scale the resource, tune the thread pool, or optimise the query. Re-run the test
+      after each fix.'
+  - n: 9
+    action: 'Document the capacity forecast: current peak TPS, growth rate per quarter, estimated capacity ceiling, and the
+      quarter when the ceiling will be reached.'
+  - n: 10
+    action: 'Configure auto-scaling rules (if the platform supports it): scale out at 70% CPU or 80% connection pool utilisation.'
+  - n: 11
+    action: 'Set a Splunk capacity alert: fire when observed TPS exceeds 80% of the load-tested safe maximum.'
+  - n: 12
+    action: Update the capacity forecast quarterly using AppDynamics traffic trend data.
+  decisions:
+  - - Load test passes in non-prod but fails in production
+    - Investigate environmental differences. Check connection pool sizes, infrastructure tier, and data volume. Rerun with
+      production-representative data.
+  - - Breaking point is below 1.5x current peak TPS
+    - Do not proceed to production without capacity remediation. Escalate to the SRE Director.
+  - - Capacity ceiling will be reached within 2 quarters
+    - Raise a capacity expansion request immediately. Do not wait for the quarterly review.
+  validation:
+  - Baseline load test passes at 1x peak TPS within acceptance criteria.
+  - Stress test passes at 1.5x peak TPS with graceful degradation.
+  - Breaking point is at least 2x expected peak TPS.
+  - Capacity forecast is documented and updated quarterly.
+  - Splunk capacity alert is configured and owned.
+  - SRE Lead has reviewed and approved the load test results.
+  source_file: SRE-PB-06 — Performance & Capacity Engineering Playbook.docx
+- id: SRE-PB-07
+  title: Production Readiness Review Playbook
+  objective: Prevent immature applications from reaching production by enforcing a standardised readiness gate with clear
+    pass/fail criteria.
+  triggers:
+  - An application completes the Reliability by Design process (SRE-PB-01) and is ready for production.
+  - A major release with a new service or dependency is approaching the deployment window.
+  - The SRE Director requests a PRR for an existing application that was deployed without one.
+  steps:
+  - n: 1
+    action: 'Schedule the PRR: SRE Lead, application engineer, PSE Lead, and (for Tier 1 applications) SRE Director.'
+  - n: 2
+    action: 'Review the Reliability by Design checklist: confirm SLIs, SLOs, error budget, and architecture review are complete.'
+  - n: 3
+    action: 'Review observability: confirm Splunk and AppDynamics are configured, the four golden signals are visible, and
+      at least one actionable alert is owned.'
+  - n: 4
+    action: 'Review resilience: confirm timeouts, retries, and circuit breakers are implemented for all Critical dependencies.'
+  - n: 5
+    action: 'Review the runbook: confirm the incident recovery runbook, deployment runbook, and dependency failure response
+      are published.'
+  - n: 6
+    action: 'Review the change plan: confirm the deployment has a rollback plan, test evidence, and a post-deployment validation
+      step.'
+  - n: 7
+    action: 'Review on-call coverage: confirm the PSE on-call schedule includes this application and the assignment group
+      is correct in ServiceNow.'
+  - n: 8
+    action: 'Review the CMDB CI: confirm the CI is registered with the correct tier, SRE region, and dependency relationships.'
+  - n: 9
+    action: 'Conduct a tabletop failure simulation: ‘The primary database fails at 2am. Walk me through the response.’ The
+      engineer must be able to answer using the runbook.'
+  - n: 10
+    action: 'Score each PRR criterion: Pass, Conditional Pass (minor gap, owner and due date agreed), or Fail (significant
+      gap, deployment blocked).'
+  - n: 11
+    action: 'If all criteria Pass or have Conditional Pass resolutions agreed: PRR is approved. The SRE Lead signs off.'
+  - n: 12
+    action: 'If any criterion Fails: deployment is blocked. The application engineer must address the failure and request
+      a re-review.'
+  - n: 13
+    action: Document the PRR outcome in ServiceNow (linked to the deployment Change record) and in SharePoint.
+  decisions:
+  - - Runbook tabletop simulation fails
+    - PRR Fail. Deployment blocked. Application engineer must practice the runbook steps in a non-production simulation before
+      re-review.
+  - - Observability shows gaps but a fix is in progress
+    - Conditional Pass. Agree the fix due date (must be before the deployment date). SRE Lead signs off with condition noted.
+  - - SRE Director is unavailable for a Tier 1 PRR
+    - Reschedule within 2 business days. Do not proceed with the PRR without the SRE Director for Tier 1 applications.
+  validation:
+  - PRR scorecard is completed for every criterion.
+  - SRE Lead has signed off the PRR.
+  - PRR outcome is documented in ServiceNow and linked to the deployment Change record.
+  - All Conditional Pass items have agreed owners and due dates before the deployment proceeds.
+  - PRR document is stored in the application’s SharePoint library.
+  source_file: SRE-PB-07 — Production Readiness Review Playbook.docx
+- id: SRE-PB-08
+  title: Operational Runbook Engineering Playbook
+  objective: Ensure every FSI REO production application has a current, validated incident recovery runbook and deployment
+    runbook before any on-call rotation includes that application.
+  triggers:
+  - A new application is approved for production (before the Production Readiness Review, SRE-PB-07).
+  - An incident reveals that the runbook is incorrect or incomplete.
+  - A major application release changes the recovery or deployment procedure.
+  - A runbook’s review date is reached.
+  - An engineer reports being unable to use the runbook during an incident.
+  steps:
+  - n: 1
+    action: 'Select the runbook type: Incident Recovery Runbook or Deployment Runbook.'
+  - n: 2
+    action: 'For an Incident Recovery Runbook: structure the content as follows: Trigger Condition, Preconditions, Triage
+      Steps (5 minutes), Diagnosis Steps (confirm the failure type), Recovery Steps (numbered, with expected output at each
+      step), Rollback (if recovery steps fail), Escalation Path, and Post-Incident Actions.'
+  - n: 3
+    action: 'For a Deployment Runbook: structure as: Pre-Deployment Checklist, Deployment Steps (with commands and expected
+      output), Smoke Test, Rollback Plan, Post-Deployment Validation.'
+  - n: 4
+    action: 'Write every step as a specific action: not ‘check the logs’ but ‘Navigate to Splunk > [dashboard name] > filter
+      by app=[name] and level=ERROR. Expected: error rate < 0.1%.’'
+  - n: 5
+    action: Include the exact commands, dashboard links, ServiceNow search paths, and expected output at each step.
+  - n: 6
+    action: Write the runbook assuming the reader has never touched this application before. Do not assume institutional knowledge.
+  - n: 7
+    action: 'Test the runbook: the author and a second engineer independently follow the runbook steps in a non-production
+      environment. Document any step that was unclear or failed.'
+  - n: 8
+    action: Incorporate test feedback. Revise until both engineers can follow the runbook to a successful outcome without
+      asking questions.
+  - n: 9
+    action: Submit for technical review by the SRE Lead or a senior engineer. Resolve all review comments.
+  - n: 10
+    action: Publish in ServiceNow Knowledge Base or SharePoint. Set the CI link on the knowledge article to the application’s
+      CMDB CI.
+  - n: 11
+    action: Notify PSE on-call engineers that the runbook is available. Post the link in the Teams SRE operations channel.
+  - n: 12
+    action: 'Set the review date: 12 months from publication, or after any major application release.'
+  decisions:
+  - - Runbook test reveals a step that cannot be followed without specialist knowledge
+    - Rewrite the step with sufficient context. If specialist knowledge is genuinely required, add an escalation step to a
+      named subject matter expert.
+  - - Recovery steps differ between production and non-production environments
+    - Document the production-specific steps explicitly. Flag non-production test limitations in the runbook header.
+  - - Runbook review date is missed
+    - Mark the runbook as Unreviewed. Remove it from the active on-call reference list. Assign a revision task with a 10-business-day
+      deadline.
+  validation:
+  - Incident Recovery Runbook is published and tested before the application is added to the PSE on-call rotation.
+  - Both the author and an independent engineer have completed the runbook test successfully.
+  - All review comments are resolved and the SRE Lead has approved.
+  - Runbook is linked to the application CI in ServiceNow.
+  - Review date is set and the runbook appears in the SRE currency report.
+  source_file: SRE-PB-08 — Operational Runbook Engineering Playbook.docx
+- id: SRE-PB-09
+  title: Reliability Incident Investigation Playbook
+  objective: 'For every P1 incident and for recurring P2 patterns: produce a reliability investigation report that identifies
+    systemic contributing factors and drives engineering improvements.'
+  triggers:
+  - A P1 incident is resolved and the PIR task is created (ITSM-PB-02).
+  - A P2 incident type has recurred three or more times in 60 days.
+  - The SRE Lead identifies a reliability pattern requiring deeper investigation.
+  - An error budget is exhausted and a root cause investigation is required.
+  steps:
+  - n: 1
+    action: 'Reconstruct the incident timeline: list every event, action, and decision in chronological order from the first
+      alert to resolution.'
+  - n: 2
+    action: 'Identify the contributing factors using the Systems Thinking approach: what conditions in the system made this
+      failure possible?'
+  - n: 3
+    action: Apply the Five Whys to each contributing factor. Trace each factor to its systemic root.
+  - n: 4
+    action: 'Classify the contributing factors: Missing Observability, Missing Resilience, Process Gap, Human Factors, Architecture
+      Risk, or External Dependency.'
+  - n: 5
+    action: 'Identify what went well: what detection, response, or communication actions worked as intended?'
+  - n: 6
+    action: 'Identify what could have been better: where were the delays, miscommunications, or ineffective actions?'
+  - n: 7
+    action: 'Define engineering improvements for each contributing factor. Be specific: not ‘improve monitoring’ but ‘add
+      a Splunk alert for database connection pool exhaustion on [application name] within 10 business days.’'
+  - n: 8
+    action: Assign each improvement to a named engineer with a due date. Create P-Tasks in ServiceNow for each action.
+  - n: 9
+    action: 'Write the investigation report using the standard template: timeline, contributing factors, what went well, improvements,
+      and assigned actions.'
+  - n: 10
+    action: 'Conduct a blameless review: this report is shared openly. No individual is blamed. Actions target system and
+      process improvements.'
+  - n: 11
+    action: Share the report with the SRE team, engineering leads, and (for P1s) the SRE Director.
+  - n: 12
+    action: Schedule a 30-day follow-up to confirm engineering improvements are in progress.
+  - n: 13
+    action: Add the findings to the SRE reliability knowledge base to benefit future investigations.
+  decisions:
+  - - Investigation reveals a systemic architecture risk
+    - Raise an Architecture Risk item (SRE-PB-02). Escalate to the SRE Director.
+  - - The incident was caused by a process that engineering cannot change
+    - Escalate the finding to the SRE Director and the relevant process owner. Document the cross-team action item.
+  - - Investigation cannot be completed due to missing log data
+    - Document the missing data as a reliability evidence gap. Raise an observability improvement task (SRE-PB-03).
+  validation:
+  - Investigation report is complete with timeline, contributing factors, and improvements.
+  - All improvements have named owners and due dates in ServiceNow P-Tasks.
+  - Report is shared with the SRE team and relevant engineering leads.
+  - 30-day follow-up is scheduled and completed.
+  - Improvement actions are tracked through to closure in ServiceNow.
+  source_file: SRE-PB-09 — Reliability Incident Investigation Playbook.docx
+- id: SRE-PB-10
+  title: Disaster Recovery & Failover Engineering Playbook
+  objective: Ensure every Tier 1 FSI REO application has a tested DR procedure that can be executed by the on-call team and
+    delivers recovery within the agreed RTO/RPO.
+  triggers:
+  - A Tier 1 application has no documented DR procedure.
+  - Annual DR test is due.
+  - A P1 incident escalates to the point where normal recovery is infeasible and DR invocation is being considered.
+  - A major architecture change alters the DR design.
+  steps:
+  - n: 1
+    action: Confirm the RTO and RPO for this application from the CMDB CI record.
+  - n: 2
+    action: 'Design the DR architecture: active-passive (standby), active-active (load-balanced), or backup-and-restore. Document
+      the design decision and its RTO/RPO implications.'
+  - n: 3
+    action: 'Document the data replication strategy: synchronous or asynchronous. Confirm the RPO achievable with the chosen
+      replication method.'
+  - n: 4
+    action: 'Write the DR runbook: include trigger criteria, decision authority (who can invoke DR), step-by-step failover
+      procedure, DNS or load balancer cutover, data validation steps, and rollback procedure.'
+  - n: 5
+    action: 'Identify the DR invocation authority: who can declare a DR event? Document the escalation chain.'
+  - n: 6
+    action: Schedule the annual DR test. Notify the business owner and the PSE team at least 10 business days in advance.
+  - n: 7
+    action: 'Execute the DR test in a controlled window: follow the DR runbook step by step. Measure the actual recovery time
+      and confirm data integrity.'
+  - n: 8
+    action: 'Compare actual recovery time against the RTO. If RTO is not met: raise a DR gap task immediately.'
+  - n: 9
+    action: 'Document the DR test results: start time, each recovery step timestamp, recovery completion time, data integrity
+      validation result, and any deviations from the runbook.'
+  - n: 10
+    action: Update the DR runbook based on test findings. Address any steps that were unclear or required improvisation.
+  - n: 11
+    action: Submit the DR test report to the SRE Director and the business owner.
+  - n: 12
+    action: 'For a live DR invocation: follow the DR runbook. The Incident Commander has final decision authority. Document
+      every action in the ServiceNow P1 incident Work Notes.'
+  decisions:
+  - - Annual DR test fails to meet RTO
+    - Raise a Severity 1 DR gap task. Escalate to the SRE Director and engineering manager. Do not defer remediation to the
+      next quarter.
+  - - DR invocation is being considered during a P1 incident
+    - IC consults the SRE Director before invoking DR. DR invocation is a high-impact action that requires explicit management
+      approval.
+  - - DR environment is not equivalent to production (data drift, version mismatch)
+    - Pause the DR test. Investigate and remediate the environment gap. Reschedule the test within 10 business days.
+  validation:
+  - Annual DR test is completed and results documented.
+  - Actual recovery time meets the RTO.
+  - Data integrity validation passes after failover.
+  - DR test report is submitted to the SRE Director and business owner.
+  - DR runbook is updated based on test findings.
+  - DR test evidence is linked to the application CI in ServiceNow.
+  source_file: SRE-PB-10 — Disaster Recovery & Failover Engineering Playbook.docx
+- id: SRE-PB-11
+  title: Reliability Automation Engineering Playbook
+  objective: Ensure every reliability automation artefact has a named owner, a tested failure mode, a manual override, and
+    monitoring coverage before it is allowed to act on production systems.
+  triggers:
+  - A new reliability automation is proposed for production.
+  - An existing automation causes an unexpected production action.
+  - A toil reduction initiative (ITSM-PB-10) produces an automation candidate.
+  - A Post-Incident Review recommends automation to reduce response time.
+  steps:
+  - n: 1
+    action: 'Document the automation design: what trigger causes it to fire, what action it takes, what production systems
+      it can affect, and what it does if the action fails.'
+  - n: 2
+    action: 'Identify the failure modes: what happens if the automation fires incorrectly? What is the worst-case production
+      impact?'
+  - n: 3
+    action: 'Implement a manual override: every automation must be disableable within 30 seconds by a single command or a
+      configuration toggle accessible to the on-call engineer.'
+  - n: 4
+    action: 'Implement logging: every automation action must generate a Splunk log entry with: timestamp, trigger condition,
+      action taken, target system, and outcome.'
+  - n: 5
+    action: 'Implement dry-run mode: before enabling the automation in production, run it in dry-run mode for at least 5 business
+      days. Review the dry-run log to confirm it would have taken correct actions.'
+  - n: 6
+    action: 'Test the failure mode: simulate the automation’s trigger condition in non-production and confirm the action is
+      correct. Then simulate an incorrect trigger and confirm the manual override works.'
+  - n: 7
+    action: Obtain SRE Lead approval before enabling in production. Document the approval in ServiceNow.
+  - n: 8
+    action: Enable the automation in production. Monitor Splunk for the first 7 days for unexpected actions.
+  - n: 9
+    action: 'Set a monthly review: review the automation log. Confirm it is still taking correct actions and is not firing
+      false positives.'
+  - n: 10
+    action: 'If the automation fires an incorrect action: disable immediately. Raise a P2 incident. Investigate before re-enabling.'
+  decisions:
+  - - Automation fires more than 3 incorrect actions in a week
+    - Disable permanently until a root cause investigation is complete. Do not re-enable with only a threshold adjustment.
+  - - Automation owner leaves the team
+    - Reassign ownership before the engineer departs. No automation is allowed to run in production without an active owner.
+  - - Automation blast radius is assessed as ‘full service outage’
+    - Require SRE Director approval before enabling. Implement a two-person confirmation requirement for the trigger.
+  validation:
+  - Automation has a documented design, failure mode analysis, and blast radius assessment.
+  - Manual override is tested and accessible to the on-call engineer.
+  - Dry-run completed for at least 5 business days with reviewed logs.
+  - SRE Lead approval is documented in ServiceNow.
+  - Monthly review is scheduled and Splunk monitoring is active.
+  source_file: SRE-PB-11 — Reliability Automation Engineering Playbook.docx
+- id: SRE-PB-12
+  title: Reliability Toil Reduction Playbook
+  objective: Reduce SRE and PSE operational toil by at least 10% per quarter through systematic identification, prioritisation,
+    and automation of repetitive reliability work.
+  triggers:
+  - Quarterly SRE toil measurement exercise is due.
+  - An SRE engineer reports toil consuming more than 30% of their on-call time.
+  - A Post-Incident Review identifies that manual steps during the incident could be automated.
+  - The SRE Director commissions a toil reduction sprint.
+  steps:
+  - n: 1
+    action: 'Conduct the quarterly toil survey: each SRE and PSE engineer records their top 5 most time-consuming repetitive
+      tasks and the estimated weekly hours.'
+  - n: 2
+    action: Aggregate the survey results. Calculate total toil hours per week for the team.
+  - n: 3
+    action: 'Categorise toil by type: Alert Triage Toil, Incident Response Toil, Deployment Toil, Reporting Toil, or Maintenance
+      Toil.'
+  - n: 4
+    action: 'Prioritise toil items using the formula: (weekly hours × frequency per year) ÷ estimated automation effort in
+      days.'
+  - n: 5
+    action: 'For the top 3 toil items: raise Reliability Improvement Stories in the SRE backlog. Assign owners and target
+      delivery quarters.'
+  - n: 6
+    action: 'Design the automation or process simplification. For alert toil: improve alert quality (SRE-PB-03). For incident
+      response toil: improve runbooks (SRE-PB-08) or implement auto-remediation (SRE-PB-11).'
+  - n: 7
+    action: Build and test the automation per SRE-PB-11 (if the toil reduction involves production automation).
+  - n: 8
+    action: 'Deploy and measure: track the actual hours saved per week after automation.'
+  - n: 9
+    action: 'Report toil reduction progress quarterly: before/after hours, automation deployed, and remaining toil backlog.'
+  - n: 10
+    action: 'Aim for the SRE team to spend no more than 50% of on-call time on toil. If toil exceeds 50%: escalate to the
+      SRE Director and engineering manager as a capacity risk.'
+  decisions:
+  - - Toil item requires automation that touches production systems
+    - Follow SRE-PB-11 for reliability automation safety. Do not implement production automation outside of that process.
+  - - Toil reduction is blocked by a process outside SRE control
+    - Raise the cross-team dependency to the SRE Director. Frame as a reliability capacity risk.
+  - - Engineering capacity cannot be allocated for toil reduction
+    - Present the toil cost in engineering hours per year to the engineering manager. Toil reduction is not optional — it
+      is a precondition for sustainable SRE.
+  validation:
+  - Quarterly toil survey is completed and results are documented.
+  - At least one toil reduction automation is delivered per quarter.
+  - On-call toil hours decrease quarter-over-quarter.
+  - No SRE engineer spends more than 50% of on-call hours on toil.
+  - Toil reduction outcomes are reported in the SRE quarterly reliability report.
+  source_file: SRE-PB-12 — Reliability Toil Reduction Playbook.docx
+- id: SRE-PB-13
+  title: Post-Deployment Reliability Validation Playbook
+  objective: Ensure every production deployment is followed by a documented reliability validation covering SLO performance,
+    error rate, latency, and dependency health for a minimum of 60 minutes post-deployment.
+  triggers:
+  - A production deployment is completed per ITSM-PB-05.
+  - An emergency change is deployed during a P1 incident.
+  - A configuration change is applied that affects application behaviour.
+  - An SRE assessment identifies a recent deployment without validation evidence.
+  steps:
+  - n: 1
+    action: 'Immediately after deployment: execute the smoke test from the deployment runbook. Record pass or fail for each
+      smoke test step.'
+  - n: 2
+    action: Open the Splunk application health dashboard. Compare the current error rate against the pre-deployment baseline.
+  - n: 3
+    action: Open AppDynamics APM. Check the transaction response times for the 10 minutes immediately post-deployment.
+  - n: 4
+    action: 'Confirm the four golden signals are within normal bounds: error rate < SLO threshold, P99 latency < SLO target,
+      transaction throughput within expected range, saturation metrics (thread pool, connection pool) within capacity.'
+  - n: 5
+    action: 'Check dependency call success rates: confirm that all upstream and downstream dependencies are responding normally.'
+  - n: 6
+    action: 'At T+15 minutes: post a status update in the Teams SRE channel: ‘[Application] deployment complete. Error rate:
+      [x]%. Latency P99: [x]ms. Status: NOMINAL / WATCH / ISSUE.’'
+  - n: 7
+    action: Monitor for 60 minutes from deployment completion. Check Splunk and AppDynamics every 15 minutes.
+  - n: 8
+    action: 'At T+60 minutes: if all metrics are nominal, declare the deployment validated. Post the validation completion
+      in the Teams channel.'
+  - n: 9
+    action: 'Document the validation in the Change record’s Post-Implementation Review section: smoke test result, error rate
+      comparison, latency comparison, and the 60-minute observation notes.'
+  - n: 10
+    action: 'If any metric degrades beyond the SLO threshold at any point during the 60-minute window: invoke the rollback
+      plan (ITSM-PB-05). Raise a P2 incident.'
+  - n: 11
+    action: Close the Change record with the validation evidence attached.
+  decisions:
+  - - Error rate increases above SLO threshold within 60 minutes
+    - Invoke rollback immediately per ITSM-PB-05. Raise a P2 incident. Do not wait for the 60-minute window to expire.
+  - - Metrics are elevated but below the SLO threshold
+    - Extend the monitoring window to 120 minutes. Notify the SRE Lead. Do not close the Change record until metrics return
+      to normal.
+  - - Splunk or AppDynamics is unavailable post-deployment
+    - Do not declare the deployment validated without observability data. Raise an infrastructure task. Extend the monitoring
+      window until observability is restored.
+  validation:
+  - Smoke test is completed and all steps pass.
+  - 60-minute monitoring window is completed with no SLO breach.
+  - Four golden signals are within normal bounds at T+60.
+  - Change record PIR section documents the validation evidence.
+  - Teams SRE channel post-deployment status messages are present.
+  - Change record is Closed with validation evidence attached.
+  source_file: SRE-PB-13 — Post-Deployment Reliability Validation Playbook.docx
+- id: SRE-PB-14
+  title: Reliability Automation Engineering Playbook
+  objective: Design, authorize, deploy, and operate reliability automation that passes safety, observability, and rollback
+    requirements; establish operational ownership; and enable measurement of toil reduction achieved
+  triggers: []
+  steps: []
+  decisions: []
+  validation: []
+  source_file: SRE-PB-14 — Reliability Automation Engineering Playbook.docx
+- id: SRE-PB-15
+  title: Post-Deployment Reliability Validation Playbook
+  objective: Confirm that a production deployment did not introduce a reliability regression; validate SLO attainment; execute
+    defined health checks; and produce a documented pass/rollback decision within the validation window.
+  triggers: []
+  steps: []
+  decisions: []
+  validation: []
+  source_file: SRE-PB-15 — Post-Deployment Reliability Validation Playbook.docx

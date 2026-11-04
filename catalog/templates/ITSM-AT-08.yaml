@@ -1,0 +1,109 @@
+id: ITSM-AT-08
+title: Continuous Improvement & Service Improvement Plan Assessment
+domain: ITSM
+variant: A
+priority: P2
+applicability: All FSI REO improvement initiatives tracked through the REO governance process
+accountable_owner: REO leadership / PSE / SRE
+purpose: Evaluate the effectiveness of the FSI REO Continual Service Improvement framework, including how improvement opportunities
+  are identified, prioritized, tracked, and measured. Directly maps to the IO scoring model and the 23 identified improvement
+  opportunities.
+relevance: 2 improvement intake paths with no value-based prioritization (G-09). IO scoring model defined (IO-01–IO-23 with
+  Priority + Score). REO Operating Model references CSI but no formal CSIP register was found in the extract.
+reassessment_trigger: Major release, architecture change, or Post-Incident Review recommendation
+scope: []
+signoff_roles:
+- Assessment Lead
+- Domain Reviewer
+- Engineering / Service Owner
+- PSE Representative
+criteria:
+- id: ITSM-AT-08-C01
+  number: 1
+  name: Improvement Opportunity Register
+  standard_ref: ITIL CSI — Service Improvement Plan; ITPN G-09
+  applicability: All 23 identified FSI REO improvement opportunities (IO-01–IO-23)
+  required_evidence: 'ServiceNow or approved improvement register: each IO has owner, priority score, target date, and current
+    status'
+  evaluation_method: 'Deterministic: all 23 IOs registered with owner, score, target date, and status'
+  methods:
+  - deterministic
+  acceptance_criteria: All 23 IOs in a single register; each has owner, priority score, target date, and status
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: REO leadership
+  reassessment: ''
+  example_risk: High — 2 intake paths and no register means improvement work is invisible to governance
+  example_recommendation: Consolidate improvement intake to one register; populate all 23 IOs within 14 days
+  references: []
+- id: ITSM-AT-08-C02
+  number: 2
+  name: Value-Based Prioritization
+  standard_ref: ITPN G-09; IO scoring model
+  applicability: All improvement opportunities
+  required_evidence: Improvement register showing IO scores applied; top-5 IOs scheduled in current quarter
+  evaluation_method: 'Human review: improvement work sequence matches IO priority score; deviations documented with rationale'
+  methods:
+  - human
+  acceptance_criteria: Top-5 IOs by score scheduled within current quarter; any prioritization override documented
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: REO leadership / SRE
+  reassessment: ''
+  example_risk: High — without value-based prioritization, low-impact work crowds out high-ROI opportunities
+  example_recommendation: Apply IO scoring model to all initiatives; require written rationale for any lower-scoring item
+    prioritized above a higher-scoring one
+  references: []
+- id: ITSM-AT-08-C03
+  number: 3
+  name: Improvement Delivery Velocity
+  standard_ref: ITIL CSI; ITPN G-13
+  applicability: All in-progress improvement opportunities
+  required_evidence: 'Improvement register: completed IOs per quarter; planned vs. actual delivery dates'
+  evaluation_method: 'Deterministic: measure % IOs delivered on or before committed date'
+  methods:
+  - deterministic
+  acceptance_criteria: '> 80% of committed IOs delivered on schedule per quarter'
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: REO leadership
+  reassessment: ''
+  example_risk: Medium — without measuring delivery velocity, improvement commitments are nominal
+  example_recommendation: Track planned vs. actual delivery date for each IO; report in monthly governance meeting
+  references: []
+- id: ITSM-AT-08-C04
+  number: 4
+  name: Improvement Impact Measurement
+  standard_ref: ITIL CSI — Measurement; ITPN G-18, G-19
+  applicability: All completed improvement opportunities
+  required_evidence: Baseline metric captured before IO started; post-implementation metric confirming impact
+  evaluation_method: 'Human review: each completed IO has a before and after metric demonstrating improvement'
+  methods:
+  - human
+  acceptance_criteria: All closed IOs have a before/after metric pair documenting realized value
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: REO leadership / SRE
+  reassessment: ''
+  example_risk: Medium — without measurement, improvements cannot be credited to the CSI program
+  example_recommendation: Define success metric before starting each IO; measure and record 90 days post-implementation
+  references: []
+- id: ITSM-AT-08-C05
+  number: 5
+  name: Governance Cadence Adherence
+  standard_ref: REO Operating Model; ITIL CSI
+  applicability: REO governance meetings and reporting cadence
+  required_evidence: Meeting records for last 3 months; improvement register status reviewed at each meeting
+  evaluation_method: 'Deterministic: improvement register reviewed at each monthly governance meeting; decisions minuted'
+  methods:
+  - deterministic
+  acceptance_criteria: Monthly governance meeting held; improvement register reviewed; decisions documented and distributed
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: REO leadership
+  reassessment: ''
+  example_risk: Medium — governance gaps allow improvement work to stall without visibility
+  example_recommendation: Lock monthly governance calendar; require improvement register status as standing agenda item
+  references: []
+source_file: ITSM-AT-08 — Continuous Improvement & Service Improvement Plan Assessment.docx
+references: []

@@ -1,0 +1,47 @@
+# Local stack: Postgres + pgvector, Kafka (KRaft), Ollama (CPU), API, worker.
+#   docker compose up -d postgres kafka ollama
+#   docker compose exec ollama ollama pull qwen2.5:7b-instruct
+#   docker compose up -d api worker      -> http://localhost:8080
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment: {POSTGRES_USER: sra, POSTGRES_PASSWORD: sra-dev-only, POSTGRES_DB: sra}
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck: {test: ["CMD", "pg_isready", "-U", "sra"], interval: 5s, retries: 20}
+  kafka:
+    image: apache/kafka:3.8.0
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    ports: ["9092:9092"]
+  ollama:
+    image: ollama/ollama:0.5.4
+    ports: ["11434:11434"]
+    volumes: [ollama:/root/.ollama]
+  api:
+    build: {context: ., args: {REGISTRY: docker.io/library, RUNTIME_IMAGE: python:3.13-slim}}
+    command: ["serve"]
+    environment: &env
+      DATABASE_URL: postgresql://sra:sra-dev-only@postgres:5432/sra
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      LLM_PROVIDER: ollama
+      LLM_BASE_URL: http://ollama:11434
+      LLM_MODEL: qwen2.5:7b-instruct
+      SRA_DATA_DIR: /data
+    volumes: [blobs:/data]
+    ports: ["8080:8080"]
+    depends_on: {postgres: {condition: service_healthy}, kafka: {condition: service_started}}
+  worker:
+    build: {context: ., args: {REGISTRY: docker.io/library, RUNTIME_IMAGE: python:3.13-slim}}
+    command: ["worker"]
+    environment: *env
+    volumes: [blobs:/data]
+    depends_on: {postgres: {condition: service_healthy}, kafka: {condition: service_started}}
+volumes: {pgdata: {}, ollama: {}, blobs: {}}

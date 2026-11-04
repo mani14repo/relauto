@@ -1,0 +1,109 @@
+id: CMDB-AT-01
+title: CMDB & Service Mapping Assessment
+domain: CMDB
+variant: A
+priority: P1
+applicability: All 63 FSI REO applications; immediate priority for the 28 applications with Region = None and the 8 Region
+  A applications with highest incident volume
+accountable_owner: CMDB / Application Engineering
+purpose: Evaluate the accuracy and completeness of application and CI records in ServiceNow CMDB, including ownership, region
+  assignment, service relationships, and CI linkage on operational records. CMDB completeness is a prerequisite for AI-assisted
+  reliability assessment.
+relevance: 99.1% cmdb_ci_business_app blank on 14,034 incidents. 28/63 FSI apps have Region = None. Single application_manager
+  (Bijal Parekh) for all 62 active apps. G-20, G-21, G-15.
+reassessment_trigger: Major release, architecture change, or Post-Incident Review recommendation
+scope: []
+signoff_roles:
+- Assessment Lead
+- SRE Reviewer
+- Engineering Owner
+- PSE Representative
+criteria:
+- id: CMDB-AT-01-C01
+  number: 1
+  name: Application Registration Completeness
+  standard_ref: ServiceNow CSDM — Business Application; ITPN G-20
+  applicability: All 63 FSI REO applications
+  required_evidence: CMDB_Mapping.xlsx record; ServiceNow application record showing mandatory fields populated
+  evaluation_method: 'Deterministic: application record exists; name, class, lifecycle state, environment all populated'
+  methods:
+  - deterministic
+  acceptance_criteria: All 63 FSI applications registered in ServiceNow CMDB with name, class, state, and environment
+  default_risk: Critical
+  default_risk_assumed: false
+  accountable_owner: CMDB / Bijal Parekh
+  reassessment: ''
+  example_risk: Critical — unregistered apps cannot be attributed on incidents or changes
+  example_recommendation: Audit all 63 apps against CMDB_Mapping.xlsx; register missing apps; assign to Bijal Parekh for governance
+  references: []
+- id: CMDB-AT-01-C02
+  number: 2
+  name: Ownership & Accountability Fields
+  standard_ref: ServiceNow CSDM; ITPN G-15, G-16
+  applicability: All FSI REO applications
+  required_evidence: ServiceNow application record showing owned_by, u_operational_owner, it_application_owner populated
+  evaluation_method: 'Deterministic: owned_by, u_operational_owner, and it_application_owner all populated; not all pointing
+    to same person'
+  methods:
+  - deterministic
+  acceptance_criteria: All three ownership fields populated; at least two different named individuals
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: Application Engineering / sub-portfolio owners
+  reassessment: ''
+  example_risk: High — single application_manager for 62 apps = key-person concentration risk
+  example_recommendation: Assign sub-portfolio owners per region as operational owners; review Bijal Parekh single-point risk
+  references: []
+- id: CMDB-AT-01-C03
+  number: 3
+  name: Region Assignment
+  standard_ref: FSI REO Operating Model; ITPN G-20
+  applicability: 28 applications currently with Region = None
+  required_evidence: CMDB_Mapping.xlsx region field; ServiceNow application record region value
+  evaluation_method: 'Deterministic: region field populated for all 63 applications'
+  methods:
+  - deterministic
+  acceptance_criteria: Region populated for all applications; Region = None reduced to 0
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: Bijal Parekh / sub-portfolio owners
+  reassessment: ''
+  example_risk: High — 28 unregioned apps invisible to regional capacity planning and incident dashboards
+  example_recommendation: Assign Nate Olstad's 16 apps and Ana Kumar's 12 no-region apps to Region first; complete remainder
+  references: []
+- id: CMDB-AT-01-C04
+  number: 4
+  name: CI Linkage on Incident Records (cmdb_ci_business_app)
+  standard_ref: ServiceNow CSDM; ITPN G-21
+  applicability: All production incidents
+  required_evidence: 'ServiceNow incident record export showing cmdb_ci_business_app populated; target: > 80% within 90 days'
+  evaluation_method: 'Deterministic: percentage of incidents with cmdb_ci_business_app populated measured from extract'
+  methods:
+  - deterministic
+  acceptance_criteria: cmdb_ci_business_app populated on > 80% of new incidents within 90 days of remediation
+  default_risk: Critical
+  default_risk_assumed: false
+  accountable_owner: CMDB / ServiceNow Admin
+  reassessment: ''
+  example_risk: Critical — 99.1% blank makes application-level MTTR, SLO, and incident trend analysis impossible
+  example_recommendation: Wire cmdb_ci_business_app in ServiceNow routing; begin with Region A's 8 named apps (86.2% of volume)
+  references: []
+- id: CMDB-AT-01-C05
+  number: 5
+  name: Application-to-Service Relationship Mapping
+  standard_ref: ServiceNow CSDM — Application Service relationships; ITPN G-12
+  applicability: All P1/P2 applications
+  required_evidence: ServiceNow service map or relationship record showing upstream/downstream connections
+  evaluation_method: 'AI-assisted: confirm application service linked to at least one business service; dependencies documented'
+  methods:
+  - ai
+  acceptance_criteria: Each P1 application linked to at least one business service; upstream CIs named
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: CMDB / Architecture
+  reassessment: ''
+  example_risk: High — RCI->GDX->CRS chain has no dependency map in ServiceNow
+  example_recommendation: Build service maps for Region A revenue chain (GDX->RCI->CRS) and Region B CFAO chain first
+  references: []
+source_file: CMDB-AT-01 — CMDB & Service Mapping Assessment.docx
+references: []

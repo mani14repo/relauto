@@ -1,0 +1,109 @@
+id: ITSM-AT-04
+title: Service Desk Capability & Tier-1 Resolution Assessment
+domain: ITSM
+variant: A
+priority: P2
+applicability: PSE (Tier-1) and all FSI REO applications handled through the PSE queue
+accountable_owner: PSE
+purpose: Evaluate the capability, efficiency, and quality of Tier-1 service desk operations for the FSI REO portfolio. Covers
+  first-call resolution, escalation quality, knowledge access, and queue management.
+relevance: ~20 handoffs across 6 workflows with no SLA (G-12, G-13). Observability lead departed with no successor (G-15).
+  Key-person risk confirmed in AE function (G-26). IO-19 Score 20.
+reassessment_trigger: Major release, architecture change, or Post-Incident Review recommendation
+scope: []
+signoff_roles:
+- Assessment Lead
+- Domain Reviewer
+- Engineering / Service Owner
+- PSE Representative
+criteria:
+- id: ITSM-AT-04-C01
+  number: 1
+  name: First-Call Resolution (FCR) Rate
+  standard_ref: ITIL Service Desk; HDI Best Practices
+  applicability: All PSE-handled incidents
+  required_evidence: 'ServiceNow extract: incidents closed by PSE without escalation within 1 business day'
+  evaluation_method: 'Deterministic: measure % incidents closed at Tier-1 without L2 escalation within 1 business day'
+  methods:
+  - deterministic
+  acceptance_criteria: FCR rate > 40% for PSE-handled incidents within 90 days of knowledge base improvement
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: PSE
+  reassessment: ''
+  example_risk: Medium — low FCR drives unnecessary L2 escalations and extends MTTR
+  example_recommendation: Identify top-10 escalation categories; create KEDB entries for each; target FCR improvement
+  references: []
+- id: ITSM-AT-04-C02
+  number: 2
+  name: Escalation Quality & Timeliness
+  standard_ref: ITIL Incident Management; ITPN G-12, G-13
+  applicability: All incidents escalated from PSE to L2/L3
+  required_evidence: 'ServiceNow escalation records: time-to-escalate, escalation notes quality, assignment group accuracy'
+  evaluation_method: 'Deterministic: measure mean time-to-escalate for P1/P2; review escalation notes for diagnostic completeness'
+  methods:
+  - deterministic
+  acceptance_criteria: P1 incidents escalated within 15 min; P2 within 30 min; escalation notes include symptom, steps tried,
+    and data collected
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: PSE
+  reassessment: ''
+  example_risk: High — escalation SLA not defined; ~20 handoffs with no SLA measured
+  example_recommendation: Define escalation SLA by priority; train PSE on diagnostic note standard; measure weekly
+  references: []
+- id: ITSM-AT-04-C03
+  number: 3
+  name: Queue Management & Backlog Age
+  standard_ref: ITIL Service Desk; REO Operating Model
+  applicability: All open PSE-owned incidents
+  required_evidence: ServiceNow open incident count by assignment group; age distribution; oldest open incidents
+  evaluation_method: 'Deterministic: measure queue size and age distribution; P1/P2 backlog should be 0 at end of each shift'
+  methods:
+  - deterministic
+  acceptance_criteria: P1/P2 queue backlog = 0 at end of each shift; P3/P4 mean age < 5 business days
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: PSE
+  reassessment: ''
+  example_risk: Medium — unmanaged backlog allows P2 incidents to age without detection
+  example_recommendation: Implement daily queue review cadence; auto-escalate any P2 > 4h with no update
+  references: []
+- id: ITSM-AT-04-C04
+  number: 4
+  name: Knowledge Base Accessibility
+  standard_ref: ITIL Knowledge Management; ITPN G-05, IO-07
+  applicability: PSE agents handling FSI REO incidents
+  required_evidence: ServiceNow Knowledge article count for FSI REO applications; PSE agent confirmation of usability
+  evaluation_method: 'Human review: PSE agents can find the relevant article for top-10 incident categories without engineering
+    help'
+  methods:
+  - human
+  acceptance_criteria: ServiceNow KB articles exist and are findable for top-10 PSE incident categories
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: PSE / Application Engineering
+  reassessment: ''
+  example_risk: Medium — knowledge in OneNote/email is inaccessible to PSE; drives unnecessary escalations
+  example_recommendation: Index all FSI REO KB articles in ServiceNow under consistent category hierarchy
+  references: []
+- id: ITSM-AT-04-C05
+  number: 5
+  name: Staffing Coverage & Key-Person Risk
+  standard_ref: ITPN G-15, G-16, G-26; IO-19 Score 20
+  applicability: PSE team covering FSI REO applications
+  required_evidence: PSE roster; shift coverage schedule; named backup for each critical queue and application family
+  evaluation_method: 'Human review: each critical queue has at least 2 trained agents; no single agent covering > 30% of PSE
+    volume'
+  methods:
+  - human
+  acceptance_criteria: All critical queues have at least 2 trained agents; coverage verified for all shifts and holiday periods
+  default_risk: Critical
+  default_risk_assumed: false
+  accountable_owner: PSE / REO leadership
+  reassessment: ''
+  example_risk: Critical — AE lead on leave with no backup; observability lead departed with no successor
+  example_recommendation: Map PSE skill coverage per application family; cross-train CFAO queue agents per IO-19 immediately
+  references: []
+source_file: ITSM-AT-04 — Service Desk Capability & Tier-1 Resolution Assessment.docx
+references: []

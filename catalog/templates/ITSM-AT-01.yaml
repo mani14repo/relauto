@@ -1,0 +1,110 @@
+id: ITSM-AT-01
+title: Change & Production Readiness Assessment
+domain: ITSM
+variant: A
+priority: P1
+applicability: All FSI REO production deployments and significant configuration changes
+accountable_owner: Application Engineering / Change Management
+purpose: Confirm that production changes are governed, evidenced, and reversible. Evaluates change record completeness, risk
+  assessment quality, deployment evidence, and post-deployment validation, with specific focus on closing the Change->Incident
+  traceability gap.
+relevance: 0% Change->Incident linkage across 52 change records. 100% manual deployment. 28/35 FSI apps still on Jenkins (end-Oct
+  2026 deadline). G-08, G-03, G-04, IO-08 Score 20.
+reassessment_trigger: Major release, architecture change, or Post-Incident Review recommendation
+scope: []
+signoff_roles:
+- Assessment Lead
+- SRE Reviewer
+- Engineering Owner
+- PSE Representative
+criteria:
+- id: ITSM-AT-01-C01
+  number: 1
+  name: Change Record for Every Production Deployment
+  standard_ref: ITIL Change Enablement; ITPN G-08, IO-08 Score 20
+  applicability: All production deployments
+  required_evidence: ServiceNow Change Record created before production deployment; CHG number in deployment log
+  evaluation_method: 'Deterministic: CHG number present in deployment artifact; change record state = Closed/Complete'
+  methods:
+  - deterministic
+  acceptance_criteria: 100% of production deployments have a ServiceNow Change Record created before deployment
+  default_risk: Critical
+  default_risk_assumed: false
+  accountable_owner: Application Engineering / Change Management
+  reassessment: ''
+  example_risk: Critical — 100% of changes show no automated gate; CFAO/Eos deployments bypass Change control
+  example_recommendation: Implement ServiceNow Change gate in CI/CD pipeline; block deploy without approved CHG
+  references: []
+- id: ITSM-AT-01-C02
+  number: 2
+  name: Risk Assessment Quality
+  standard_ref: ITIL Change Enablement — Risk Assessment
+  applicability: All normal and emergency changes
+  required_evidence: Change Record risk and impact assessment fields; CAB review record where required
+  evaluation_method: 'Human review: risk assessment completed with impact, likelihood, and mitigation documented'
+  methods:
+  - human
+  acceptance_criteria: Risk and impact fields populated; risk level justified; mitigation documented for High/Very High risk
+    changes
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: Change Management
+  reassessment: ''
+  example_risk: High — CAB required = FALSE for all 52 changes; no formal risk assessment found
+  example_recommendation: Define risk assessment standard; require completion before change approval
+  references: []
+- id: ITSM-AT-01-C03
+  number: 3
+  name: Rollback Plan Documentation
+  standard_ref: ITIL Change Enablement — Rollback; ITPN G-04
+  applicability: All standard and emergency changes
+  required_evidence: Change Record backout/rollback section completed; rollback tested in staging
+  evaluation_method: 'Deterministic: rollback section populated with specific steps; tested in equivalent environment'
+  methods:
+  - deterministic
+  acceptance_criteria: Rollback steps documented and tested; rollback owner named; estimated rollback time stated
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: Application Engineering
+  reassessment: ''
+  example_risk: High — 3 of 15 backout plans reference wrong CHG number (copy-paste error)
+  example_recommendation: Enforce backout plan template; prohibit free-text reference to other CHG numbers
+  references: []
+- id: ITSM-AT-01-C04
+  number: 4
+  name: Post-Deployment Validation Evidence
+  standard_ref: ITIL Change Enablement — Post-Implementation Review; ITPN G-03
+  applicability: All production deployments
+  required_evidence: Change Record post-implementation review section; smoke test results; monitoring alert absence for 1h
+    post-deploy
+  evaluation_method: 'Deterministic: post-implementation review completed within 24h; smoke test results attached'
+  methods:
+  - deterministic
+  acceptance_criteria: Post-implementation review completed within 24h; smoke test results documented in Change Record
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: Application Engineering / Change Management
+  reassessment: ''
+  example_risk: Medium — 0% Change->Incident linkage means deployment-caused incidents are undetectable
+  example_recommendation: Create post-deploy checklist; require completion before Change Record is Closed
+  references: []
+- id: ITSM-AT-01-C05
+  number: 5
+  name: Jenkins Migration Compliance (Oct 2026 Deadline)
+  standard_ref: ITPN G-17 High Severity; IO-08 Score 20
+  applicability: 28 FSI applications still on Jenkins
+  required_evidence: Pipeline configuration showing GitHub Actions or approved CI/CD platform; Jenkins decommission evidence
+  evaluation_method: 'Deterministic: no active Jenkins pipelines for in-scope applications'
+  methods:
+  - deterministic
+  acceptance_criteria: 0 production deployments via Jenkins by end of Oct 2026
+  default_risk: Critical
+  default_risk_assumed: false
+  accountable_owner: Application Engineering / Platform
+  reassessment: ''
+  example_risk: Critical — 28/35 FSI apps still on Jenkins past shutdown deadline
+  example_recommendation: Escalate to REO leadership immediately; assign migration owner per application; daily burn-down
+    tracking
+  references: []
+source_file: ITSM-AT-01 — Change & Production Readiness Assessment.docx
+references: []

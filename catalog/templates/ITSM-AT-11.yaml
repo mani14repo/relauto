@@ -1,0 +1,115 @@
+id: ITSM-AT-11
+title: Operational KPI & Reporting Assessment
+domain: ITSM
+variant: B
+priority: ''
+applicability: All FSI REO-managed applications and services within scope of the Reliability by Design initiative Production
+  and pre-production environments where the assessed capability is required Application Engineering, SRE, PSE, CMDB, and Architecture
+  teams responsible for the assessed capability
+accountable_owner: ITSM Standards / Practice Owner
+purpose: This assessment evaluates whether key operational performance indicators are defined with documented calculation
+  methods, whether reporting data quality is sufficient for decision-making, whether reporting ownership is established, and
+  whether the metrics produced accurately reflect operational reality for FSI REO applications and services.
+relevance: ''
+reassessment_trigger: ''
+scope:
+- All FSI REO-managed applications and services within scope of the Reliability by Design initiative
+- Production and pre-production environments where the assessed capability is required
+- Application Engineering, SRE, PSE, CMDB, and Architecture teams responsible for the assessed capability
+signoff_roles: []
+criteria:
+- id: ITSM-AT-11-C01
+  number: 1
+  name: KPI definitions and calculation methods are documented and approved
+  standard_ref: ITSM-STD-11 — Operational Reporting Standard; ITSM-POL-11
+  applicability: All FSI REO-managed services where operational reporting is required
+  required_evidence: 'Approved KPI catalogue or reporting specification document with: KPI name, definition, calculation formula,
+    data source, reporting frequency, and owner'
+  evaluation_method: AI-Assisted — review KPI catalogue for completeness; confirm MTTR, incident volume, problem recurrence
+    rate, change success rate, and SLO attainment are included
+  methods:
+  - ai
+  acceptance_criteria: 'KPI catalogue exists with approved definitions for at minimum: MTTR, incident volume by priority,
+    problem recurrence rate, change success/failure rate, and SLO attainment; each KPI has a documented calculation method
+    and data source'
+  default_risk: High
+  default_risk_assumed: true
+  accountable_owner: ITSM Practice Owner / Reporting Owner
+  reassessment: Annually; when new services enter scope; when reporting requirements change
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - ITSM-STD-11
+  - ITSM-POL-11
+- id: ITSM-AT-11-C02
+  number: 2
+  name: Operational reporting data quality meets accuracy threshold
+  standard_ref: ITSM-STD-11; ITSM-STD-01 (Incident data quality); ITSM-STD-03 (Problem data quality)
+  applicability: ServiceNow Incident, Problem, and Change records used as reporting inputs
+  required_evidence: 'Data quality audit results or ServiceNow report showing: percentage of Incident records with required
+    fields populated (CI, assignment group, priority, close code, resolved_at); sample of records reviewed for accuracy'
+  evaluation_method: 'Deterministic — calculate field completion rates on last 90 days of incident records for this application:
+    cmdb_ci, assignment_group, priority, close_code, resolved_at all non-null. Target: >= 95%'
+  methods:
+  - deterministic
+  acceptance_criteria: Required reporting fields are populated on >= 95% of Incident records; data quality audit finds no
+    systemic calculation errors in reported metrics
+  default_risk: High
+  default_risk_assumed: true
+  accountable_owner: ITSM Process Owner / Reporting Owner
+  reassessment: Monthly data quality check; quarterly audit; after reporting methodology changes
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - ITSM-STD-11
+  - ITSM-STD-01
+  - ITSM-STD-03
+- id: ITSM-AT-11-C03
+  number: 3
+  name: MTTR and human-versus-automated demand segmentation are being reported
+  standard_ref: ITSM-STD-11; REO Operational Reporting Requirements
+  applicability: All services where incident restoration time is tracked
+  required_evidence: 'Current MTTR report for this service showing: mean and P90 restoration time; segmentation between human-initiated
+    and automated/monitoring-detected incidents; trend over last 3 months'
+  evaluation_method: AI-Assisted — review MTTR report for calculation accuracy (opened_at to resolved_at); confirm human vs
+    automated demand segmentation is present and defined
+  methods:
+  - ai
+  acceptance_criteria: MTTR report exists for current reporting period, uses correct calculation (opened_at to resolved_at),
+    includes P90 alongside mean, and segments human-initiated from automated demand
+  default_risk: High
+  default_risk_assumed: true
+  accountable_owner: ITSM Process Owner / SRE
+  reassessment: Monthly report review; when MTTR trend degrades for 2 consecutive periods
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - ITSM-STD-11
+- id: ITSM-AT-11-C04
+  number: 4
+  name: Reporting ownership and data certification are established
+  standard_ref: ITSM-POL-11 — Operational Reporting Policy
+  applicability: All operational reports produced for FSI REO leadership
+  required_evidence: Named report owner; data certification record showing report was reviewed and approved before distribution;
+    distribution list with defined recipients
+  evaluation_method: Deterministic — confirm report owner is assigned; check last report was certified by owner before distribution;
+    AI-Assisted — review certification record for evidence of actual data review
+  methods:
+  - deterministic
+  - ai
+  acceptance_criteria: Each operational report has a named owner; reports are certified by owner before distribution; certification
+    is documented with reviewer name and date
+  default_risk: High
+  default_risk_assumed: true
+  accountable_owner: Reporting Owner / ITSM Practice Owner
+  reassessment: At each reporting cycle; when ownership changes
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - ITSM-POL-11
+source_file: ITSM-AT-11 — Operational KPI & Reporting Assessment.docx
+references:
+- ITSM-STD-11
+- ITSM-POL-11
+- ITSM-STD-01
+- ITSM-STD-03

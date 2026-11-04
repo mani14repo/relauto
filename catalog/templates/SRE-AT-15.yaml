@@ -1,0 +1,119 @@
+id: SRE-AT-15
+title: Post-Release Reliability Effectiveness Assessment
+domain: SRE
+variant: B
+priority: ''
+applicability: All FSI REO-managed applications and services within scope of the Reliability by Design initiative Production
+  and pre-production environments where the assessed capability is required Application Engineering, SRE, PSE, CMDB, and Architecture
+  teams responsible for the assessed capability
+accountable_owner: SRE Standards / Practice Owner
+purpose: This assessment evaluates whether FSI REO-managed applications perform defined deployment health checks, validate
+  SLI/SLO performance after production releases, detect regressions objectively, and have a documented rollback decision process.
+  Post-deployment validation closes the release-to-production reliability loop and is a prerequisite for evidence-based deployment
+  confidence.
+relevance: ''
+reassessment_trigger: ''
+scope:
+- All FSI REO-managed applications and services within scope of the Reliability by Design initiative
+- Production and pre-production environments where the assessed capability is required
+- Application Engineering, SRE, PSE, CMDB, and Architecture teams responsible for the assessed capability
+signoff_roles: []
+criteria:
+- id: SRE-AT-15-C01
+  number: 1
+  name: Deployment health checks are defined and executed after each production release
+  standard_ref: SRE-STD-15 — Post-Deployment Reliability Validation Standard; SRE-POL-15
+  applicability: All production deployments for FSI REO-managed services
+  required_evidence: Deployment health check definition (list of checks, success criteria, execution method); evidence that
+    checks were executed and recorded for most recent release
+  evaluation_method: Deterministic — check change_request.close_notes or u_post_deploy_validation_complete for most recent
+    change; AI-Assisted — review close notes for evidence of substantive health check execution
+  methods:
+  - deterministic
+  - ai
+  acceptance_criteria: Defined health check list exists; health checks were executed and recorded for the most recent production
+    deployment; at least one check validates service availability and one validates error rate
+  default_risk: High
+  default_risk_assumed: true
+  accountable_owner: Application Engineering / SRE
+  reassessment: After each production deployment; when deployment procedures change
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - SRE-STD-15
+  - SRE-POL-15
+- id: SRE-AT-15-C02
+  number: 2
+  name: SLI/SLO performance is validated within the defined window after each release
+  standard_ref: SRE-STD-15; SRE-STD-03 — SLI/SLO Engineering Standard
+  applicability: All services with active SLIs and SLOs
+  required_evidence: SLO dashboard or report showing SLO attainment for the 24-hour period following most recent release;
+    evidence that SRE reviewed SLO burn rate post-deployment
+  evaluation_method: AI-Assisted — review SLO report for the post-deployment window; confirm no SLO degradation compared to
+    pre-deployment baseline; confirm burn rate did not spike
+  methods:
+  - ai
+  acceptance_criteria: SLO attainment was reviewed within 24 hours of deployment; attainment met SLO target or degradation
+    was identified and a rollback/remediation decision was made and documented
+  default_risk: High
+  default_risk_assumed: true
+  accountable_owner: SRE / Application Engineering
+  reassessment: After each production deployment; after SLO breach in post-deployment window
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - SRE-STD-15
+  - SRE-STD-03
+- id: SRE-AT-15-C03
+  number: 3
+  name: Regression detection criteria are defined and applied
+  standard_ref: SRE-STD-15; SRE-STD-08 — Performance Engineering Standard
+  applicability: All services with performance baselines (see SRE-AT-06)
+  required_evidence: Documented regression threshold definition (e.g., P95 latency increase > 20% compared to pre-deployment
+    baseline = regression); evidence of regression check execution for most recent release
+  evaluation_method: Deterministic — confirm regression thresholds are defined in documentation; AI-Assisted — review post-deployment
+    performance data for most recent release against defined thresholds
+  methods:
+  - deterministic
+  - ai
+  acceptance_criteria: Regression thresholds are documented and applied after each deployment; most recent deployment shows
+    regression check was performed and result was recorded (pass / regression detected)
+  default_risk: High
+  default_risk_assumed: true
+  accountable_owner: Application Engineering / SRE
+  reassessment: After each production deployment; after performance regression incident
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - SRE-STD-15
+  - SRE-STD-08
+- id: SRE-AT-15-C04
+  number: 4
+  name: Rollback decision process and authority are documented
+  standard_ref: SRE-POL-15 — Post-Deployment Reliability Validation Policy; ITSM-STD-04 — Change Enablement Standard
+  applicability: All production services where automated or manual rollback is possible
+  required_evidence: Documented rollback decision criteria (specific conditions that trigger rollback); named rollback authority
+    (who can make the rollback decision); rollback procedure linked to change record
+  evaluation_method: 'AI-Assisted — review change record or deployment runbook for: rollback criteria, named authority, and
+    rollback procedure; confirm most recent change record references rollback plan'
+  methods:
+  - ai
+  acceptance_criteria: Rollback criteria are specific and objective (not "if it looks bad"), authority is named, procedure
+    is documented in the change record, and rollback can be executed without escalation delay
+  default_risk: High
+  default_risk_assumed: true
+  accountable_owner: Application Engineering / SRE / Change Management
+  reassessment: After architecture or deployment pipeline changes; after a deployment where rollback was required; annually
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - SRE-POL-15
+  - ITSM-STD-04
+source_file: SRE-AT-15 — Post-Release Reliability Effectiveness Assessment.docx
+references:
+- SRE-STD-15
+- SRE-POL-15
+- SRE-STD-03
+- SRE-STD-08
+- ITSM-STD-04
+- SRE-AT-06

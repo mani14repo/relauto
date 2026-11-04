@@ -1,0 +1,111 @@
+id: ITSM-AT-03
+title: Problem Management Effectiveness Assessment
+domain: ITSM
+variant: A
+priority: P1
+applicability: 'All FSI REO applications with recurring incident patterns; immediate focus on Rebates Batch (6 defect patterns),
+  GDX pipeline (RD_GDX3M: 981 incidents), and Region A priority applications'
+accountable_owner: PSE / Application Engineering
+purpose: Evaluate whether Problem Management is effectively identifying, investigating, and eliminating the root causes of
+  recurring incidents. Measures the linkage, investigation quality, and closure rate of Problem records.
+relevance: 51 total Problem records; 57/14,034 incidents linked to Problems (0.4%); 0/51 Problems linked to Change Records;
+  37.5d median RCA-to-fix lag; 13 open Problems median age 194 days. G-02, G-03, G-04.
+reassessment_trigger: Major release, architecture change, or Post-Incident Review recommendation
+scope: []
+signoff_roles:
+- Assessment Lead
+- Domain Reviewer
+- Engineering / Service Owner
+- PSE Representative
+criteria:
+- id: ITSM-AT-03-C01
+  number: 1
+  name: Incident-to-Problem Linkage Rate
+  standard_ref: ITIL Problem Management; ITPN G-02, IO-01 Score 25
+  applicability: All recurring incident patterns (>= 3 occurrences of same root cause)
+  required_evidence: 'ServiceNow extract: problem_id field on incident records; count of incidents linked to a Problem record'
+  evaluation_method: 'Deterministic: measure % recurring incidents linked to Problem; target > 80% for known patterns'
+  methods:
+  - deterministic
+  acceptance_criteria: '> 80% of known recurring incident patterns have a corresponding open or resolved Problem record'
+  default_risk: Critical
+  default_risk_assumed: false
+  accountable_owner: PSE / Application Engineering
+  reassessment: ''
+  example_risk: 'Critical — 0.4% linkage; RD_GDX3M: 981 incidents over 248 days with zero Problem records'
+  example_recommendation: Create Problem records for all 6 Rebates Batch patterns and RD_GDX3M pipeline immediately; assign
+    owners
+  references: []
+- id: ITSM-AT-03-C02
+  number: 2
+  name: Root-Cause Analysis Quality
+  standard_ref: ITPN G-03; ITIL Problem Management
+  applicability: All closed Problem records
+  required_evidence: Problem record showing root cause, contributing factors, and timeline of investigation steps
+  evaluation_method: 'Human review: root cause states the technical condition, not a symptom; contributing factors documented'
+  methods:
+  - human
+  acceptance_criteria: Root cause identifies a specific technical condition; contributing factors listed; investigation timeline
+    present
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: PSE / Application Engineering
+  reassessment: ''
+  example_risk: High — root-cause records lack diagnostic data; 4/5 exec questions unanswerable from Problem data
+  example_recommendation: Adopt 5-why or Fishbone template for all Problem investigations; require root-cause statement to
+    name a specific system state
+  references: []
+- id: ITSM-AT-03-C03
+  number: 3
+  name: Problem-to-Change Linkage
+  standard_ref: ITPN G-03, G-04; ITIL Problem Management
+  applicability: All Problem records with a permanent fix recommended
+  required_evidence: Problem record rfc field; ServiceNow Change Record linked to resolved Problem
+  evaluation_method: 'Deterministic: Problem records with permanent fix recommendation have a linked Change Record'
+  methods:
+  - deterministic
+  acceptance_criteria: 100% of Problem records recommending a permanent fix have a linked Change Record in ServiceNow
+  default_risk: Critical
+  default_risk_assumed: false
+  accountable_owner: PSE / Change Management
+  reassessment: ''
+  example_risk: Critical — 0/51 Problems linked to Change Records; permanent fixes are deployed without formal change governance
+  example_recommendation: Make CHG linkage mandatory on Problem resolution; reject Problem closure without linked Change or
+    accepted risk
+  references: []
+- id: ITSM-AT-03-C04
+  number: 4
+  name: RCA-to-Fix Cycle Time
+  standard_ref: ITPN G-03; ITIL Problem Management
+  applicability: All closed Problem records with permanent fix
+  required_evidence: 'ServiceNow Problem record: opened_at, root_cause_date, resolved_at; median cycle time from extract'
+  evaluation_method: 'Deterministic: measure median time from Problem open to permanent fix deployed; target < 14 days'
+  methods:
+  - deterministic
+  acceptance_criteria: Median RCA-to-fix cycle time < 14 days for P1/P2 Problems; reported monthly
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: PSE / Application Engineering
+  reassessment: ''
+  example_risk: High — current median 37.5d; Region B open Problems median age 194 days
+  example_recommendation: Set 14-day SLA for P1 Problem permanent fix; escalate to REO leadership if exceeded
+  references: []
+- id: ITSM-AT-03-C05
+  number: 5
+  name: Known Error Database (KEDB) Completeness
+  standard_ref: ITIL Problem Management — Known Error; ITPN IO-07
+  applicability: All Problems where workaround exists but permanent fix is pending
+  required_evidence: ServiceNow Known Error records; workaround steps accessible to PSE without requiring engineer involvement
+  evaluation_method: 'Human review: KEDB entry exists for each open Problem with workaround; PSE can execute without escalation'
+  methods:
+  - human
+  acceptance_criteria: KEDB entry with working workaround for each of top-10 volume Problem categories
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: PSE / Application Engineering
+  reassessment: ''
+  example_risk: Medium — current workarounds in OneNote/personal notes; PSE cannot resolve without senior engineer
+  example_recommendation: Migrate all workarounds to ServiceNow KEDB; validate each with PSE lead
+  references: []
+source_file: ITSM-AT-03 — Problem Management Effectiveness Assessment.docx
+references: []

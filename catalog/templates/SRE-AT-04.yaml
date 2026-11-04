@@ -1,0 +1,107 @@
+id: SRE-AT-04
+title: Service-Level Reliability Assessment
+domain: SRE
+variant: A
+priority: P1
+applicability: All P1/P2 FSI REO production applications; initially Region A and Region B priority applications
+accountable_owner: SRE
+purpose: Confirm that the application has defined, measured, and operationally enforced Service Level Indicators and Objectives.
+  SLOs are the agreed reliability contract between engineering and the business; error budgets provide the decision authority
+  for reliability investment.
+relevance: SLOs defined for only 3 of 61 FSI applications (Golden Pathways assessment). G-18 (leadership questions unanswerable),
+  G-19 (engineering effort unmeasured).
+reassessment_trigger: Major release, architecture change, or Post-Incident Review recommendation
+scope: []
+signoff_roles:
+- Assessment Lead
+- SRE Reviewer
+- Engineering Owner
+- PSE Representative
+criteria:
+- id: SRE-AT-04-C01
+  number: 1
+  name: SLI Definitions
+  standard_ref: Google SRE Workbook Ch.2; Golden Pathways — SLO Pillar
+  applicability: All P1/P2 applications
+  required_evidence: SLI specification document or ServiceNow knowledge article; metric source confirmed in monitoring
+  evaluation_method: 'Deterministic: SLI for availability, latency, and error rate documented; metric source named'
+  methods:
+  - deterministic
+  acceptance_criteria: At least availability and latency SLIs defined with measurement source and calculation method
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: SRE / Application Engineering
+  reassessment: ''
+  example_risk: High — SLOs undefined for 58 of 61 FSI applications
+  example_recommendation: Define SLIs using Four Golden Signals; align to existing AppDynamics business transaction metrics
+  references: []
+- id: SRE-AT-04-C02
+  number: 2
+  name: SLO Targets & Error Budget
+  standard_ref: Google SRE Workbook Ch.2; ITPN IO-04
+  applicability: All P1/P2 applications
+  required_evidence: SLO document with availability target, measurement window, and error budget calculation
+  evaluation_method: 'Deterministic: SLO target set as a percentage; error budget calculated and documented'
+  methods:
+  - deterministic
+  acceptance_criteria: SLO target set with 28-day rolling window; error budget expressed as allowed downtime or error count
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: SRE
+  reassessment: ''
+  example_risk: High — no error budgets defined; reliability investment decisions ad hoc
+  example_recommendation: Adopt SLO template from Google SRE Workbook; start with 99.5% availability target for P1 apps
+  references: []
+- id: SRE-AT-04-C03
+  number: 3
+  name: Error Budget Burn Rate Monitoring
+  standard_ref: Google SRE Workbook — Alerting on SLOs
+  applicability: Applications with defined SLOs
+  required_evidence: Splunk/AppDynamics alert confirming burn rate monitored; alert fires when burn rate > 2x
+  evaluation_method: 'Deterministic: alert configured for fast burn (1h) and slow burn (6h) rates'
+  methods:
+  - deterministic
+  acceptance_criteria: Fast-burn and slow-burn error budget alerts configured and tested
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: SRE
+  reassessment: ''
+  example_risk: Medium — SLOs without burn-rate monitoring give no early warning
+  example_recommendation: 'Configure Splunk alert: alert when error budget consumed > 50% in 6h window'
+  references: []
+- id: SRE-AT-04-C04
+  number: 4
+  name: SLO Attainment Reporting
+  standard_ref: ITPN G-18; IO-04 Score 20; REO Operating Model
+  applicability: All applications with defined SLOs
+  required_evidence: Monthly SLO attainment report or Splunk dashboard; status reported in REO governance review
+  evaluation_method: 'Human review: SLO attainment tracked monthly; reported at REO governance cadence'
+  methods:
+  - human
+  acceptance_criteria: SLO attainment reported monthly; trend available for past 3 months
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: SRE / PSE
+  reassessment: ''
+  example_risk: Medium — without reporting, SLOs are compliance theatre
+  example_recommendation: Include SLO attainment in monthly REO operations review; automate from Splunk
+  references: []
+- id: SRE-AT-04-C05
+  number: 5
+  name: Error Budget Policy
+  standard_ref: Google SRE Workbook Ch.2 — Error Budget Policy
+  applicability: Applications with SLOs and error budgets
+  required_evidence: 'Written error budget policy: when to freeze features vs. prioritise reliability'
+  evaluation_method: 'Human review: policy approved by engineering and product owners; decision authority defined'
+  methods:
+  - human
+  acceptance_criteria: Error budget policy approved; feature freeze threshold defined at < 25% budget remaining
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: SRE / Application Engineering
+  reassessment: ''
+  example_risk: Medium — without a policy, error budgets are metrics without decision authority
+  example_recommendation: Draft error budget policy with SRE lead and application owner; submit for REO governance approval
+  references: []
+source_file: SRE-AT-04 — Service-Level Reliability Assessment.docx
+references: []

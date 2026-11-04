@@ -1,0 +1,108 @@
+id: SRE-AT-05
+title: Application Resilience & Fault-Tolerance Assessment
+domain: SRE
+variant: A
+priority: P1
+applicability: All FSI REO applications with production incident history; priority for EosUW, Rebates Batch, GDX pipeline
+accountable_owner: Application Engineering / SRE
+purpose: Evaluate whether an application is designed and configured to withstand partial failures without complete service
+  loss. Covers timeout configuration, retry logic, circuit breakers, redundancy, and graceful degradation.
+relevance: 'COG v2 CI/CD pipeline has no Change gate. EosUW: 539 P2 incidents. Rebates Batch: 6 recurring defect patterns
+  with no Problem records. G-02, G-03, IO-08.'
+reassessment_trigger: Major release, architecture change, or Post-Incident Review recommendation
+scope: []
+signoff_roles:
+- Assessment Lead
+- SRE Reviewer
+- Engineering Owner
+- PSE Representative
+criteria:
+- id: SRE-AT-05-C01
+  number: 1
+  name: Timeout Configuration
+  standard_ref: Google SRE Workbook — Handling Overload; ITPN IO-08
+  applicability: All applications with external dependencies
+  required_evidence: Configuration files or infrastructure definitions showing timeout values per integration
+  evaluation_method: 'AI-assisted: verify timeouts set for all external calls; values are reasonable (not infinite or < 1s)'
+  methods:
+  - ai
+  acceptance_criteria: Timeouts configured for all external service calls; no infinite timeout values
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: Application Engineering
+  reassessment: ''
+  example_risk: High — missing timeouts cause cascading failures
+  example_recommendation: Audit integration configuration; set timeouts with documented rationale per dependency type
+  references: []
+- id: SRE-AT-05-C02
+  number: 2
+  name: Retry Logic with Exponential Backoff
+  standard_ref: Google SRE Workbook — Handling Overload
+  applicability: Applications with idempotent operations and transient failure risk
+  required_evidence: Code review or configuration showing retry policy; max attempts and backoff parameters
+  evaluation_method: 'Human review: retries configured; exponential backoff with jitter; max retry count defined'
+  methods:
+  - human
+  acceptance_criteria: Retry policy with max 3 attempts, exponential backoff (base 200ms), and jitter applied
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: Application Engineering
+  reassessment: ''
+  example_risk: Medium — unbounded retries amplify cascading failures
+  example_recommendation: Implement retry with backoff in all integration layers; configure max attempts
+  references: []
+- id: SRE-AT-05-C03
+  number: 3
+  name: Circuit Breaker Implementation
+  standard_ref: Google SRE Workbook — Cascading Failures; Martin Fowler CircuitBreaker
+  applicability: Applications with high-volume external dependency calls
+  required_evidence: Code or infrastructure configuration confirming circuit breaker pattern; failure threshold and recovery
+    parameters
+  evaluation_method: 'Human review: circuit breaker opens on threshold failure rate; half-open recovery tested'
+  methods:
+  - human
+  acceptance_criteria: Circuit breaker configured for all critical external dependencies; failure threshold and reset timer
+    defined
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: Application Engineering / SRE
+  reassessment: ''
+  example_risk: High — without circuit breakers, GDX pipeline failures propagate to all downstream apps
+  example_recommendation: Implement circuit breaker for GDX, RCI, and shared platform dependencies
+  references: []
+- id: SRE-AT-05-C04
+  number: 4
+  name: Redundancy & Failover
+  standard_ref: Golden Pathways — Business Continuity; AWS/Azure HA patterns
+  applicability: All P1 production applications
+  required_evidence: Infrastructure configuration showing multi-instance or multi-zone deployment; failover test record
+  evaluation_method: 'Deterministic: redundant instances deployed; failover tested in non-production within past 12 months'
+  methods:
+  - deterministic
+  acceptance_criteria: At least 2 instances with load balancer; failover test completed within 12 months
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: Application Engineering / Platform
+  reassessment: ''
+  example_risk: High — single-instance deployments create unacceptable SPOF risk
+  example_recommendation: Deploy minimum 2 instances behind load balancer; schedule failover test
+  references: []
+- id: SRE-AT-05-C05
+  number: 5
+  name: Graceful Degradation
+  standard_ref: Google SRE Workbook — Handling Overload
+  applicability: Applications with non-critical feature dependencies
+  required_evidence: Design documentation or code review confirming degraded-mode behaviour; user impact documented
+  evaluation_method: 'Human review: non-critical features disabled gracefully; critical path continues under partial failure'
+  methods:
+  - human
+  acceptance_criteria: Degraded mode documented for top 3 failure scenarios; user impact scoped and communicated
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: Application Engineering
+  reassessment: ''
+  example_risk: Medium — full-service failures caused by non-critical component failures are avoidable
+  example_recommendation: Document degraded-mode behaviour; implement feature flags for non-critical paths
+  references: []
+source_file: SRE-AT-05 — Application Resilience & Fault-Tolerance Assessment.docx
+references: []

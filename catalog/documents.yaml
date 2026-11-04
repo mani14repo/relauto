@@ -1,0 +1,153 @@
+titles:
+  CMDB-PB-01: CI Discovery & Onboarding Playbook
+  CMDB-PB-02: CMDB Data Quality Management Playbook
+  CMDB-PB-03: Application-to-Service Mapping Playbook
+  CMDB-PB-04: CI Ownership & Lifecycle Management Playbook
+  CMDB-PB-05: Service Dependency Mapping Playbook
+  CMDB-PB-06: CI-to-Incident-Problem-Change Association Playbook
+  CMDB-PB-07: Infrastructure Change Impact Analysis Playbook
+  CMDB-PB-08: CMDB Discovery Reconciliation Playbook
+  CMDB-PB-09: Application Criticality & Service Tiering Playbook
+  CMDB-POL-01: Configuration Item Classification Policy
+  CMDB-POL-02: Business Application Registration Policy
+  CMDB-POL-03: Application Service Mapping Policy
+  CMDB-POL-04: Dependency Management Policy
+  CMDB-POL-05: CMDB Data Quality Policy
+  CMDB-POL-06: Discovery & Reconciliation Policy
+  CMDB-POL-07: CI Ownership & Lifecycle Policy
+  CMDB-POL-08: ITSM-CMDB Integration Policy
+  CMDB-POL-09: Change Impact Analysis Policy
+  CMDB-POL-10: Service Criticality & Tiering Policy
+  CMDB-POL-11: CMDB Certification & Audit Policy
+  CMDB-PRC-01: Configuration Item Classification Process
+  CMDB-PRC-02: Business Application Registration Process
+  CMDB-PRC-03: Application Service Mapping Process
+  CMDB-PRC-04: Dependency Management Process
+  CMDB-PRC-05: CMDB Data Quality Process
+  CMDB-PRC-06: Discovery & Reconciliation Process
+  CMDB-PRC-07: CI Ownership & Lifecycle Process
+  CMDB-PRC-08: ITSM-CMDB Integration Process
+  CMDB-PRC-09: Change Impact Analysis Process
+  CMDB-PRC-10: Service Criticality & Tiering Process
+  CMDB-PRC-11: CMDB Certification & Audit Process
+  CMDB-STD-01: Configuration Item Classification Standard
+  CMDB-STD-02: Business Application Registration Standard
+  CMDB-STD-03: Application Service Mapping Standard
+  CMDB-STD-04: Dependency Management Standard
+  CMDB-STD-05: CMDB Data Quality Standard
+  CMDB-STD-06: Discovery & Reconciliation Standard
+  CMDB-STD-07: CI Ownership & Lifecycle Standard
+  CMDB-STD-08: ITSM-CMDB Integration Standard
+  CMDB-STD-09: Change Impact Analysis Standard
+  CMDB-STD-10: Service Criticality & Tiering Standard
+  CMDB-STD-11: CMDB Certification & Audit Standard
+  ITSM-PB-01: Incident Detection, Triage & Resolution Playbook
+  ITSM-PB-02: Major Incident Management Playbook
+  ITSM-PB-03: Problem Management & RCA Playbook
+  ITSM-PB-04: Corrective & Preventive Action (CAPA) Playbook
+  ITSM-PB-05: Change Enablement & Release Management Playbook
+  ITSM-PB-06: Event & Alert Management Playbook
+  ITSM-PB-07: Known Error & Workaround Management Playbook
+  ITSM-PB-08: Knowledge Management & SOP Maintenance Playbook
+  ITSM-PB-09: Operational Handoff & Escalation Playbook
+  ITSM-PB-10: Continual Improvement & Operational Toil Playbook
+  ITSM-PB-11: Alert Noise Management Runbook
+  ITSM-POL-01: Incident Management Policy
+  ITSM-POL-02: Major Incident Management Policy
+  ITSM-POL-03: Problem Management Policy
+  ITSM-POL-04: Change Enablement Policy
+  ITSM-POL-05: Release & Deployment Management Policy
+  ITSM-POL-06: Event Management Policy
+  ITSM-POL-07: Knowledge Management Policy
+  ITSM-POL-08: Service Request Management Policy
+  ITSM-POL-09: Service Level Management Policy
+  ITSM-POL-10: Continual Improvement Policy
+  ITSM-POL-11: Operational Reporting Policy
+  ITSM-POL-12: Service Continuity Management Policy
+  ITSM-PRC-01: Incident Management Process
+  ITSM-PRC-02: Major Incident Management Process
+  ITSM-PRC-03: Problem Management Process
+  ITSM-PRC-04: Change Enablement Process
+  ITSM-PRC-05: Release & Deployment Management Process
+  ITSM-PRC-06: Event Management Process
+  ITSM-PRC-07: Knowledge Management Process
+  ITSM-PRC-08: Service Request Management Process
+  ITSM-PRC-09: Service Level Management Process
+  ITSM-PRC-10: Continual Improvement Process
+  ITSM-PRC-11: Operational Reporting Process
+  ITSM-PRC-12: Service Continuity Management Process
+  ITSM-STD-01: Incident Management Standard
+  ITSM-STD-02: Major Incident Management Standard
+  ITSM-STD-03: Problem Management Standard
+  ITSM-STD-04: Change Enablement Standard
+  ITSM-STD-05: Release & Deployment Management Standard
+  ITSM-STD-06: Event Management Standard
+  ITSM-STD-07: Knowledge Management Standard
+  ITSM-STD-08: Service Request Management Standard
+  ITSM-STD-09: Service Level Management Standard
+  ITSM-STD-10: Continual Improvement Standard
+  ITSM-STD-11: Operational Reporting Standard
+  ITSM-STD-12: Service Continuity Management Standard
+  SRE-PB-01: Reliability by Design Playbook
+  SRE-PB-02: Architecture Risk Storming Playbook
+  SRE-PB-03: Observability Engineering Playbook
+  SRE-PB-04: SLI-SLO & Error Budget Engineering Playbook
+  SRE-PB-05: Application Resilience Engineering Playbook
+  SRE-PB-06: Performance & Capacity Engineering Playbook
+  SRE-PB-07: Production Readiness Review Playbook
+  SRE-PB-08: Operational Runbook Engineering Playbook
+  SRE-PB-09: Reliability Incident Investigation Playbook
+  SRE-PB-10: Disaster Recovery & Failover Engineering Playbook
+  SRE-PB-11: Reliability Automation Engineering Playbook
+  SRE-PB-12: Reliability Toil Reduction Playbook
+  SRE-PB-13: Post-Deployment Reliability Validation Playbook
+  SRE-PB-14: Reliability Automation Engineering Playbook
+  SRE-PB-15: Post-Deployment Reliability Validation Playbook
+  SRE-POL-01: Reliability by Design Policy
+  SRE-POL-02: Architecture Risk Storming Policy
+  SRE-POL-03: SLI-SLO Engineering Policy
+  SRE-POL-04: Error Budget Management Policy
+  SRE-POL-05: Observability Engineering Policy
+  SRE-POL-06: Alert Engineering Policy
+  SRE-POL-07: Resilience Engineering Policy
+  SRE-POL-08: Performance Engineering Policy
+  SRE-POL-09: Capacity & Scalability Policy
+  SRE-POL-10: Production Readiness Policy
+  SRE-POL-11: Operational Runbooks Policy
+  SRE-POL-12: Systemic RCA & Recurrence Prevention Policy
+  SRE-POL-13: Disaster Recovery & Business Continuity Policy
+  SRE-POL-14: Reliability Automation Policy
+  SRE-POL-15: Post-Deployment Reliability Validation Policy
+  SRE-POL-16: Toil Reduction & Continuous Improvement Policy
+  SRE-PRC-01: Reliability by Design Process
+  SRE-PRC-02: Architecture Risk Storming Process
+  SRE-PRC-03: SLI-SLO Engineering Process
+  SRE-PRC-04: Error Budget Management Process
+  SRE-PRC-05: Observability Engineering Process
+  SRE-PRC-06: Alert Engineering Process
+  SRE-PRC-07: Resilience Engineering Process
+  SRE-PRC-08: Performance Engineering Process
+  SRE-PRC-09: Capacity & Scalability Process
+  SRE-PRC-10: Production Readiness Process
+  SRE-PRC-11: Operational Runbooks Process
+  SRE-PRC-12: Systemic RCA & Recurrence Prevention Process
+  SRE-PRC-13: Disaster Recovery & Business Continuity Process
+  SRE-PRC-14: Reliability Automation Process
+  SRE-PRC-15: Post-Deployment Reliability Validation Process
+  SRE-PRC-16: Toil Reduction & Continuous Improvement Process
+  SRE-STD-01: Reliability by Design Standard
+  SRE-STD-02: Architecture Risk Storming Standard
+  SRE-STD-03: SLI-SLO Engineering Standard
+  SRE-STD-04: Error Budget Management Standard
+  SRE-STD-05: Observability Engineering Standard
+  SRE-STD-06: Alert Engineering Standard
+  SRE-STD-07: Resilience Engineering Standard
+  SRE-STD-08: Performance Engineering Standard
+  SRE-STD-09: Capacity & Scalability Standard
+  SRE-STD-10: Production Readiness Standard
+  SRE-STD-11: Operational Runbooks Standard
+  SRE-STD-12: Systemic RCA & Recurrence Prevention Standard
+  SRE-STD-13: Disaster Recovery & Business Continuity Standard
+  SRE-STD-14: Reliability Automation Standard
+  SRE-STD-15: Post-Deployment Reliability Validation Standard
+  SRE-STD-16: Toil Reduction & Continuous Improvement Standard

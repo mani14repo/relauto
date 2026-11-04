@@ -1,0 +1,11 @@
+.venv
+.git
+.idea
+out
+data
+docs/*.png
+web/node_modules
+web/dist
+**/__pycache__
+eval/scenarios
+tests
