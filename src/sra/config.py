@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import re
 from functools import lru_cache
 from pathlib import Path
 
@@ -20,7 +21,12 @@ def load_dotenv(path: Path | None = None) -> None:
         if not line or line.startswith("#") or "=" not in line:
             continue
         key, _, value = line.partition("=")
-        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+        value = value.strip()
+        if value[:1] in ('"', "'") and value[1:].find(value[0]) >= 0:
+            value = value[1:1 + value[1:].find(value[0])]      # quoted: take what is inside the quotes
+        else:
+            value = re.split(r"\s+#", value, maxsplit=1)[0].strip()   # unquoted: drop an inline " # comment"
+        os.environ.setdefault(key.strip(), value)
 
 
 def setting(name: str, default: str | None = None) -> str | None:
@@ -28,15 +34,24 @@ def setting(name: str, default: str | None = None) -> str | None:
     return os.environ.get(name, default)
 
 
-DOCS_DIR = Path(setting("SRA_DOCS_DIR", str(ROOT / "docs" / "OIPReqs")))
+def path_setting(name: str, default: Path) -> Path:
+    """A directory setting; empty means the default, relative paths are relative to the repo root."""
+    raw = setting(name) or ""
+    if not raw:
+        return default
+    p = Path(raw)
+    return p if p.is_absolute() else (ROOT / p).resolve()
+
+
+DOCS_DIR = path_setting("SRA_DOCS_DIR", ROOT / "docs" / "OIPReqs")
 TEMPLATES_DIR = DOCS_DIR / "Assessment Templates" / "Assessment Templates" / "V1"
 STANDARDS_DIR = DOCS_DIR / "Standards Policies Procedures"
 PLAYBOOKS_DIR = DOCS_DIR / "Playbooks"
 RUBRIC_DOCX = STANDARDS_DIR / "Reliability Readiness Score Rubric — V1 Draft.docx"
 EVIDENCE_XLSX = STANDARDS_DIR / "Evidence Catalog — AI Reliability Assessment.xlsx"
-CATALOG_DIR = Path(setting("SRA_CATALOG_DIR", str(ROOT / "catalog")))
-CONFIG_DIR = Path(setting("SRA_CONFIG_DIR", str(ROOT / "config")))
-DATA_DIR = Path(setting("SRA_DATA_DIR", str(ROOT / "data")))
+CATALOG_DIR = path_setting("SRA_CATALOG_DIR", ROOT / "catalog")
+CONFIG_DIR = path_setting("SRA_CONFIG_DIR", ROOT / "config")
+DATA_DIR = path_setting("SRA_DATA_DIR", ROOT / "data")
 
 
 @lru_cache

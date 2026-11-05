@@ -7,6 +7,7 @@ is set (consumed by `sra worker`), otherwise an in-process thread.
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import Body, Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
@@ -37,20 +38,28 @@ def _evaluator_factory():
 
 
 def create_app(store=None, run_jobs_inline: bool = False) -> FastAPI:
-    app = FastAPI(title="Site Reliability Assessment Bot", version="0.1.0")
+    app = FastAPI(title="Site Reliability Assessment Bot", version="1.0")
     store = store or store_from_settings()
     svc = AssessmentService(store, _evaluator_factory)
-    jobs_state: dict[str, dict] = {}
+    if not logging.getLogger().handlers:   # show job activity in the server console (uvicorn only configures its own loggers)
+        logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    # A run with no progress for this long has probably died (server restart, worker crash): one model call can take
+    # up to LLM_TIMEOUT seconds, so allow that plus a margin.
+    stale_after = int(config.setting("LLM_TIMEOUT", "300")) + 120
 
     def handle_job(job: dict) -> None:
-        aid = job["assessment_id"]
-        jobs_state[aid] = {"state": "running", "job": job}
+        svc.run_job(job)
+
+    def job_view(aid: str) -> dict:
+        j = store.get_job(aid)
+        if not j:
+            return {"state": "idle"}
         try:
-            out = svc.run(aid, use_llm=job.get("llm", False), actor=job.get("actor", "system"))
-            jobs_state[aid] = {"state": "done", "rating": out["scorecard"]["rating"], "llm": out.get("llm")}
-        except Exception as exc:  # noqa: BLE001
-            log.exception("run failed")
-            jobs_state[aid] = {"state": "failed", "error": str(exc)}
+            age = (datetime.now(timezone.utc) - datetime.fromisoformat(j.get("updated_at"))).total_seconds()
+        except (TypeError, ValueError):
+            age = 0
+        return {**j, "seconds_since_update": int(age), "stale_after_s": stale_after,
+                "stale": j.get("state") in ("queued", "running") and age > stale_after}
 
     kafka = bool(config.setting("KAFKA_BOOTSTRAP_SERVERS"))
     local_jobs = None if kafka else LocalJobs(handle_job)
@@ -76,7 +85,6 @@ def create_app(store=None, run_jobs_inline: bool = False) -> FastAPI:
     async def conflict(_, exc):
         return JSONResponse({"detail": str(exc)}, status_code=409)
 
-    # ---------------------------------------------------------------- health & catalog
     @app.get("/healthz")
     def healthz():
         return {"ok": True, "templates": len(load_templates())}
@@ -105,10 +113,11 @@ def create_app(store=None, run_jobs_inline: bool = False) -> FastAPI:
 
     @app.get("/api/catalog/documents")
     def catalog_documents():
-        return {"titles": load_titles(), "playbooks": {k: {"title": v.title, "steps": [s.model_dump() for s in v.steps]}
-                                                      for k, v in load_playbooks().items()}}
+        return {
+            "titles": load_titles(),
+            "playbooks": {k: {"title": v.title, "steps": [s.model_dump() for s in v.steps]} for k, v in load_playbooks().items()}
+        }
 
-    # ---------------------------------------------------------------- assessments
     def _cands(cands):
         return [{"template_id": c.template_id, "title": c.title, "selected": c.selected, "always": c.always,
                  "score": None if c.always else c.score, "reasons": c.reasons} for c in cands]
@@ -125,7 +134,7 @@ def create_app(store=None, run_jobs_inline: bool = False) -> FastAPI:
     @app.get("/api/assessments/{aid}")
     def get_assessment(aid: str):
         a = get_or_404(aid)
-        return {"assessment": a.model_dump(mode="json"), "scorecard": store.scorecard(aid), "job": jobs_state.get(aid)}
+        return {"assessment": a.model_dump(mode="json"), "scorecard": store.scorecard(aid), "job": job_view(aid)}
 
     @app.patch("/api/assessments/{aid}/profile")
     def patch_profile(aid: str, patch: dict = Body(...), who: str = Depends(actor)):
@@ -161,27 +170,35 @@ def create_app(store=None, run_jobs_inline: bool = False) -> FastAPI:
         b = store.bundle(aid)
         info = {it.id: {"kind": it.kind.value, "doc_type": it.doc_type.value if it.doc_type else None, "table": it.table,
                         "reviewed_at": it.reviewed_at.isoformat() if it.reviewed_at else None, "meta": {k: v for k, v in it.meta.items()
-                                                                                                  if k != "raw_secret_scan"}}
+                                                                                                        if k != "raw_secret_scan"}}
                 for it in b.items.values()}
         return {"files": [{**r, **info.get(r["id"], {})} for r in rows], "errors": b.errors, "summary": b.summary()}
 
     @app.post("/api/assessments/{aid}/run", status_code=202)
     def run(aid: str, llm: bool = Body(False, embed=True), who: str = Depends(actor)):
         get_or_404(aid)
+        cur = job_view(aid)
+        if cur["state"] in ("queued", "running") and not cur["stale"]:
+            raise HTTPException(409, "An automated pass is already running for this assessment")
         job = {"job": "run", "assessment_id": aid, "llm": llm, "actor": who}
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        where = "the Kafka worker" if kafka else "this server"
+        store.set_job(aid, {"state": "queued", "phase": "Queued", "step": 0, "total": 0, "current": "", "started_at": now,
+                            "updated_at": now, "finished_at": None, "eta_s": None, "warnings": 0, "error": None,
+                            "summary": None, "job": job,
+                            "log": [{"t": now, "level": "info", "msg": f"Queued by {who}; waiting for {where} to pick it up"}]})
         if run_jobs_inline:
             handle_job(job)
         elif kafka:
             store.bus.publish(JOBS_TOPIC, aid, job)
-            jobs_state[aid] = {"state": "queued"}
         else:
-            jobs_state[aid] = {"state": "queued"}
             local_jobs.submit(job)
-        return jobs_state.get(aid, {"state": "queued"})
+        return job_view(aid)
 
     @app.get("/api/assessments/{aid}/job")
     def job(aid: str):
-        return jobs_state.get(aid) or {"state": "idle"}
+        get_or_404(aid)
+        return job_view(aid)
 
     @app.patch("/api/assessments/{aid}/criteria/{cid}")
     def patch_criterion(aid: str, cid: str, patch: dict = Body(...), who: str = Depends(actor)):
@@ -237,10 +254,10 @@ def create_app(store=None, run_jobs_inline: bool = False) -> FastAPI:
         return Response(data, media_type="application/zip",
                         headers={"Content-Disposition": f'attachment; filename="{ascii_name}"'})
 
-    dist = Path(config.setting("SRA_WEB_DIST", str(config.ROOT / "web" / "dist")))
+    dist = config.path_setting("SRA_WEB_DIST", config.ROOT / "web" / "dist")
     if dist.exists():
         app.mount("/", StaticFiles(directory=dist, html=True), name="web")
     return app
 
 
-app = None if config.setting("SRA_NO_APP") else create_app()
+app = create_app()

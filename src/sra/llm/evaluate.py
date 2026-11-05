@@ -7,9 +7,11 @@ Human-review criteria get a preliminary result, always flagged.
 from __future__ import annotations
 
 import logging
+import time
 from dataclasses import dataclass, field
 
 from ..catalog import load_templates
+from ..progress import NullProgress, Progress
 from ..catalog.models import Criterion, Method, Result, Risk
 from ..evidence.bundle import EvidenceBundle
 from ..models import Assessment, CriterionResult, Source
@@ -46,17 +48,11 @@ class Evaluator:
     def index(self, bundle: EvidenceBundle) -> HybridIndex:
         return HybridIndex(chunk_bundle(bundle), embedder=self.embedder)
 
-    def evaluate_pending(self, a: Assessment, bundle: EvidenceBundle, only: list[str] | None = None) -> None:
+    def evaluate_pending(self, a: Assessment, bundle: EvidenceBundle, only: list[str] | None = None,
+                         progress: Progress | None = None) -> None:
+        progress = progress or NullProgress()
         templates = load_templates()
-        health = getattr(self.client, "health", None)
-        if health is not None and not health():
-            # Fail fast: one check instead of a timeout per criterion. Pending criteria stay unevaluated
-            # (they score as Insufficient Evidence) and the run records why.
-            a.detector_runs["llm"] = f"skipped: model {self.client.model} unavailable"
-            self.stats["errors"] += 1
-            return
-        a.detector_runs["llm"] = f"ran: {self.client.model}"
-        idx = self.index(bundle)
+        pending = []
         for tid in a.templates:
             t = templates[tid]
             for c in t.criteria:
@@ -67,7 +63,47 @@ class Evaluator:
                     continue
                 if cur is not None and cur.source == Source.HUMAN:
                     continue
-                a.results[c.id] = self.evaluate_one(a, t, c, idx)
+                pending.append((t, c))
+        model = getattr(self.client, "model", "model")
+        where = getattr(self.client, "base_url", "")
+        progress.phase("AI-assisted criteria", total=len(pending),
+                       msg=f"{len(pending)} criteria need the local model; checking {model}" + (f" at {where}" if where else ""))
+        if not pending:
+            a.detector_runs["llm"] = f"ran: {model} (nothing left to evaluate)"
+            progress.info("Every criterion was settled by the rules; no model calls needed")
+            return
+        health = getattr(self.client, "health", None)
+        if health is not None and not health():
+            # Fail fast: one check instead of a timeout per criterion. Pending criteria stay unevaluated
+            # (they score as Insufficient Evidence) and the run records why.
+            a.detector_runs["llm"] = f"skipped: model {model} unavailable"
+            self.stats["errors"] += 1
+            progress.warn(f"Model {model} is not available" + (f" at {where}" if where else "")
+                          + f" (is Ollama running and the model pulled?). {len(pending)} criteria left for the assessor.")
+            return
+        a.detector_runs["llm"] = f"ran: {model}"
+        progress.info(f"Model {model} is reachable; indexing the evidence for retrieval")
+        progress.busy("Indexing the evidence for retrieval" + (" (computing embeddings)" if self.embedder else ""))
+        idx = self.index(bundle)
+        progress.info(f"Evaluating {len(pending)} criteria one at a time (CPU models take roughly 20s–3min each)")
+        for i, (t, c) in enumerate(pending, 1):
+            progress.start_item(i, f"{c.id} {c.name}")
+            t0 = time.monotonic()
+            before = dict(self.stats)
+            r = self.evaluate_one(a, t, c, idx)
+            a.results[c.id] = r
+            secs = time.monotonic() - t0
+            if self.stats["errors"] > before["errors"]:
+                progress.finish_item(i, f"{c.id}: model call failed after {secs:.0f}s — {r.rationale}", "warn")
+            elif self.stats["rejected"] > before["rejected"]:
+                progress.finish_item(i, f"{c.id}: answer rejected by verification after {secs:.0f}s — left for the assessor", "warn")
+            elif self.stats["no_evidence"] > before["no_evidence"]:
+                progress.finish_item(i, f"{c.id}: no matching evidence, marked Insufficient Evidence")
+            else:
+                progress.finish_item(i, f"{c.id}: {r.result.value} ({secs:.0f}s, confidence {r.confidence:.0%})")
+        s = self.stats
+        progress.info(f"AI pass finished: {s['verified']} verified, {s['rejected']} rejected, "
+                      f"{s['no_evidence']} without evidence, {s['errors']} errors")
 
     def evaluate_one(self, a: Assessment, t, c: Criterion, idx: HybridIndex) -> CriterionResult:
         human = Method.HUMAN in c.methods

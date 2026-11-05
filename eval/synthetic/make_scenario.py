@@ -10,6 +10,7 @@ from __future__ import annotations
 import csv
 import json
 import random
+import shutil
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -18,11 +19,12 @@ import yaml
 AS_OF = datetime(2026, 11, 4, 9, 0, 0)
 APP = "Orders Batch"
 OUT = Path(__file__).resolve().parents[1] / "scenarios" / "orders_batch"
+EVID = OUT / "evidence"  # the files to upload; profile.yaml (form answers) and expected.yaml (answer key) stay in OUT
 fmt = lambda d: d.strftime("%Y-%m-%d %H:%M:%S")
 
 
 def write_csv(name, rows):
-    with open(OUT / name, "w", newline="", encoding="utf-8") as f:
+    with open(EVID / name, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=list(rows[0]))
         w.writeheader()
         w.writerows(rows)
@@ -30,7 +32,9 @@ def write_csv(name, rows):
 
 def main():
     rnd = random.Random(7)
-    OUT.mkdir(parents=True, exist_ok=True)
+    if OUT.exists():
+        shutil.rmtree(OUT)  # generated output; start clean so no stale files remain
+    EVID.mkdir(parents=True)
 
     # CMDB: record exists, owner set, support_group EMPTY (seeded: P1-01, P1-02, P2-10)
     write_csv("cmdb_ci.csv", [
@@ -73,7 +77,7 @@ def main():
             "Rolled back release 4.2 and the error rate returned to baseline after cache warm-up.", prio="2 - High", hours=3)
     inc(AS_OF - timedelta(days=40), "Orders DB connection pool exhausted", "Database", "Performance",
         "Increased pool size from 20 to 50 and restarted the service; monitored for 2 hours.", prio="2 - High", hours=60)
-    with open(OUT / "incident.json", "w", encoding="utf-8") as f:
+    with open(EVID / "incident.json", "w", encoding="utf-8") as f:
         json.dump({"result": incidents}, f, indent=1)
 
     # Changes: 5 in 90d, 2 missing backout plan (P1-07); last release not validated (P2-08)
@@ -101,15 +105,15 @@ def main():
     ])
 
     # Documents
-    (OUT / "orders-batch-runbook.md").write_text(
+    (EVID / "orders-batch-runbook.md").write_text(
         "# Orders Batch Runbook\n\nLast reviewed: 2025-01-10\n\n## Recovery steps\n1. Restart the settlement job.\n"
         "2. Verify the output file.\n", encoding="utf-8")
-    (OUT / "orders-architecture.md").write_text(
+    (EVID / "orders-architecture.md").write_text(
         "# Orders Architecture\n\nUpdated: 2026-06-01\n\nThe orders API calls Billing API and the Orders DB.\n"
         "Single point of failure: the Orders DB primary.\n", encoding="utf-8")
 
     # Kubernetes: single replica, no limits, no probes, no PDB
-    (OUT / "orders-api-deployment.yaml").write_text("""apiVersion: apps/v1
+    (EVID / "orders-api-deployment.yaml").write_text("""apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: orders-api
@@ -128,11 +132,11 @@ spec:
             - name: BILLING_URL
               value: http://billing-api
 """, encoding="utf-8")
-    (OUT / "application.properties").write_text("db.url=jdbc:postgresql://orders-db/orders\ndb.password=SuperSecret123\n",
+    (EVID / "application.properties").write_text("db.url=jdbc:postgresql://orders-db/orders\ndb.password=SuperSecret123\n",
                                                 encoding="utf-8")
 
     # CI: Jenkins without security gates
-    (OUT / "Jenkinsfile").write_text("pipeline {\n  agent any\n  stages {\n    stage('Build') { steps { sh 'mvn package' } }\n"
+    (EVID / "Jenkinsfile").write_text("pipeline {\n  agent any\n  stages {\n    stage('Build') { steps { sh 'mvn package' } }\n"
                                      "    stage('Deploy') { steps { sh './deploy.sh' } }\n  }\n}\n", encoding="utf-8")
 
     # Scanner output (Trivy)
@@ -147,7 +151,7 @@ spec:
             {"VulnerabilityID": "CVE-2026-0004", "PkgName": "zlib", "InstalledVersion": "1.2.13", "FixedVersion": "1.3.1",
              "Severity": "LOW", "Title": "Minor zlib issue"},
         ]}]}
-    with open(OUT / "trivy-orders-api.json", "w", encoding="utf-8") as f:
+    with open(EVID / "trivy-orders-api.json", "w", encoding="utf-8") as f:
         json.dump(trivy, f, indent=1)
 
     profile = {"name": APP, "cmdb_id": "", "aliases": ["Orders Support"], "tier": 1, "priority_class": "P1", "trigger": "major_change", "hosting": "hybrid",

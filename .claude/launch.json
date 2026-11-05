@@ -4,7 +4,7 @@
     {
       "name": "sra-api",
       "runtimeExecutable": ".venv/Scripts/python.exe",
-      "runtimeArgs": ["-X", "utf8", "-m", "sra.cli", "serve"],
+      "runtimeArgs": ["-X", "utf8", "-m", "sra.cli", "serve", "--build"],
       "port": 8080
     }
   ]

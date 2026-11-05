@@ -16,6 +16,7 @@ from .detectors.base import Context, DetectorReport
 from .evidence.bundle import EvidenceBundle
 from .models import Assessment, CriterionResult, Finding, FindingType, ScoreCard, Source
 from .recommend.engine import attach
+from .progress import NullProgress, Progress
 from .scoring import load_matrix, score_assessment
 from .selection.profile import ApplicationProfile
 from .selection.selector import Candidate, select_templates
@@ -61,14 +62,20 @@ def propose_templates(profile: ApplicationProfile, bundle: EvidenceBundle | None
     return profile, select_templates(profile, load_templates())
 
 
-def run_detectors(a: Assessment, bundle: EvidenceBundle, ctx: Context) -> list[DetectorReport]:
+def run_detectors(a: Assessment, bundle: EvidenceBundle, ctx: Context, progress: Progress | None = None) -> list[DetectorReport]:
+    progress = progress or NullProgress()
     templates = load_templates()
     selected_ids = {c.id for tid in a.templates for c in templates[tid].criteria}
     reports = []
-    for name, fn in DETECTORS.items():
+    progress.phase("Rule-based detectors", total=len(DETECTORS),
+                   msg=f"Running {len(DETECTORS)} rule-based detectors over {len(bundle.items)} evidence files")
+    for i, (name, fn) in enumerate(DETECTORS.items(), 1):
+        progress.start_item(i, name)
         rep = fn(bundle, ctx)
         reports.append(rep)
         a.detector_runs[name] = rep.status
+        progress.finish_item(i, f"{name}: {rep.status}; {len(rep.findings)} findings, "
+                                f"{len(rep.rubric) + len(rep.results)} criteria settled")
         for rid, r in rep.rubric.items():
             a.rubric_direct[rid] = _merge(a.rubric_direct.get(rid), r)
         for cid, r in rep.results.items():
@@ -77,6 +84,7 @@ def run_detectors(a: Assessment, bundle: EvidenceBundle, ctx: Context) -> list[D
         a.findings.extend(rep.findings)
     if bundle.errors:
         a.detector_runs["ingest_errors"] = "; ".join(bundle.errors)[:500]
+        progress.warn(f"{len(bundle.errors)} evidence file(s) could not be read: " + "; ".join(bundle.errors)[:300])
 
     # P2-04 'Insufficient' from rubric_rules is superseded by config_checks when it ran
     # (handled by _merge). Now propagate rubric results to mapped template criteria.
@@ -172,20 +180,27 @@ def completeness_gate(a: Assessment, bundle: EvidenceBundle | None, final: bool 
 
 
 def run_assessment(a: Assessment, bundle: EvidenceBundle, profile: ApplicationProfile, as_of: datetime,
-                   evaluator=None) -> tuple[ScoreCard, GateResult]:
+                   evaluator=None, progress: Progress | None = None) -> tuple[ScoreCard, GateResult]:
     """Full automated pass. `evaluator` (llm.evaluate.Evaluator) handles criteria rules could not settle."""
+    progress = progress or NullProgress()
     templates, rubric, matrix = load_templates(), load_rubric(), load_matrix()
     a.profile = profile.model_dump(mode="json")
     a.matrix_version = matrix["version"]
     ctx = context_for(profile, as_of)
-    run_detectors(a, bundle, ctx)
+    run_detectors(a, bundle, ctx, progress)
     if evaluator is not None:
-        evaluator.evaluate_pending(a, bundle)
+        evaluator.evaluate_pending(a, bundle, progress=progress)
+    else:
+        progress.info("Local LLM not requested; criteria the rules could not settle are left for the assessor")
+    progress.phase("Scoring", msg="Writing recommendations and scoring templates, domains and the rubric")
     ensure_gap_findings(a)
     sc = score_assessment(a, templates, rubric, matrix)
     attach(a.findings, as_of.date(), matrix, sc.remediation_days)
     sc.conflicts = threshold_conflicts(a)
-    return sc, completeness_gate(a, bundle)
+    gate = completeness_gate(a, bundle)
+    progress.info(f"Rating {sc.rating}, index {sc.index}, {len(a.findings)} findings; "
+                  f"completeness gate {'passed' if gate.ok else f'has {len(gate.blockers)} blockers'}")
+    return sc, gate
 
 
 def rescore(a: Assessment) -> ScoreCard:

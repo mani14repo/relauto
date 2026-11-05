@@ -110,3 +110,10 @@ CREATE TABLE IF NOT EXISTS feedback (
     human_result   jsonb NOT NULL,
     at             timestamptz NOT NULL DEFAULT now()
 );
+
+-- Progress of the latest automated run per assessment (written by the API or the worker, read by the UI).
+CREATE TABLE IF NOT EXISTS jobs (
+  assessment_id TEXT PRIMARY KEY,
+  state         JSONB NOT NULL,
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);

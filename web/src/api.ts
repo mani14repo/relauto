@@ -1,3 +1,4 @@
+import type { Job } from "./JobPanel";
 export type Result = "Met" | "Gap" | "Insufficient Evidence" | "Not Applicable";
 export type Risk = "Critical" | "High" | "Medium" | "Low";
 
@@ -117,7 +118,7 @@ export const api = {
   templates: () => req<any[]>("GET", "/api/catalog/templates"),
   template: (id: string) => req<Template>("GET", `/api/catalog/templates/${id}`),
   create: (profile: Record<string, unknown>) => req<{ assessment: Assessment; candidates: Candidate[] }>("POST", "/api/assessments", { profile }),
-  get: (id: string) => req<{ assessment: Assessment; scorecard: ScoreCard | null; job: any }>("GET", `/api/assessments/${id}`),
+  get: (id: string) => req<{ assessment: Assessment; scorecard: ScoreCard | null; job: Job }>("GET", `/api/assessments/${id}`),
   candidates: (id: string) => req<{ profile: any; candidates: Candidate[] }>("GET", `/api/assessments/${id}/candidates`),
   setTemplates: (id: string, templates: string[]) => req<Assessment>("PUT", `/api/assessments/${id}/templates`, { templates }),
   patchProfile: (id: string, patch: Record<string, unknown>) => req<Assessment>("PATCH", `/api/assessments/${id}/profile`, patch),
@@ -128,8 +129,8 @@ export const api = {
     return req<any[]>("POST", `/api/assessments/${id}/evidence`, fd, true);
   },
   evidence: (id: string) => req<{ files: any[]; errors: string[]; summary: Record<string, number> }>("GET", `/api/assessments/${id}/evidence`),
-  run: (id: string, llm: boolean) => req<any>("POST", `/api/assessments/${id}/run`, { llm }),
-  job: (id: string) => req<any>("GET", `/api/assessments/${id}/job`),
+  run: (id: string, llm: boolean) => req<Job>("POST", `/api/assessments/${id}/run`, { llm }),
+  job: (id: string) => req<Job>("GET", `/api/assessments/${id}/job`),
   patchCriterion: (id: string, cid: string, patch: Record<string, unknown>) => req<any>("PATCH", `/api/assessments/${id}/criteria/${cid}`, patch),
   confirm: (id: string, cid: string) => req<any>("POST", `/api/assessments/${id}/criteria/${cid}/confirm`),
   chat: (id: string, cid: string, question: string) => req<{ answer: string }>("POST", `/api/assessments/${id}/criteria/${cid}/chat`, { question }),

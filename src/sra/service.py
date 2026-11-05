@@ -6,6 +6,7 @@ pass keeps human decisions (overrides, N/A approvals, finding dispositions) inta
 from __future__ import annotations
 
 import datetime as dt
+import logging
 import io
 import zipfile
 from datetime import datetime
@@ -17,12 +18,15 @@ from .catalog.compiler import template_path
 from .catalog.models import Result, Risk
 from .events.bus import envelope
 from .models import ApplicationRef, Assessment, CriterionResult, FindingStatus, SignOff, Source
+from .progress import NullProgress, Progress
 from .pipeline import completeness_gate, propose_templates, rescore, run_assessment
 from .report.docx_fill import fill_template
 from .report.summary import build_summary
 from .scoring import load_matrix
 from .selection.profile import ApplicationProfile
 from .store import Store
+
+log = logging.getLogger("sra.service")
 
 
 class Conflict(Exception):
@@ -80,16 +84,23 @@ class AssessmentService:
                         audit=[{"actor": actor, "action": "add_evidence", "after": [r["name"] for r in rows]}])
         return rows
 
-    def run(self, aid: str, use_llm: bool = False, actor: str = "system") -> dict:
+    def run(self, aid: str, use_llm: bool = False, actor: str = "system", progress: Progress | None = None) -> dict:
+        progress = progress or NullProgress()
         a = self.store.get(aid)
         as_of = datetime.combine(a.assessment_date, dt.time(12))
+        progress.phase("Loading evidence", msg="Loading and redacting the uploaded evidence")
         bundle = self.store.bundle(aid, as_of)
+        progress.info(f"{len(bundle.items)} evidence files loaded")
         keep_results = {cid: r for cid, r in a.results.items() if r.source == Source.HUMAN}
         keep_status = {(f.detector, f.title): (f.status, f.recommendation) for f in a.findings if f.status != FindingStatus.OPEN}
         a.results, a.rubric_direct, a.findings, a.detector_runs = dict(keep_results), {}, [], {}
         a.status = "evaluating"
-        evaluator = self.evaluator_factory() if (use_llm and self.evaluator_factory) else None
-        sc, gate = run_assessment(a, bundle, self.profile(a), as_of, evaluator)
+        evaluator = None
+        if use_llm and self.evaluator_factory:
+            progress.busy("Starting the local LLM client and loading the embedding model")
+            evaluator = self.evaluator_factory()
+        sc, gate = run_assessment(a, bundle, self.profile(a), as_of, evaluator, progress)
+        progress.phase("Saving", msg="Saving results")
         for f in a.findings:
             prev = keep_status.get((f.detector, f.title))
             if prev:
@@ -104,6 +115,23 @@ class AssessmentService:
                                                             "title": f.title}, actor) for f in a.findings],
                         audit=[{"actor": actor, "action": "run", "after": {"rating": sc.rating, "llm": bool(evaluator)}}])
         return {"scorecard": sc.model_dump(mode="json"), "gate": gate.__dict__, "llm": stats}
+
+    def run_job(self, job: dict) -> dict | None:
+        """Run a queued 'run' job, recording live progress where the UI can read it (store.set_job)."""
+        aid, llm, who = job["assessment_id"], job.get("llm", False), job.get("actor", "system")
+        queued = self.store.get_job(aid) or {}
+        progress = Progress(sink=lambda s: self.store.set_job(aid, s), job=job, label=aid, history=queued.get("log"))
+        progress.info(f"Automated pass started by {who} " + ("with the local LLM" if llm else "(rules only, no LLM)"))
+        try:
+            out = self.run(aid, use_llm=llm, actor=who, progress=progress)
+        except Exception as exc:  # noqa: BLE001 - reported to the user through the job record
+            log.exception("run failed for %s", aid)
+            progress.failed(f"{type(exc).__name__}: {exc}")
+            return None
+        sc, stats = out["scorecard"], out.get("llm")
+        progress.done({"rating": sc["rating"], "index": sc["index"], "llm": stats},
+                      f"Finished: rated {sc['rating']} (index {sc['index']})")
+        return out
 
     # ---------------------------------------------------------------- review
     def override_criterion(self, aid: str, cid: str, patch: dict, actor: str) -> dict:

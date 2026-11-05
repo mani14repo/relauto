@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import re
 import threading
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Protocol
@@ -82,6 +83,8 @@ class Store(Protocol):
     def bundle(self, aid: str, as_of: datetime | None = None) -> EvidenceBundle: ...
     def audit_log(self, aid: str) -> list[dict]: ...
     def feedback(self, aid: str, criterion_id: str, ai: dict | None, human: dict) -> None: ...
+    def set_job(self, aid: str, job: dict) -> None: ...
+    def get_job(self, aid: str) -> dict | None: ...
 
 
 def _bundle_from(rows: list[dict], blobs: BlobStore, as_of: datetime | None) -> EvidenceBundle:
@@ -118,6 +121,26 @@ class FileStore:
                     f.write(json.dumps({**row, "at": datetime.now(timezone.utc).isoformat()}, default=str) + "\n")
         for e in events:
             self.bus.publish(EVENTS_TOPIC, a.id, e)
+
+    def set_job(self, aid, job):
+        d = self._dir(aid)
+        d.mkdir(parents=True, exist_ok=True)
+        tmp = d / f"job.json.{threading.get_ident()}.tmp"
+        tmp.write_text(json.dumps(job, default=str), encoding="utf-8")
+        for _ in range(5):          # Windows: the reader may hold the file open for a moment
+            try:
+                tmp.replace(d / "job.json")
+                return
+            except PermissionError:
+                time.sleep(0.05)
+        tmp.unlink(missing_ok=True)
+
+    def get_job(self, aid):
+        p = self._dir(aid) / "job.json"
+        try:
+            return json.loads(p.read_text(encoding="utf-8"))
+        except (FileNotFoundError, json.JSONDecodeError, PermissionError):
+            return None
 
     def get(self, aid):
         p = self._dir(aid) / "assessment.json"
@@ -182,6 +205,18 @@ class PgStore:
         sql = (Path(__file__).parent / "db" / "schema.sql").read_text(encoding="utf-8")
         with self.pool.connection() as c:
             c.execute(sql)
+
+    def set_job(self, aid, job):
+        from psycopg.types.json import Jsonb
+        with self.pool.connection() as c:
+            c.execute("INSERT INTO jobs (assessment_id, state, updated_at) VALUES (%s, %s, now()) "
+                      "ON CONFLICT (assessment_id) DO UPDATE SET state = EXCLUDED.state, updated_at = now()",
+                      (aid, Jsonb(job)))
+
+    def get_job(self, aid):
+        with self.pool.connection() as c:
+            row = c.execute("SELECT state FROM jobs WHERE assessment_id = %s", (aid,)).fetchone()
+        return row[0] if row else None
 
     def publish(self, topic, key, payload):
         from psycopg.types.json import Jsonb

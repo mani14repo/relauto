@@ -112,3 +112,39 @@ def test_bm25_retrieval():
     idx = HybridIndex(chunk_bundle(bundle()))
     top = idx.search("structured logs error rate metrics", k=1)
     assert top and top[0].source == "observability.md"
+
+
+def test_progress_reports_each_criterion_and_errors():
+    from sra.progress import Progress
+    saved = []
+    p = Progress(sink=saved.append)
+    calls = iter([LLMError("timed out after 300s")] + [None] * 10)
+
+    def answer(u):
+        exc = next(calls)
+        if exc:
+            raise exc
+        return {"result": "Gap", "rationale": "x", "cited": [first_chunk_id(u)], "gaps": ["y"],
+                "recommendation": "z", "risk": "Low", "confidence": 0.9}
+    ev = Evaluator(FakeClient(answer))
+    ev.evaluate_pending(assessment(), bundle(), progress=p)
+    s = saved[-1]
+    msgs = [x["msg"] for x in s["log"]]
+    assert s["phase"] == "AI-assisted criteria" and s["total"] == 5 and s["step"] == 5
+    assert any("model call failed" in m and "timed out" in m for m in msgs) and s["warnings"] >= 1
+    assert msgs[-1].startswith("AI pass finished")
+    assert any(x.get("current", "").startswith("SRE-AT-03-C0") for x in saved)   # the UI saw which criterion was running
+
+
+def test_progress_warns_when_model_unavailable():
+    from sra.progress import Progress
+    saved = []
+
+    class Down(FakeClient):
+        base_url = "http://localhost:11434"
+
+        def health(self):
+            return False
+    Evaluator(Down(None)).evaluate_pending(assessment(), bundle(), progress=Progress(sink=saved.append))
+    last = saved[-1]["log"][-1]
+    assert last["level"] == "warn" and "not available at http://localhost:11434" in last["msg"]

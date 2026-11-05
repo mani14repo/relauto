@@ -34,7 +34,7 @@ def test_full_flow(client):
     assert r.json()["assessment"]["assessor"] == "alice@example.com"
     assert any(x["template_id"] == "SRE-AT-01" and x["selected"] for x in r.json()["candidates"])
 
-    files = [("files", (p.name, p.read_bytes())) for p in sorted(SCENARIO.iterdir()) if p.name not in ("profile.yaml", "expected.yaml")]
+    files = [("files", (p.name, p.read_bytes())) for p in sorted((SCENARIO / "evidence").iterdir())]
     r = c.post(f"/api/assessments/{aid}/evidence", files=files, headers=H)
     assert r.status_code == 201 and len(r.json()) == len(files)
     ev = c.get(f"/api/assessments/{aid}/evidence").json()
@@ -44,7 +44,12 @@ def test_full_flow(client):
     assert r.json()["templates"] == ["SRE-AT-01", "SRE-AT-07", "SRE-AT-11"]
 
     r = c.post(f"/api/assessments/{aid}/run", json={"llm": False}, headers=H)
-    assert r.json()["state"] == "done" and r.json()["rating"] == "Not Ready"
+    j = r.json()
+    assert j["state"] == "done" and j["summary"]["rating"] == "Not Ready" and not j["stale"]
+    msgs = [x["msg"] for x in j["log"]]
+    assert msgs[0].startswith("Queued by") and any("rule-based detectors" in m for m in msgs)
+    assert any("Local LLM not requested" in m for m in msgs) and msgs[-1].startswith("Finished: rated Not Ready")
+    assert c.get(f"/api/assessments/{aid}/job").json()["state"] == "done"
     body = c.get(f"/api/assessments/{aid}").json()
     a, sc = body["assessment"], body["scorecard"]
     assert sc["rating"] == "Not Ready" and a["findings"]

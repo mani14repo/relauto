@@ -27,7 +27,8 @@ gcs:
 
 llm:
   provider: ollama
-  model: qwen2.5:7b-instruct                  # choose by eval
+  model: gemma4:26b                           # MoE, ~4B active params: CPU-friendly; confirm with eval/run_eval.py
+  think: false                                # reasoning tokens are too slow on CPU
   timeoutSeconds: 600
   numCtx: 8192
 
@@ -49,13 +50,13 @@ worker:
 
 ollama:
   enabled: true
-  image: cvsh.jfrog.io/cvsdigital-docker/ollama:0.5.4
+  image: cvsh.jfrog.io/cvsdigital-docker/ollama:0.40.14   # needs >= the release that ships gemma4
   replicas: 1
   nodeSelector: {}                            # e.g. {cloud.google.com/gke-nodepool: llm-cpu} (c3/n2 highmem)
   tolerations: []
   resources:
-    requests: {cpu: "8", memory: 16Gi}        # 7-8B Q4 model on CPU
-    limits: {cpu: "16", memory: 24Gi}
+    requests: {cpu: "8", memory: 24Gi}        # gemma4:26b weights are 16-19 GB + KV cache
+    limits: {cpu: "16", memory: 32Gi}
   storage: 30Gi
   # Model weights cannot be pulled from the internet: mirror an `ollama pull` models/ directory to GCS once;
   # the init container copies it into the PVC.

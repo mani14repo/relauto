@@ -33,6 +33,8 @@ app.kubernetes.io/version: {{ .Values.image.tag | quote }}
   value: {{ .Values.llm.model | quote }}
 - name: LLM_TIMEOUT
   value: {{ .Values.llm.timeoutSeconds | quote }}
+- name: LLM_THINK
+  value: {{ .Values.llm.think | default false | quote }}
 - name: LLM_NUM_CTX
   value: {{ .Values.llm.numCtx | quote }}
 - name: HF_HUB_OFFLINE

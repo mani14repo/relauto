@@ -58,14 +58,18 @@ The rubric defines a gating rating and domain weights but **no numeric score**. 
 ```bash
 uv venv --python 3.13 .venv && uv pip install --python .venv -e ".[dev]"
 .venv/Scripts/python -m sra.cli catalog                       # compile docs/OIPReqs -> catalog/
-.venv/Scripts/python eval/synthetic/make_scenario.py          # synthetic app with seeded defects
+.venv/Scripts/python eval/synthetic/make_scenario.py          # synthetic app with seeded defects (files to upload are in evidence/)
 .venv/Scripts/python -m sra.cli assess eval/scenarios/orders_batch --as-of 2026-11-04T09:00 --out out/demo
 .venv/Scripts/python -m pytest -q
 ```
 
-UI: `cd web && npm install && npm run build`, then run `python -m sra.cli serve` and open http://localhost:8080.
+More test apps: `python eval/synthetic/generate_scenarios.py` asks a Foundry model (`FOUNDRY_*`, `APP_MODEL` in `.env`) to design four varied applications. You can also pass your own `--brief "..."`. The model only picks names, a profile and which defects to plant, from the fixed list in `eval/synthetic/scenario_kit.py`. Code renders the evidence and derives the answer key from that list, so the key doesn't depend on the model being right. Each app goes to `eval/scenarios/<slug>/`: `evidence/` (upload these), `profile.yaml` (form answers), `expected.yaml` (answer key) and `spec.yaml` (`--from-spec` re-renders it without calling the model). `python eval/run_eval.py --all` checks every scenario.
 
-Local LLM: install Ollama and run `ollama pull qwen2.5:7b-instruct` (or set `LLM_MODEL`). Then add `--llm` to `assess`, or tick "Use local LLM" in the UI. To compare models, use `python eval/run_eval.py --llm --model <a> --model <b>`.
+Settings: everything is optional. Copy `.env.example` to `.env` to change the model, or to switch storage to Postgres and jobs to Kafka.
+
+UI: `python -m sra.cli serve --build` builds the web UI (running `npm install` the first time) and then starts the API; open http://localhost:8080. Without `--build` it serves the existing `web/dist`.
+
+Local LLM: install Ollama and run `ollama pull qwen3.5:4b` (the laptop default; set `LLM_MODEL` to change it). Thinking mode is off by default (`LLM_THINK=false`), because reasoning tokens are too slow on CPU. For the cluster, the candidate is `gemma4:26b`, a mixture-of-experts model that uses about 4B parameters per token; confirm it with the eval. Then add `--llm` to `assess`, or tick "Use local LLM" in the UI. To compare models, use `python eval/run_eval.py --llm --model <a> --model <b>`.
 
 Full stack: `docker compose up` (Postgres+pgvector, Kafka KRaft, Ollama, api, worker).
 

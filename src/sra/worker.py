@@ -51,7 +51,7 @@ async def consume_jobs(svc: AssessmentService, consumer, stop: asyncio.Event) ->
                 try:
                     if job.get("job") == "run":
                         # CPU-bound LLM work runs in a thread so the relay keeps flowing
-                        await asyncio.to_thread(svc.run, job["assessment_id"], job.get("llm", False), job.get("actor", "worker"))
+                        await asyncio.to_thread(svc.run_job, job)
                     elif job.get("job") == "report":
                         await asyncio.to_thread(svc.report_zip, job["assessment_id"], job.get("actor", "worker"))
                 except Exception:  # noqa: BLE001

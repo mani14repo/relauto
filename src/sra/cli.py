@@ -3,7 +3,7 @@
     sra catalog                                   # compile docs/OIPReqs -> catalog/
     sra select  <evidence-dir> [--profile p.yaml]  # show proposed templates with reasons
     sra assess  <evidence-dir> [--profile p.yaml] [--out out/<app>] [--as-of 2026-11-04] [--llm]
-    sra serve                                      # API (+ UI) on :8080
+    sra serve [--build]                            # API (+ UI) on :8080; --build runs the npm build first
     sra worker                                     # Kafka worker
 """
 from __future__ import annotations
@@ -25,12 +25,18 @@ def _load_profile(evidence_dir: Path, profile: str | None):
     return ApplicationProfile.model_validate(yaml.safe_load(p.read_text(encoding="utf-8")))
 
 
+def _evidence_root(d: Path) -> Path:
+    """A scenario folder keeps its evidence in evidence/, next to profile.yaml; a plain folder is the evidence."""
+    return d / "evidence" if (d / "evidence").is_dir() else d
+
+
 def _bundle(evidence_dir: Path, as_of: datetime):
     from .evidence.bundle import EvidenceBundle
     b = EvidenceBundle()
-    for f in sorted(evidence_dir.rglob("*")):
+    root = _evidence_root(evidence_dir)
+    for f in sorted(root.rglob("*")):
         if f.is_file() and f.name not in ("profile.yaml", "expected.yaml"):
-            b.ingest(f.relative_to(evidence_dir).as_posix(), f.read_bytes(), as_of=as_of)
+            b.ingest(f.relative_to(root).as_posix(), f.read_bytes(), as_of=as_of)
     return b
 
 
@@ -98,6 +104,23 @@ def cmd_assess(args):
     print(f"Output        {out.resolve()}")
 
 
+def build_web() -> None:
+    """npm install (first time only) + npm run build in web/, so the API serves a fresh web/dist."""
+    import shutil
+    import subprocess
+
+    from .config import ROOT
+    web = ROOT / "web"
+    npm = shutil.which("npm")          # resolves npm.cmd on Windows
+    if not npm:
+        sys.exit("npm not found on PATH; install Node.js or run without --build")
+    steps = ([] if (web / "node_modules").exists() else [[npm, "install", "--no-audit", "--no-fund"]]) + [[npm, "run", "build"]]
+    for cmd in steps:
+        print(f"[web] {' '.join(cmd[1:])}", flush=True)
+        if subprocess.run(cmd, cwd=web).returncode != 0:
+            sys.exit(f"web build failed: npm {' '.join(cmd[1:])}; API not started")
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="sra", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -112,7 +135,8 @@ def main(argv=None):
             p.add_argument("--assessor", default="")
             p.add_argument("--templates", help="comma-separated override of the proposed templates")
             p.add_argument("--llm", action="store_true", help="evaluate remaining criteria with the local LLM")
-    sub.add_parser("serve")
+    sp = sub.add_parser("serve")
+    sp.add_argument("--build", action="store_true", help="run the web UI build (npm) before starting the API")
     sub.add_parser("worker")
     args = ap.parse_args(argv)
     if args.cmd == "catalog":
@@ -126,6 +150,8 @@ def main(argv=None):
     elif args.cmd == "serve":
         import uvicorn
         from .config import setting
+        if args.build:
+            build_web()
         uvicorn.run("sra.api.app:app", host="0.0.0.0", port=int(setting("PORT", "8080")))
     elif args.cmd == "worker":
         import asyncio

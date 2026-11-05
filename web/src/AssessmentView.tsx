@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, getUser, type Assessment, type Candidate, type CriterionResult, type Finding, type ScoreCard, type Template } from "./api";
+import JobPanel, { isActive, type Job } from "./JobPanel";
 import { Bar, ErrorBox, RATING_COLOR, ResultBadge, Severity } from "./ui";
 
 type Tab = "templates" | "evidence" | "criteria" | "findings" | "score" | "report";
@@ -11,7 +12,7 @@ const TABS: [Tab, string][] = [
 export default function AssessmentView({ id }: { id: string }) {
   const [a, setA] = useState<Assessment | null>(null);
   const [sc, setSc] = useState<ScoreCard | null>(null);
-  const [job, setJob] = useState<any>(null);
+  const [job, setJob] = useState<Job | null>(null);
   const [tab, setTab] = useState<Tab>(() => (sessionGet(`tab.${id}`) as Tab) || "templates");
   const [templates, setTemplates] = useState<Record<string, Template>>({});
   const [error, setError] = useState<string | null>(null);
@@ -31,19 +32,26 @@ export default function AssessmentView({ id }: { id: string }) {
       setTemplates((prev) => ({ ...prev, ...Object.fromEntries(ts.map((t) => [t.id, t])) })));
   }, [a, templates]);
 
-  // poll while a job runs
+  // poll while a job runs; keep polling through brief network errors and say so
+  const active = isActive(job);
   useEffect(() => {
-    if (!job || !["queued", "running"].includes(job.state)) return;
+    if (!active) return;
+    let misses = 0;
     const t = setInterval(async () => {
-      const j = await api.job(id);
-      setJob(j);
-      if (!["queued", "running"].includes(j.state)) { clearInterval(t); load(); }
+      try {
+        const j = await api.job(id);
+        misses = 0;
+        setJob(j);
+        if (!isActive(j)) { clearInterval(t); load(); }
+      } catch (e) {
+        if (++misses === 3) setError(`Lost contact with the server while the run is in progress (${e}). Still retrying…`);
+      }
     }, 2000);
     return () => clearInterval(t);
-  }, [job, id, load]);
+  }, [active, id, load]);
 
   if (!a) return <><ErrorBox error={error} /><p className="muted">Loading…</p></>;
-  const running = job && ["queued", "running"].includes(job.state);
+  const running = active && !job?.stale;
 
   return (
     <>
@@ -57,8 +65,7 @@ export default function AssessmentView({ id }: { id: string }) {
       </div>
       <p className="muted small">Assessed {a.assessment_date} by {a.assessor || "—"} · {a.templates.length} templates · {a.findings.length} findings</p>
       <ErrorBox error={error} />
-      {running && <div className="notice" role="status" style={{ marginBottom: 10 }}>Automated pass {job.state}… AI-assisted criteria on a CPU model can take several minutes.</div>}
-      {job?.state === "failed" && <ErrorBox error={`Run failed: ${job.error}`} />}
+      <JobPanel id={id} job={job} />
       <div className="tabs" role="tablist">
         {TABS.map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? "on" : ""} onClick={() => setTab(k)}>{l}</button>)}
       </div>
