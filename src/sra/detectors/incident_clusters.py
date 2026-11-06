@@ -28,7 +28,6 @@ import math
 import re
 from collections import Counter
 from dataclasses import dataclass
-from functools import lru_cache
 
 import numpy as np
 
@@ -99,10 +98,12 @@ def _normalise(m: np.ndarray) -> np.ndarray:
     return m / np.where(norms == 0, 1, norms)
 
 
-@lru_cache(maxsize=1)
 def _embedder():
-    from ..retrieval.chunks import FastEmbedder
-    return FastEmbedder()
+    from ..retrieval.chunks import shared_embedder
+    e = shared_embedder()
+    if e is None:
+        raise RuntimeError("fastembed or the bge-small model is not available")
+    return e
 
 
 def vectors(texts: list[str], method: str) -> tuple[np.ndarray, str]:

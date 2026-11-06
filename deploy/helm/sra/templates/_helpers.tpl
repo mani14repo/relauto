@@ -28,7 +28,18 @@ app.kubernetes.io/version: {{ .Values.image.tag | quote }}
 - name: LLM_PROVIDER
   value: {{ .Values.llm.provider | quote }}
 - name: LLM_BASE_URL
-  value: "http://{{ .Release.Name }}-ollama:11434"
+  {{- /* one URL per Ollama replica (stable pod DNS via the headless service) so criteria spread across replicas */}}
+  {{- $urls := list }}
+  {{- range $i := until (int .Values.ollama.replicas) }}
+  {{- $urls = append $urls (printf "http://%s-ollama-%d.%s-ollama-pods:11434" $.Release.Name $i $.Release.Name) }}
+  {{- end }}
+  value: {{ join "," $urls | quote }}
+- name: LLM_CONCURRENCY
+  value: {{ .Values.ollama.numParallel | default 1 | quote }}
+- name: LLM_KEEP_ALIVE
+  value: "24h"
+- name: LLM_NUM_PREDICT
+  value: {{ .Values.llm.numPredict | default 768 | quote }}
 - name: LLM_MODEL
   value: {{ .Values.llm.model | quote }}
 - name: LLM_TIMEOUT

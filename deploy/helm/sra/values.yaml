@@ -31,6 +31,7 @@ llm:
   think: false                                # reasoning tokens are too slow on CPU
   timeoutSeconds: 600
   numCtx: 8192
+  numPredict: 768                             # most tokens per reply
 
 api:
   replicas: 2
@@ -51,7 +52,8 @@ worker:
 ollama:
   enabled: true
   image: cvsh.jfrog.io/cvsdigital-docker/ollama:0.40.14   # needs >= the release that ships gemma4
-  replicas: 1
+  replicas: 1                                 # each replica is a separate CPU node's worth of throughput; the app spreads criteria across them
+  numParallel: 1                              # OLLAMA_NUM_PARALLEL per replica (and LLM_CONCURRENCY); 2+ needs memory for 2+ KV caches
   nodeSelector: {}                            # e.g. {cloud.google.com/gke-nodepool: llm-cpu} (c3/n2 highmem)
   tolerations: []
   resources:

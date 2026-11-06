@@ -7,6 +7,7 @@ src/sra/crosswalk.py
 src/sra/models.py
 src/sra/ooxml.py
 src/sra/pipeline.py
+src/sra/progress.py
 src/sra/service.py
 src/sra/store.py
 src/sra/worker.py
@@ -22,8 +23,11 @@ src/sra/catalog/rubric.py
 src/sra/db/__init__.py
 src/sra/detectors/__init__.py
 src/sra/detectors/base.py
+src/sra/detectors/checklists.py
 src/sra/detectors/config_checks.py
+src/sra/detectors/criteria_rules.py
 src/sra/detectors/incident_anomalies.py
+src/sra/detectors/incident_clusters.py
 src/sra/detectors/rubric_rules.py
 src/sra/detectors/vulnerabilities.py
 src/sra/events/__init__.py
@@ -47,6 +51,7 @@ src/sra/report/summary.py
 src/sra/retrieval/__init__.py
 src/sra/retrieval/chunks.py
 src/sra/scoring/__init__.py
+src/sra/scoring/cmdb.py
 src/sra/scoring/engine.py
 src/sra/selection/__init__.py
 src/sra/selection/profile.py
@@ -58,10 +63,17 @@ src/sre_agent.egg-info/entry_points.txt
 src/sre_agent.egg-info/requires.txt
 src/sre_agent.egg-info/top_level.txt
 tests/test_api.py
+tests/test_cancel.py
 tests/test_catalog.py
+tests/test_checklists.py
+tests/test_cmdb_v2.py
 tests/test_config.py
+tests/test_criteria_rules.py
 tests/test_detectors.py
+tests/test_incident_clusters.py
 tests/test_llm.py
 tests/test_llm_client.py
+tests/test_llm_efficiency.py
 tests/test_report.py
+tests/test_scenario_kit.py
 tests/test_scoring.py

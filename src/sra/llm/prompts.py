@@ -25,18 +25,23 @@ Rules:
 - "confidence": 0.0-1.0, how sure you are.
 Return only JSON matching the schema."""
 
+# Bump when SYSTEM, SCHEMA or criterion_prompt change meaning: cached results from older prompts are then ignored.
+PROMPT_VERSION = "2"
+
+# Length limits keep replies short (reply tokens are the slow part after the prompt) and below LLM_NUM_PREDICT,
+# so a reply is never cut off mid-JSON.
 SCHEMA = {
     "type": "object",
     "properties": {
         "result": {"type": "string", "enum": ["Met", "Gap", "Insufficient Evidence"]},
-        "rationale": {"type": "string"},
-        "cited": {"type": "array", "items": {"type": "string"}},
-        "gaps": {"type": "array", "items": {"type": "string"}},
-        "recommendation": {"type": "string"},
+        "rationale": {"type": "string", "maxLength": 500},
+        "cited": {"type": "array", "items": {"type": "string", "maxLength": 40}, "maxItems": 8},
+        "gaps": {"type": "array", "items": {"type": "string", "maxLength": 200}, "maxItems": 5},
+        "recommendation": {"type": "string", "maxLength": 300},
         "risk": {"type": "string", "enum": ["Critical", "High", "Medium", "Low"]},
         "confidence": {"type": "number"},
         # Optional; used for V2 CMDB/CSDM criteria that define a formula and L0-L4 maturity bands.
-        "measured_value": {"type": "string"},
+        "measured_value": {"type": "string", "maxLength": 200},
         "maturity_level": {"type": ["integer", "null"], "minimum": 0, "maximum": 4},
     },
     "required": ["result", "rationale", "cited", "gaps", "recommendation", "risk", "confidence"],

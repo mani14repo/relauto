@@ -39,6 +39,7 @@ class Progress:
         self.label = label
         self._lock = threading.Lock()
         self._step_started = 0.0
+        self._phase_started = time.monotonic()
         self._durations: list[float] = []
         self.state: dict = {"state": "running", "phase": "Starting", "step": 0, "total": 0, "current": "",
                             "started_at": _now(), "updated_at": _now(), "finished_at": None, "eta_s": None,
@@ -66,6 +67,7 @@ class Progress:
         with self._lock:
             self.state.update(phase=name, step=0, total=total, current="", eta_s=None)
             self._durations = []
+            self._phase_started = time.monotonic()
         self._line("info", msg or name)
 
     def start_item(self, step: int, current: str) -> None:
@@ -85,6 +87,22 @@ class Progress:
             self.state.update(step=step, current="")
             self.state["eta_s"] = self._eta(step)
         self._line(level, msg)
+
+    def items_done(self, done: int, current: str, msg: str = "", level: str = "info") -> None:
+        """For items worked on in parallel: `done` finished so far, `current` describes what is in flight.
+
+        The ETA comes from throughput since the phase started (items overlap, so per-item times would mislead).
+        """
+        with self._lock:
+            self.state.update(step=done, current=current)
+            elapsed = time.monotonic() - self._phase_started
+            left = self.state["total"] - done
+            self.state["eta_s"] = int(elapsed / done * left) if done and left > 0 else None
+            self.state["updated_at"] = _now()
+        if msg:
+            self._line(level, msg)
+        else:
+            self._save()
 
     def busy(self, current: str) -> None:
         """Show what is happening now without moving the step count (e.g. loading or indexing)."""

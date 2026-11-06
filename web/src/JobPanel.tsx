@@ -6,7 +6,7 @@ export type Job = {
   phase?: string; step?: number; total?: number; current?: string;
   started_at?: string; updated_at?: string; finished_at?: string | null; eta_s?: number | null;
   log?: JobLine[]; warnings?: number; error?: string | null;
-  summary?: { rating: string; index: number; llm?: { calls: number; verified: number; rejected: number; no_evidence: number; errors: number } | null } | null;
+  summary?: { rating: string; index: number; llm?: { calls: number; verified: number; rejected: number; no_evidence: number; errors: number; reused?: number } | null } | null;
   job?: { llm?: boolean };
   seconds_since_update?: number; stale_after_s?: number; stale?: boolean; cancel_requested?: boolean;
 };
@@ -119,7 +119,7 @@ export default function JobPanel({ id, job, onCancel }: { id: string; job: Job |
       {job.state === "done" && job.summary && (
         <p className="small" style={{ margin: "8px 0 0" }}>
           Rated <strong>{job.summary.rating}</strong> (index {job.summary.index}).
-          {llm && <> Local LLM: {llm.verified} verified, {llm.rejected} rejected by verification, {llm.no_evidence} without evidence, {llm.errors} errors.</>}
+          {llm && <> Local LLM: {llm.verified} verified, {llm.rejected} rejected by verification, {llm.no_evidence} without evidence, {llm.errors} errors{llm.reused ? `, ${llm.reused} reused from the last run` : ""}.</>}
           {!!warnLines.length && <> {warnLines.length} warning{warnLines.length > 1 ? "s" : ""}: see the log.</>}
         </p>
       )}

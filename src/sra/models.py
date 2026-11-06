@@ -103,6 +103,9 @@ class Assessment(BaseModel):
     detector_runs: dict[str, str] = Field(default_factory=dict)  # detector -> "ran" | "skipped: reason"
     matrix_version: str = ""
     status: str = "draft"
+    # criterion id -> {"key": hash of model + prompt + evidence sent, "result": CriterionResult}; lets a re-run reuse
+    # an LLM answer when nothing it was shown has changed. Kept across runs; never shown as a result by itself.
+    llm_cache: dict[str, dict] = Field(default_factory=dict)
 
 
 class TemplateScore(BaseModel):

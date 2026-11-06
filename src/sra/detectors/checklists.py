@@ -30,7 +30,6 @@ from __future__ import annotations
 
 import re
 from datetime import datetime
-from functools import lru_cache
 
 from ..catalog.models import Result
 from ..config import load_yaml
@@ -86,10 +85,12 @@ def records(b: EvidenceBundle, ctx: Context, spec: dict) -> list[Source]:
 
 
 # ------------------------------------------------------------------------------------------------ matching
-@lru_cache(maxsize=1)
 def _embedder():
-    from ..retrieval.chunks import FastEmbedder
-    return FastEmbedder()
+    from ..retrieval.chunks import shared_embedder
+    e = shared_embedder()
+    if e is None:
+        raise RuntimeError("fastembed or the bge-small model is not available")
+    return e
 
 
 def semantic_enabled(cfg: dict) -> bool:

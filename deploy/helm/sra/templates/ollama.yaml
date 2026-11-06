@@ -7,7 +7,7 @@ metadata:
     {{- include "sra.labels" . | nindent 4 }}
     app.kubernetes.io/component: llm
 spec:
-  serviceName: {{ .Release.Name }}-ollama
+  serviceName: {{ .Release.Name }}-ollama-pods
   replicas: {{ .Values.ollama.replicas }}
   selector:
     matchLabels: {app.kubernetes.io/name: sra, app.kubernetes.io/component: llm}
@@ -34,7 +34,7 @@ spec:
           env:
             - {name: OLLAMA_MODELS, value: /models}
             - {name: OLLAMA_KEEP_ALIVE, value: "24h"}
-            - {name: OLLAMA_NUM_PARALLEL, value: "1"}
+            - {name: OLLAMA_NUM_PARALLEL, value: {{ .Values.ollama.numParallel | default 1 | quote }}}
           ports: [{name: http, containerPort: 11434}]
           readinessProbe: {httpGet: {path: /api/tags, port: http}, periodSeconds: 10}
           livenessProbe: {httpGet: {path: /api/tags, port: http}, periodSeconds: 30, failureThreshold: 5}
@@ -51,6 +51,17 @@ kind: Service
 metadata:
   name: {{ .Release.Name }}-ollama
 spec:
+  selector: {app.kubernetes.io/name: sra, app.kubernetes.io/component: llm}
+  ports: [{name: http, port: 11434, targetPort: http}]
+---
+# Headless: gives each replica a stable name (<release>-ollama-N.<release>-ollama-pods) so the app can spread
+# criteria across replicas itself; a normal Service would keep a client's connection on one pod.
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-ollama-pods
+spec:
+  clusterIP: None
   selector: {app.kubernetes.io/name: sra, app.kubernetes.io/component: llm}
   ports: [{name: http, port: 11434, targetPort: http}]
 ---

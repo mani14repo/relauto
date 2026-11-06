@@ -2,13 +2,19 @@
 
 Settings (env / .env):
     LLM_PROVIDER   ollama | openai_compat            (default ollama)
-    LLM_BASE_URL   http://localhost:11434 (ollama) | http://vllm:8000/v1
+    LLM_BASE_URL   http://localhost:11434 (ollama) | http://vllm:8000/v1; several servers comma-separated
+    LLM_CONCURRENCY  calls in flight per server      (default 1; match OLLAMA_NUM_PARALLEL on the server)
     LLM_MODEL      qwen3.5:4b                        (laptop default; cluster candidate gemma4:26b - choose by eval)
     LLM_THINK      false | true                      (default false: reasoning tokens are too slow on CPU)
     LLM_TIMEOUT    seconds per call                  (default 300 - CPU inference is slow)
     LLM_NUM_CTX    context window for ollama          (default 8192)
+    LLM_NUM_PREDICT  most tokens a reply may have     (default 768; the JSON schema also caps field lengths)
+    LLM_KEEP_ALIVE how long Ollama keeps the model loaded after a call (default 30m; -1 = forever)
+    LLM_NUM_THREAD CPU threads for Ollama            (default: Ollama's choice; set to the physical core count)
 
 All calls are temperature 0 with a JSON schema for structured output. Nothing leaves the cluster.
+After each call `last_usage` holds what the server reported: prompt tokens it had to read (Ollama excludes the
+part of the prompt it reused from its cache), reply tokens, and the seconds spent on each.
 Responses are streamed so a run can be cancelled mid-call: when `cancel_check()` turns true the caller is
 released within a second, and the connection is closed at the next streamed token, which makes the model
 server stop generating.
@@ -20,7 +26,7 @@ from __future__ import annotations
 import json
 import re
 import threading
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Callable, Protocol
 
 import httpx
@@ -107,14 +113,22 @@ def stream_call(url: str, payload: dict, *, timeout: float, headers: dict | None
     return out.get("text", "")
 
 
-def _ollama_piece(line: str) -> str | None:
+def _ollama_piece(line: str, usage: dict | None = None) -> str | None:
     obj = json.loads(line)
     if obj.get("error"):
         raise LLMError(str(obj["error"]))
+    if obj.get("done") and usage is not None:
+        ns = 1e9                                    # Ollama reports durations in nanoseconds
+        usage.update({"prompt_tokens": obj.get("prompt_eval_count", 0), "reply_tokens": obj.get("eval_count", 0),
+                      "prompt_s": round(obj.get("prompt_eval_duration", 0) / ns, 2),
+                      "reply_s": round(obj.get("eval_duration", 0) / ns, 2),
+                      "load_s": round(obj.get("load_duration", 0) / ns, 2),
+                      "total_s": round(obj.get("total_duration", 0) / ns, 2),
+                      "stopped_at_limit": obj.get("done_reason") == "length"})
     return (obj.get("message") or {}).get("content") or None
 
 
-def _openai_piece(line: str) -> str | None:
+def _openai_piece(line: str, usage: dict | None = None) -> str | None:
     if line.startswith("data:"):
         data = line[5:].strip()
         if data == "[DONE]":
@@ -122,10 +136,20 @@ def _openai_piece(line: str) -> str | None:
         obj = json.loads(data)
         if obj.get("error"):
             raise LLMError(str(obj["error"]))
+        _openai_usage(obj, usage)
         choice = (obj.get("choices") or [{}])[0]
+        if choice.get("finish_reason") == "length" and usage is not None:
+            usage["stopped_at_limit"] = True
         return (choice.get("delta") or choice.get("message") or {}).get("content") or None
     obj = json.loads(line)                          # non-streaming server: one JSON body
+    _openai_usage(obj, usage)
     return obj["choices"][0]["message"]["content"]
+
+
+def _openai_usage(obj: dict, usage: dict | None) -> None:
+    u = obj.get("usage")
+    if u and usage is not None:
+        usage.update({"prompt_tokens": u.get("prompt_tokens", 0), "reply_tokens": u.get("completion_tokens", 0)})
 
 
 class ChatClient(Protocol):
@@ -150,12 +174,19 @@ class OllamaClient:
     timeout: float = 300
     num_ctx: int = 8192
     think: bool = False
+    num_predict: int = 768
+    keep_alive: str = "30m"
+    num_thread: int | None = None
     cancel_check: Callable[[], bool] | None = None   # set by the evaluator for cancellable runs
+    last_usage: dict = field(default_factory=dict)
 
     def _post(self, payload: dict) -> dict:
+        usage: dict = {}
+        self.last_usage = usage
         try:
             text = stream_call(f"{self.base_url.rstrip('/')}/api/chat", {**payload, "stream": True},
-                               timeout=self.timeout, cancel_check=self.cancel_check, piece=_ollama_piece)
+                               timeout=self.timeout, cancel_check=self.cancel_check,
+                               piece=lambda line: _ollama_piece(line, usage))
         except httpx.HTTPError as exc:
             raise LLMError(f"ollama call failed: {describe(exc, self.timeout)}") from exc
         except LLMError as exc:
@@ -163,9 +194,12 @@ class OllamaClient:
         return {"message": {"content": text}}
 
     def _payload(self, system: str, user: str, temperature: float, schema: dict | None = None) -> dict:
+        options = {"temperature": temperature, "num_ctx": self.num_ctx, "num_predict": self.num_predict}
+        if self.num_thread:
+            options["num_thread"] = self.num_thread
         p = {
-            "model": self.model, "stream": True, "think": self.think,
-            "options": {"temperature": temperature, "num_ctx": self.num_ctx},
+            "model": self.model, "stream": True, "think": self.think, "keep_alive": self.keep_alive,
+            "options": options,
             "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]
         }
         if schema is not None:
@@ -204,13 +238,18 @@ class OpenAICompatClient:
     timeout: float = 300
     api_key: str = "not-needed"
     think: bool = False
+    num_predict: int = 768
     cancel_check: Callable[[], bool] | None = None
+    last_usage: dict = field(default_factory=dict)
 
     def _post(self, payload: dict) -> dict:
+        usage: dict = {}
+        self.last_usage = usage
         try:
-            text = stream_call(f"{self.base_url.rstrip('/')}/chat/completions", {**payload, "stream": True},
+            text = stream_call(f"{self.base_url.rstrip('/')}/chat/completions",
+                               {**payload, "stream": True, "stream_options": {"include_usage": True}},
                                timeout=self.timeout, headers={"Authorization": f"Bearer {self.api_key}"},
-                               cancel_check=self.cancel_check, piece=_openai_piece)
+                               cancel_check=self.cancel_check, piece=lambda line: _openai_piece(line, usage))
         except httpx.HTTPError as exc:
             raise LLMError(f"openai-compatible call failed: {describe(exc, self.timeout)}") from exc
         except LLMError as exc:
@@ -219,7 +258,7 @@ class OpenAICompatClient:
 
     def _payload(self, system: str, user: str, temperature: float) -> dict:
         # vLLM / llama.cpp pass chat_template_kwargs to the template; Qwen and Gemma templates read enable_thinking.
-        return {"model": self.model, "temperature": temperature,
+        return {"model": self.model, "temperature": temperature, "max_tokens": self.num_predict,
                 "chat_template_kwargs": {"enable_thinking": self.think},
                 "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}
 
@@ -259,14 +298,34 @@ def _parse_json(text: str) -> dict:
     return obj
 
 
-def from_settings() -> ChatClient:
+def base_urls() -> list[str]:
+    """LLM_BASE_URL may list several servers, comma-separated (e.g. one per Ollama replica)."""
+    default = "http://localhost:8000/v1" if setting("LLM_PROVIDER", "ollama") == "openai_compat" else "http://localhost:11434"
+    return [u.strip() for u in str(setting("LLM_BASE_URL", default)).split(",") if u.strip()] or [default]
+
+
+def clients_from_settings() -> list[ChatClient]:
+    """One client per call that may be in flight: LLM_CONCURRENCY per server, interleaved across servers.
+
+    Each client is used by one call at a time, so its `last_usage` and `cancel_check` are never shared.
+    """
+    per_server = max(1, int(setting("LLM_CONCURRENCY", "1")))
+    urls = base_urls()
+    return [from_settings(url) for _ in range(per_server) for url in urls]
+
+
+def from_settings(base_url: str | None = None) -> ChatClient:
     provider = setting("LLM_PROVIDER", "ollama")
     timeout = float(setting("LLM_TIMEOUT", "300"))
     think = str(setting("LLM_THINK", "false")).strip().lower() in ("1", "true", "yes")
+    num_predict = int(setting("LLM_NUM_PREDICT", "768"))
+    base_url = base_url or base_urls()[0]
     if provider == "openai_compat":
-        return OpenAICompatClient(base_url=setting("LLM_BASE_URL", "http://localhost:8000/v1"),
+        return OpenAICompatClient(base_url=base_url,
                                   model=setting("LLM_MODEL", "Qwen/Qwen3.5-4B"), timeout=timeout,
-                                  api_key=setting("LLM_API_KEY", "not-needed"), think=think)
-    return OllamaClient(base_url=setting("LLM_BASE_URL", "http://localhost:11434"),
+                                  api_key=setting("LLM_API_KEY", "not-needed"), think=think, num_predict=num_predict)
+    threads = str(setting("LLM_NUM_THREAD", "")).strip()
+    return OllamaClient(base_url=base_url,
                         model=setting("LLM_MODEL", DEFAULT_MODEL), timeout=timeout,
-                        num_ctx=int(setting("LLM_NUM_CTX", "8192")), think=think)
+                        num_ctx=int(setting("LLM_NUM_CTX", "8192")), think=think, num_predict=num_predict,
+                        keep_alive=str(setting("LLM_KEEP_ALIVE", "30m")), num_thread=int(threads) if threads else None)

@@ -106,6 +106,16 @@ Settings: everything is optional. Copy `.env.example` to `.env` to change the mo
 
 Runs: the assessment page shows live progress for an automated pass and has a **Cancel run** button. Cancelling stops the run at its next step, or within a second during a model call (the request is streamed, and closing it makes Ollama stop generating). Nothing from a cancelled run is saved, so the assessment keeps its previous results. The API equivalent is `POST /api/assessments/{id}/cancel`; it works for the in-process runner and the Kafka worker alike.
 
+LLM speed: on CPU, most of each call's time goes on reading the prompt. So the app sends less, and only when it must:
+- **Fewer calls.** Rules and checklists settle what they can first. A re-run reuses the previous answer for a criterion when the model, prompt version and evidence passages are unchanged (`LLM_CACHE`). Re-evaluating a single criterion always asks again.
+- **Shorter prompts.** Each criterion gets `LLM_TOP_K` passages (default 4), each cut to the `LLM_CHUNK_CHARS` (default 800) that best match it. Passages are dropped rather than overflowing `LLM_NUM_CTX`; Ollama would otherwise cut the prompt from the front.
+- **Shorter replies.** The schema caps the length of each field, and `LLM_NUM_PREDICT` caps the reply.
+- **No reloading.** `LLM_KEEP_ALIVE` (default 30m) keeps the model loaded between runs. Set `LLM_NUM_THREAD` to your physical core count.
+- **Indexing once.** The search index and embedding model are built once per evidence set or process, and criterion chat reuses them.
+- **Parallel calls.** `LLM_CONCURRENCY` sets the calls in flight per server; match it to `OLLAMA_NUM_PARALLEL`. `LLM_BASE_URL` can list several servers, comma-separated, and each criterion goes to whichever server is free next. A server that fails its health check is skipped with a warning, and a cancel stops every call in flight. On one CPU machine the gain is small, because parallel calls share the same cores and prompt reading already uses all of them. Several Ollama replicas, or a GPU server, is where this pays off. To measure it, compare a run at `LLM_CONCURRENCY=1` with one at `2` (with `OLLAMA_NUM_PARALLEL=2` set on the server).
+
+The activity log shows, per criterion, the prompt tokens Ollama had to read, the reply tokens and the seconds each took, plus averages at the end. That tells you which setting matters for your machine. To compare models, run `python eval/run_eval.py --all --llm --model <tag>` and keep the smallest one that holds accuracy.
+
 UI: `python -m sra.cli serve --build` builds the web UI (running `npm install` the first time) and then starts the API; open http://localhost:8080. Without `--build` it serves the existing `web/dist`.
 
 Local LLM: install Ollama and run `ollama pull qwen3.5:4b` (the laptop default; set `LLM_MODEL` to change it). Thinking mode is off by default (`LLM_THINK=false`), because reasoning tokens are too slow on CPU. For the cluster, the candidate is `gemma4:26b`, a mixture-of-experts model that uses about 4B parameters per token; confirm it with the eval. Then add `--llm` to `assess`, or tick "Use local LLM" in the UI. To compare models, use `python eval/run_eval.py --llm --model <a> --model <b>`.

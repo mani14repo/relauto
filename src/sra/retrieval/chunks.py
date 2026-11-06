@@ -142,3 +142,53 @@ class FastEmbedder:
 
     def embed(self, texts: list[str]) -> list[list[float]]:
         return [list(map(float, v)) for v in self.model.embed(texts)]
+
+
+_EMBEDDER: list = []          # [FastEmbedder] once loaded, [None] if it cannot be loaded
+
+
+def shared_embedder() -> FastEmbedder | None:
+    """One embedding model per process (loading it takes seconds); None when fastembed or the model is missing."""
+    if not _EMBEDDER:
+        try:
+            _EMBEDDER.append(FastEmbedder())
+        except Exception:  # noqa: BLE001 - optional dependency; BM25 alone still works
+            _EMBEDDER.append(None)
+    return _EMBEDDER[0]
+
+
+_INDEXES: dict[tuple, HybridIndex] = {}
+
+
+def cached_index(bundle: EvidenceBundle, embedder=None, keep: int = 8) -> HybridIndex:
+    """The index for this exact evidence (ids are content hashes), built once; embeddings are the slow part."""
+    key = (tuple(sorted(bundle.items)), embedder is not None)
+    if key not in _INDEXES:
+        if len(_INDEXES) >= keep:
+            _INDEXES.pop(next(iter(_INDEXES)))
+        _INDEXES[key] = HybridIndex(chunk_bundle(bundle), embedder=embedder)
+    return _INDEXES[key]
+
+
+def focus(text: str, query: str, max_chars: int) -> str:
+    """The part of a chunk (up to max_chars, cut at line ends) that shares the most words with the query."""
+    if len(text) <= max_chars:
+        return text
+    want = set(tokens(query))
+    lines = text.splitlines(keepends=True)
+    head = lines[0] if lines and lines[0].startswith("[") else ""      # keep the "[document 'name', reviewed …]" label
+    body = lines[1:] if head else lines
+    best, best_score = "", -1
+    for i in range(len(body)):
+        window, n = "", 0
+        for ln in body[i:]:
+            if len(head) + len(window) + len(ln) > max_chars:
+                break
+            window += ln
+            n += 1
+        if not window:
+            window = body[i][: max_chars - len(head)]
+        score = len(want & set(tokens(window)))
+        if score > best_score:
+            best, best_score = window, score
+    return (head + best).rstrip()
