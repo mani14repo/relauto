@@ -50,13 +50,23 @@ class Criterion(BaseModel):
     example_risk: str = ""
     example_recommendation: str = ""
     references: list[str] = Field(default_factory=list)  # SRE-STD-03, SRE-PB-11 ...
+    # Variant C (CMDB/CSDM V2) only: the template states these explicitly.
+    rubric_refs: list[str] = Field(default_factory=list)  # rubric criteria this criterion feeds, e.g. P1-01
+    rubric_enablers: list[str] = Field(default_factory=list)  # marked "(enabler)": supports, does not decide
+    csdm_layer: str = ""
+    data_source: str = ""
+    formula: str = ""                    # "Measurement / formula"
+    maturity_bands: str = ""             # L0-L4 band definitions
+    look_for: str = ""                   # "What to look for"
+    risk_if_gap: str = ""                # guidance text, not an example finding
+    playbooks: list[str] = Field(default_factory=list)
 
 
 class Template(BaseModel):
     id: str                      # SRE-AT-01
     title: str
     domain: Domain
-    variant: str                 # "A" or "B"
+    variant: str                 # "A", "B" (V1 layouts) or "C" (CMDB/CSDM V2)
     priority: str = ""           # P1/P2/P3 (Variant A only; B defaults from config)
     applicability: str = ""
     accountable_owner: str = ""
@@ -68,6 +78,8 @@ class Template(BaseModel):
     criteria: list[Criterion]
     source_file: str
     references: list[str] = Field(default_factory=list)
+    version: str = "V1"                  # document version, from the file name or Document Control
+    rubric_refs: list[str] = Field(default_factory=list)  # Variant C: "Readiness Rubric criteria fed"
 
 
 class RubricCriterion(BaseModel):

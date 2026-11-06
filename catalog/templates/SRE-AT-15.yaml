@@ -42,6 +42,15 @@ criteria:
   references:
   - SRE-STD-15
   - SRE-POL-15
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-15-C02
   number: 2
   name: SLI/SLO performance is validated within the defined window after each release
@@ -64,6 +73,15 @@ criteria:
   references:
   - SRE-STD-15
   - SRE-STD-03
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-15-C03
   number: 3
   name: Regression detection criteria are defined and applied
@@ -87,6 +105,15 @@ criteria:
   references:
   - SRE-STD-15
   - SRE-STD-08
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-15-C04
   number: 4
   name: Rollback decision process and authority are documented
@@ -109,6 +136,15 @@ criteria:
   references:
   - SRE-POL-15
   - ITSM-STD-04
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 source_file: SRE-AT-15 — Post-Release Reliability Effectiveness Assessment.docx
 references:
 - SRE-STD-15
@@ -117,3 +153,5 @@ references:
 - SRE-STD-08
 - ITSM-STD-04
 - SRE-AT-06
+version: V1
+rubric_refs: []

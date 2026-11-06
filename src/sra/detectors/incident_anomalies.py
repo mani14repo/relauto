@@ -15,6 +15,8 @@ from ..catalog.models import Result, Risk
 from ..evidence.bundle import EvidenceBundle
 from ..evidence.redact import Resolution, classify_resolution
 from ..models import FindingType
+from ..scoring.cmdb import level_from_pct
+from ..scoring.cmdb import threshold as cmdb_threshold
 from .base import Context, DetectorReport, finding, ref, result, truthy
 
 NAME = "incident_anomalies"
@@ -116,19 +118,25 @@ def run(b: EvidenceBundle, ctx: Context) -> DetectorReport:
             "ITSM-AT-02-C01", Result.MET if pct >= 95 else Result.GAP,
             f"Category+subcategory populated on {pct:.1f}% of {len(inc)} incidents (target 95%)", refs)
 
-    # ---- CI linkage (CMDB-AT-01-C04)
-    ci_field_present = any("cmdb_ci_business_app" in r or "cmdb_ci" in r for r in inc)
-    if inc and ci_field_present:
-        linked = sum(1 for r in inc if truthy(r.get("cmdb_ci_business_app")) or truthy(r.get("cmdb_ci")))
+    # ---- Business Application attribution (CMDB-AT-01-C06, threshold TH-03 by tier)
+    # V2: a populated CI alone does not attribute an incident (98% CI populated vs 4% application identifiable);
+    # the incident must carry the Business Application (or map to it through an Application Service).
+    app_fields = ("cmdb_ci_business_app", "u_business_application", "business_service")
+    if inc and any(any(f in r for f in app_fields) for r in inc):
+        linked = sum(1 for r in inc if any(truthy(r.get(f)) for f in app_fields))
         pct = 100 * linked / len(inc)
-        res = Result.MET if pct >= a["ci_linkage_min_pct"] else Result.GAP
-        rep.results["CMDB-AT-01-C04"] = result("CMDB-AT-01-C04", res,
-                                               f"{pct:.1f}% of {len(inc)} incidents linked to a CI (target {a['ci_linkage_min_pct']}%)", refs)
+        target = cmdb_threshold("TH-03", ctx.tier) or a["ci_linkage_min_pct"]
+        res = Result.MET if pct >= target else Result.GAP
+        cr = result("CMDB-AT-01-C06", res, f"{pct:.1f}% of {len(inc)} incidents in {window}d attributed to the Business "
+                    f"Application (TH-03 for Tier {ctx.tier or 2}: {target:.0f}%)", refs, review=True)
+        cr.measured_value = f"{pct:.1f}% ({linked} of {len(inc)} incidents, {window} days)"
+        cr.maturity_level = level_from_pct(pct, target)
+        rep.results["CMDB-AT-01-C06"] = cr
         if res == Result.GAP:
             rep.findings.append(finding(
-                FindingType.GAP, Risk.CRITICAL, f"Only {pct:.1f}% of incidents are linked to a CMDB CI",
-                criteria=["CMDB-AT-01-C04"], refs=refs, detector=f"{NAME}:ci_linkage",
-                action="Make cmdb_ci_business_app mandatory on incident and backfill open incidents (CMDB-PB-06)"))
+                FindingType.GAP, Risk.CRITICAL, f"Only {pct:.1f}% of incidents are attributed to the Business Application "
+                f"(target {target:.0f}%)", criteria=["CMDB-AT-01-C06"], refs=refs, detector=f"{NAME}:ci_linkage",
+                action="Make the Business Application mandatory on incident and backfill resolved incidents (CMDB-PB-06)"))
 
     # ---- recurrence without problems (ITSM-AT-03-C01) — complements rubric P2-02
     groups = defaultdict(list)
@@ -149,7 +157,8 @@ def run(b: EvidenceBundle, ctx: Context) -> DetectorReport:
                 criteria=["ITSM-AT-03-C01"], rubric=["P2-02"], refs=[ref(r) for r in v[:5]],
                 detector=f"{NAME}:recurrence", action="Open a Problem record, link the incidents and perform RCA (ITSM-PB-03)"))
 
-    # ---- change-induced incidents (CMDB-AT-08-C02)
+    # ---- change-induced incidents (CMDB-AT-08-C04): reported as a finding; the criterion itself needs the
+    # assessor to confirm which correlated incidents were change-caused, so no result is set here.
     changes = [c for c in b.table("change_request") if c.get("_end_date") or c.get("_start_date")]
     if changes and inc:
         h = timedelta(hours=a["change_induced_window_hours"])
@@ -167,10 +176,7 @@ def run(b: EvidenceBundle, ctx: Context) -> DetectorReport:
                 f"{len(induced)} incidents opened within {a['change_induced_window_hours']}h after a change"
                 f" ({len(untraced)} without caused_by link)",
                 ", ".join(f"{r.get('number')}←{c.get('number')}" for r, c in induced[:8]),
-                criteria=["CMDB-AT-08-C02", "ITSM-AT-01-C04"], refs=[ref(r) for r, _ in induced[:8]] + [ref(c) for _, c in induced[:8]],
+                criteria=["CMDB-AT-08-C04", "ITSM-AT-01-C04"], refs=[ref(r) for r, _ in induced[:8]] + [ref(c) for _, c in induced[:8]],
                 detector=f"{NAME}:change_induced",
                 action="Link change-caused incidents via caused_by and review the change's test/backout plan (CMDB-PB-07)"))
-            rep.results["CMDB-AT-08-C02"] = result(
-                "CMDB-AT-08-C02", Result.GAP if untraced else Result.MET,
-                f"{len(induced)} change-adjacent incidents; {len(induced) - len(untraced)} traced via caused_by", refs, review=True)
     return rep

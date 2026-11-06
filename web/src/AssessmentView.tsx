@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { api, getUser, type Assessment, type Candidate, type CriterionResult, type Finding, type ScoreCard, type Template } from "./api";
+import { api, getUser, type Assessment, type CmdbReadiness, type Candidate, type CriterionResult, type Finding, type ScoreCard, type Template } from "./api";
 import JobPanel, { isActive, type Job } from "./JobPanel";
 import { Bar, ErrorBox, RATING_COLOR, ResultBadge, Severity } from "./ui";
 
@@ -65,7 +65,9 @@ export default function AssessmentView({ id }: { id: string }) {
       </div>
       <p className="muted small">Assessed {a.assessment_date} by {a.assessor || "—"} · {a.templates.length} templates · {a.findings.length} findings</p>
       <ErrorBox error={error} />
-      <JobPanel id={id} job={job} />
+      <JobPanel id={id} job={job} onCancel={async () => {
+        try { setJob(await api.cancel(id)); } catch (e) { setError(String(e)); }
+      }} />
       <div className="tabs" role="tablist">
         {TABS.map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? "on" : ""} onClick={() => setTab(k)}>{l}</button>)}
       </div>
@@ -228,14 +230,19 @@ function CriteriaTab({ a, templates, onChange, setError }: { a: Assessment; temp
 
 function CriterionPanel({ a, cid, c, r, onChange, setError }: { a: Assessment; cid: string; c: any; r?: CriterionResult; onChange: (r: any) => void; setError: (e: string | null) => void }) {
   const [form, setForm] = useState({ result: r?.result ?? "", risk: r?.risk ?? "", rationale: r?.rationale ?? "", recommendation: r?.recommendation ?? "",
-    na_justification: r?.na_justification ?? "", na_approved: r?.na_approved ?? false });
+    na_justification: r?.na_justification ?? "", na_approved: r?.na_approved ?? false,
+    measured_value: r?.measured_value ?? "", maturity_level: r?.maturity_level ?? ("" as number | "") });
+  const v2 = !!c.formula;
   const [q, setQ] = useState("");
   const [answer, setAnswer] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const findings = a.findings.filter((f) => f.criterion_ids.includes(cid));
   async function save() {
     setBusy(true);
-    try { onChange(await api.patchCriterion(a.id, cid, { ...form, result: form.result || null, risk: form.risk || null })); setError(null); }
+    const { measured_value, maturity_level, ...base } = form;
+    const body: Record<string, unknown> = { ...base, result: form.result || null, risk: form.risk || null };
+    if (v2) Object.assign(body, { measured_value, maturity_level: maturity_level === "" ? null : Number(maturity_level) });
+    try { onChange(await api.patchCriterion(a.id, cid, body)); setError(null); }
     catch (e) { setError(String(e)); } finally { setBusy(false); }
   }
   return (
@@ -250,8 +257,17 @@ function CriterionPanel({ a, cid, c, r, onChange, setError }: { a: Assessment; c
         <dt className="muted">Evaluation method</dt><dd style={{ margin: 0 }}>{c.evaluation_method}</dd>
         <dt className="muted">Standard reference</dt><dd style={{ margin: 0 }}>{c.standard_ref || "—"}</dd>
         <dt className="muted">Default risk</dt><dd style={{ margin: 0 }}><Severity s={c.default_risk} /></dd>
+        {v2 && <>
+          <dt className="muted">Measurement / formula</dt><dd style={{ margin: 0 }}>{c.formula}</dd>
+          <dt className="muted">Data source</dt><dd style={{ margin: 0 }} className="mono">{c.data_source}</dd>
+          <dt className="muted">Maturity bands</dt><dd style={{ margin: 0 }}>{c.maturity_bands}</dd>
+          <dt className="muted">Feeds rubric</dt><dd style={{ margin: 0 }}>{(c.rubric_refs ?? []).join(", ") || "—"}
+            {!!c.rubric_enablers?.length && <span className="muted"> · enabler for {c.rubric_enablers.join(", ")}</span>}</dd>
+          {c.look_for && <><dt className="muted">What to look for</dt><dd style={{ margin: 0 }}>{c.look_for}</dd></>}
+        </>}
       </dl>
       {r?.rationale && <><h3>Automated rationale</h3><pre className="answer small">{r.rationale}</pre></>}
+      {v2 && r?.measured_value && <p className="small"><b>Measured:</b> {r.measured_value}{r.maturity_level != null && <> · <b>Level</b> L{r.maturity_level}</>}</p>}
       {!!r?.evidence_refs?.length && <p className="small"><b>Evidence:</b> <span className="mono">{r.evidence_refs.join("; ")}</span></p>}
       {!!findings.length && <><h3>Findings ({findings.length})</h3><ul className="small">{findings.map((f) => <li key={f.id}><Severity s={f.severity} /> {f.title}</li>)}</ul></>}
 
@@ -267,6 +283,14 @@ function CriterionPanel({ a, cid, c, r, onChange, setError }: { a: Assessment; c
             <option value="">default</option><option>Critical</option><option>High</option><option>Medium</option><option>Low</option>
           </select>
         </label>
+        {v2 && <label className="field">Maturity level
+          <select value={String(form.maturity_level)} onChange={(e) => setForm({ ...form, maturity_level: e.target.value === "" ? "" : Number(e.target.value) })}>
+            <option value="">not assessed</option>{[0, 1, 2, 3, 4].map((l) => <option key={l} value={l}>L{l}</option>)}
+          </select>
+        </label>}
+        {v2 && <label className="field" style={{ flex: 1 }}>Measured value
+          <input value={form.measured_value} onChange={(e) => setForm({ ...form, measured_value: e.target.value })} placeholder="e.g. 87% of 214 resolved incidents" />
+        </label>}
         {form.result === "Not Applicable" && <label className="check"><input type="checkbox" checked={form.na_approved}
           onChange={(e) => setForm({ ...form, na_approved: e.target.checked })} />N/A approved</label>}
       </div>
@@ -389,8 +413,35 @@ function ScoreTab({ sc, templates }: { sc: ScoreCard | null; templates: Record<s
           <tbody>{sc.template_scores.map((t) => <tr key={t.template_id}><td><b>{t.template_id}</b> {templates[t.template_id]?.title}</td><td style={{ width: 160 }}>{t.score ?? "—"} <Bar value={t.score} /></td><td>{t.met}</td><td>{t.gaps}</td><td>{t.insufficient}</td><td>{t.na}</td><td>{t.unevaluated}</td></tr>)}</tbody>
         </table>
       </div>
+      {sc.cmdb && <CmdbCard cm={sc.cmdb} />}
       {!!sc.conflicts.length && <div className="card"><h2>Threshold conflicts</h2><ul className="small">{sc.conflicts.map((c) => <li key={c}>{c}</li>)}</ul></div>}
     </>
+  );
+}
+
+function CmdbCard({ cm }: { cm: CmdbReadiness }) {
+  const tone = { passed: "r-Met", "not passed": "r-Gap", undetermined: "r-Insufficient" } as const;
+  return (
+    <div className="card">
+      <div className="row"><h2 style={{ margin: 0 }}>CMDB / CSDM readiness</h2><span className="pill">CMDB-AT-13 · V2</span></div>
+      <div className="grid" style={{ marginTop: 10 }}>
+        <div><div className="muted small">CMDB Readiness Index</div><div className="kpi">{cm.cri ?? "—"}</div><Bar value={cm.cri} />
+          <div className="small muted">{cm.cri == null ? "Set maturity levels on CMDB criteria to compute it" : cm.complete ? "All CRI criteria assessed" : `Partial: ${cm.assessed} of ${cm.total} criteria assessed`}</div></div>
+        <div><div className="muted small">Indicative maturity</div><div className="kpi">{cm.level == null ? "—" : `L${cm.level} ${cm.level_name}`}</div>
+          <div className="small muted">{cm.thresholds_status}</div></div>
+      </div>
+      <table style={{ marginTop: 10 }}><thead><tr><th>Dimension</th><th>Weight</th><th>Score</th><th>Assessed</th></tr></thead>
+        <tbody>{cm.dimensions.map((d) => <tr key={d.name}><td>{d.name}</td><td>{Math.round(d.weight * 100)}%</td>
+          <td style={{ width: 160 }}>{d.score ?? "—"} <Bar value={d.score} /></td>
+          <td className="small">{d.assessed} of {d.total}{!!d.missing.length && <div className="muted">needs a level: {d.missing.join(", ")}</div>}</td></tr>)}</tbody>
+      </table>
+      <h3 style={{ marginTop: 14 }}>Reporting gates</h3>
+      <table><thead><tr><th>Gate</th><th>Status</th><th>Unlocks</th><th>Why</th></tr></thead>
+        <tbody>{cm.gates.map((g) => <tr key={g.id}><td><b>{g.id}</b> {g.name}</td><td><span className={`badge ${tone[g.status]}`}>{g.status}</span></td>
+          <td className="small">{g.unlocks}</td>
+          <td className="small muted">{[...g.failed, ...g.pending.map((p) => `pending ${p}`)].join("; ") || "all conditions met"}</td></tr>)}</tbody>
+      </table>
+    </div>
   );
 }
 

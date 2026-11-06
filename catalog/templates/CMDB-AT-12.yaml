@@ -1,0 +1,261 @@
+id: CMDB-AT-12
+title: Observability Identity & Telemetry-to-CMDB Mapping Assessment
+domain: CMDB
+variant: C
+priority: P1
+applicability: One Production Application Service and every telemetry source that emits data about it. • Telemetry source
+  inventory• Canonical identity tuple and mapping store• Environment discrimination• Workload metadata labels• Event/alert
+  CI binding• Mapping governance• Retrievability for reliability metrics
+accountable_owner: SRE Region Lead with Observability Platform Owners
+purpose: Determine whether logs, metrics, traces and alerts from Splunk, Loki/Grafana, AppDynamics and Kubernetes can be attributed
+  unambiguously to the correct Production Application Service and environment, so that error rates, MTTR evidence and SLOs
+  computed from telemetry are trustworthy.
+relevance: 'Nov 5 executive review: services and APIs appear under inconsistent or similar names across environments; production
+  vs development is not always distinguishable — cross-platform correlation blocked. OIP Splunk source map has one non-prod
+  AKS source (afp-api-int); rebate GCP/GKE services (CPR, CRR, repricing APIs) are unmapped. Splunk/Loki throttling limits
+  wide-window retrieval; metrics 4, 5, 6, 8, 9, 10 of the 10-item list depend on this mapping.'
+reassessment_trigger: Quarterly for Tier 1; semi-annually Tier 2; on deployment of new workloads or telemetry sources
+scope:
+- • Telemetry source inventory• Canonical identity tuple and mapping store• Environment discrimination• Workload metadata
+  labels• Event/alert CI binding• Mapping governance• Retrievability for reliability metrics
+- • Observability coverage quality (SRE-AT-03)
+signoff_roles:
+- Assessment Lead
+- Data Steward (portfolio)
+- SRE Region Lead
+- Business Application Owner / Engineering Owner
+- CMDB Process Owner
+criteria:
+- id: CMDB-AT-12-C01
+  number: 1
+  name: Telemetry source inventory complete
+  standard_ref: CMDB-STD-12 R01
+  applicability: Production Application Service
+  required_evidence: Inventory listing every Splunk index/sourcetype, Loki label set, AppD application/tier, Grafana dashboard
+    and k8s workload emitting data for the service
+  evaluation_method: Deterministic sweep + Human confirmation
+  methods:
+  - deterministic
+  acceptance_criteria: 100% Tier 1; ≥ 90% Tier 2
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: ''
+  reassessment: ''
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-12
+  - CMDB-PB-10
+  rubric_refs:
+  - P1-03
+  rubric_enablers: []
+  csdm_layer: Service Delivery → Observability
+  data_source: Platform inventories above
+  formula: Sources in inventory ÷ sources discovered by platform sweep that contain the service's identifiers
+  maturity_bands: L0 < 25%  |  L1 25–49%  |  L2 50–79%  |  L3 80% to tier threshold  |  L4 ≥ tier threshold sustained 2 cycles
+  look_for: • Service emits to a shared index under a different name• Batch jobs logging to host-level sourcetypes only
+  risk_if_gap: High
+  playbooks:
+  - CMDB-PB-10
+- id: CMDB-AT-12-C02
+  number: 2
+  name: Canonical identity tuple mapped
+  standard_ref: CMDB-STD-12 R02–R03
+  applicability: Each inventoried production source
+  required_evidence: Tuple {platform, cluster/host, namespace, workload/service.name, environment} → Application Service number
+    recorded in the authoritative mapping store and mirrored to OIP config
+  evaluation_method: Deterministic
+  methods:
+  - deterministic
+  acceptance_criteria: ≥ TH-08 (100/90/75%)
+  default_risk: Critical
+  default_risk_assumed: false
+  accountable_owner: ''
+  reassessment: ''
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-12
+  - CMDB-PB-10
+  rubric_refs: []
+  rubric_enablers:
+  - P1-05
+  csdm_layer: Service Delivery
+  data_source: Mapping store; OIP config
+  formula: Mapped production sources ÷ inventoried production sources
+  maturity_bands: L0 < 25%  |  L1 25–49%  |  L2 50–79%  |  L3 80% to tier threshold  |  L4 ≥ tier threshold sustained 2 cycles
+  look_for: • Mapping by display name only (breaks on rename)• OIP config edited without CMDB change
+  risk_if_gap: Critical
+  playbooks:
+  - CMDB-PB-10
+- id: CMDB-AT-12-C03
+  number: 3
+  name: Environment discrimination unambiguous
+  standard_ref: CMDB-STD-12 R06–R07; CMDB-STD-00 environments
+  applicability: All mapped sources
+  required_evidence: Each source has one environment; heuristic contradictions resolved (e.g., cluster contains 'nonprod',
+    workload ends '-int' → not Production)
+  evaluation_method: Deterministic
+  methods:
+  - deterministic
+  acceptance_criteria: 0 unresolved contradictions; non-prod telemetry never mapped to Production Application Service
+  default_risk: Critical
+  default_risk_assumed: false
+  accountable_owner: ''
+  reassessment: ''
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-12
+  - CMDB-STD-00
+  - CMDB-PB-10
+  rubric_refs:
+  - P1-03
+  rubric_enablers: []
+  csdm_layer: Service Delivery
+  data_source: Mapping store; naming heuristics report
+  formula: Contradictions = sources whose mapped environment conflicts with cluster/account/workload naming or label; Production
+    share of non-prod-named sources
+  maturity_bands: L0 environment unknown  |  L1 > 10% contradictions  |  L2 1–10%  |  L3 0 for Tier 1  |  L4 0 across scope
+    with label-based env
+  look_for: • afp-api-int on aks-…-nonprod-… must map to a non-prod Application Service• Same service.name in prod and test
+    without env label
+  risk_if_gap: Critical
+  playbooks:
+  - CMDB-PB-10
+- id: CMDB-AT-12-C04
+  number: 4
+  name: Workload metadata standard adopted
+  standard_ref: CMDB-STD-12 R04–R05
+  applicability: Production workloads
+  required_evidence: Required labels/resource attributes present (service.name, deployment.environment, CMDB application-service
+    key, business application key, owner)
+  evaluation_method: Deterministic
+  methods:
+  - deterministic
+  acceptance_criteria: ≥ 95% (100% Tier 1); policy enforcement for new deployments
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: ''
+  reassessment: ''
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-12
+  - CMDB-PB-10
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: Foundation
+  data_source: Workload manifests; OTel resource attributes
+  formula: Workloads with all required keys ÷ production workloads
+  maturity_bands: L0 < 25%  |  L1 25–49%  |  L2 50–79%  |  L3 80% to tier threshold  |  L4 ≥ tier threshold sustained 2 cycles
+  look_for: • Keys present but values free-text, not CMDB numbers
+  risk_if_gap: High
+  playbooks:
+  - CMDB-PB-10
+- id: CMDB-AT-12-C05
+  number: 5
+  name: Event and alert CI binding
+  standard_ref: CMDB-STD-12 R08
+  applicability: Alerts/events for the service last 30 days
+  required_evidence: em_alert.cmdb_ci resolves to the Production Application Service or one of its hosting CIs (not a monitoring
+    tool or generic CI)
+  evaluation_method: Deterministic
+  methods:
+  - deterministic
+  acceptance_criteria: ≥ 90% (100% for alerts that create P1/P2 incidents)
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: ''
+  reassessment: ''
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-12
+  - CMDB-PB-10
+  - CMDB-PB-06
+  rubric_refs:
+  - P1-03
+  rubric_enablers: []
+  csdm_layer: Service Delivery → ITSM
+  data_source: em_alert; event rules
+  formula: Bound alerts ÷ alerts
+  maturity_bands: L0 < 25%  |  L1 25–49%  |  L2 50–79%  |  L3 80% to tier threshold  |  L4 ≥ tier threshold sustained 2 cycles
+  look_for: • All Splunk alerts bound to a single 'Splunk' CI• Alert binds to host that is shared by many services
+  risk_if_gap: High
+  playbooks:
+  - CMDB-PB-10
+  - CMDB-PB-06
+- id: CMDB-AT-12-C06
+  number: 6
+  name: Mapping governance and drift detection
+  standard_ref: CMDB-STD-12 R09–R10
+  applicability: Mapping store
+  required_evidence: Mapping changes reviewed; weekly sweep raises a task for unmapped production identifiers within 5 business
+    days
+  evaluation_method: Deterministic
+  methods:
+  - deterministic
+  acceptance_criteria: '0'
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: ''
+  reassessment: ''
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-12
+  - CMDB-PB-10
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: Manage Portfolio
+  data_source: Sweep results; tasks
+  formula: Unmapped production identifiers older than 5 BD
+  maturity_bands: L0 no sweep  |  L1 ad hoc  |  L2 sweep, backlog > 30 d  |  L3 backlog ≤ 5 BD  |  L4 L3 + automated proposal
+    from labels
+  look_for: —
+  risk_if_gap: Medium
+  playbooks:
+  - CMDB-PB-10
+- id: CMDB-AT-12-C07
+  number: 7
+  name: Telemetry retrievable for reliability metrics
+  standard_ref: CMDB-STD-12 R11
+  applicability: Tier 1/2 mapped services
+  required_evidence: Error-rate/latency/availability series retrievable for the SLO window (≥ 28 days) via summary index,
+    metrics store or recording rule — not raw-log pulls subject to throttling
+  evaluation_method: Deterministic
+  methods:
+  - deterministic
+  acceptance_criteria: 100% Tier 1; ≥ 90% Tier 2
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: ''
+  reassessment: ''
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-12
+  - CMDB-PB-10
+  rubric_refs:
+  - P1-05
+  rubric_enablers: []
+  csdm_layer: Service Delivery → Observability
+  data_source: Splunk summary indexes / Loki recording rules / metrics store
+  formula: Tier 1/2 services with a retrievable 28-day series ÷ services
+  maturity_bands: L0 < 25%  |  L1 25–49%  |  L2 50–79%  |  L3 80% to tier threshold  |  L4 ≥ tier threshold sustained 2 cycles
+  look_for: • Raw searches over 30 days throttled in Splunk/Loki prod
+  risk_if_gap: High
+  playbooks:
+  - CMDB-PB-10
+source_file: CMDB-AT-12 — Observability Identity & Telemetry-to-CMDB Mapping Assessment — V2.docx
+references:
+- CMDB-STD-12
+- CMDB-STD-00
+- CMDB-PB-10
+- CMDB-PB-06
+version: V2
+rubric_refs:
+- P1-03
+- P1-05
+- P2-08

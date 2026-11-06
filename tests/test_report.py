@@ -26,7 +26,9 @@ def assessment_for(t):
         a.results[c.id] = CriterionResult(criterion_id=c.id, result=res, risk=Risk.HIGH if res == Result.GAP else None,
                                           rationale=f"rationale {c.id}", evidence_refs=[f"EV-{i}"], source=Source.RULE,
                                           na_justification="not hosted in cloud" if res == Result.NA else "",
-                                          na_approved=res == Result.NA)
+                                          na_approved=res == Result.NA,
+                                          measured_value=f"measured {c.id}" if t.variant == "C" else "",
+                                          maturity_level=2 if t.variant == "C" else None)
         if res in (Result.GAP, Result.INSUFFICIENT):
             a.findings.append(Finding(type=FindingType.GAP, severity=Risk.HIGH, title=f"gap in {c.id}",
                                       criterion_ids=[c.id],
@@ -51,6 +53,9 @@ def test_fill_roundtrip(tid, tmp_path):
     meta = tables[0].kv()
     assert meta["Application"] == "Rebates Batch (APP0001)"
     assert meta["Assessment Reference"] == a.id and meta["Assessor"] == "J. SRE"
+    if t.variant == "C":
+        _check_variant_c(t, a, tables)
+        return
     crit = [b for b in tables if "Acceptance Criteria" in b.labels]
     assert len(crit) == len(t.criteria)
     for tbl, c in zip(crit, t.criteria):
@@ -73,6 +78,31 @@ def test_fill_roundtrip(tid, tmp_path):
     signoff = next((b for b in tables if b.rows[0][:1] == ["Role"]), None)
     if signoff is not None:
         assert all(row[1].startswith("Name ") and row[3] == "Approved" for row in signoff.rows[1:])
+
+
+def _check_variant_c(t, a, tables):
+    """V2 CMDB/CSDM layout: result tables per criterion, results summary, remediation plan, sign-off."""
+    res_tables = [b for b in tables if b.rows[0][:1] == ["Measured value"]]
+    assert len(res_tables) == len(t.criteria)
+    for tbl, c in zip(res_tables, t.criteria):
+        kv, r = tbl.kv(), a.results[c.id]
+        assert kv["Result"].count(TICK) == 1 and kv["Result"].count(BOX) == 3
+        assert f"{r.result.value}  {TICK}" in kv["Result"]
+        assert kv["Maturity level"].count(TICK) == 1 and "L2 " + TICK in kv["Maturity level"]
+        assert kv["Measured value"] == f"measured {c.id}"
+        assert f"rationale {c.id}" in kv["Evidence reference"]
+        if r.result in (Result.GAP, Result.INSUFFICIENT):
+            assert f"fix {c.id}" in kv["Recommendation"]
+        assert kv["Validated by / date"].endswith("2026-11-04")
+    summary = next(b for b in tables if b.rows[0][:3] == ["Criterion", "Name", "Result"])
+    assert all(row[2] in [x.value for x in CYCLE] and row[3] == "L2" for row in summary.rows[1:])
+    outcome = next(b for b in tables if "Rubric outcome contribution" in b.labels).kv()
+    assert outcome["Assessment-level maturity"].startswith("L2")
+    plan = next(b for b in tables if b.rows[0][:2] == ["Finding", "Severity"])
+    gaps = [c for c in t.criteria if a.results[c.id].result in (Result.GAP, Result.INSUFFICIENT)]
+    assert sum(1 for row in plan.rows[1:] if row[0].startswith("FND") or "gap in" in row[0]) == len(gaps)
+    signoff = next(b for b in tables if b.rows[0][:1] == ["Role"])
+    assert all(row[1].startswith("Name ") and row[3] == "Approved" for row in signoff.rows[1:])
 
 
 def test_variant_a_label_visible(tmp_path):

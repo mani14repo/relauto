@@ -2,13 +2,13 @@ import { useEffect, useRef, useState } from "react";
 
 export type JobLine = { t: string; level: "info" | "warn" | "error"; msg: string };
 export type Job = {
-  state: "idle" | "queued" | "running" | "done" | "failed";
+  state: "idle" | "queued" | "running" | "done" | "failed" | "cancelled";
   phase?: string; step?: number; total?: number; current?: string;
   started_at?: string; updated_at?: string; finished_at?: string | null; eta_s?: number | null;
   log?: JobLine[]; warnings?: number; error?: string | null;
   summary?: { rating: string; index: number; llm?: { calls: number; verified: number; rejected: number; no_evidence: number; errors: number } | null } | null;
   job?: { llm?: boolean };
-  seconds_since_update?: number; stale_after_s?: number; stale?: boolean;
+  seconds_since_update?: number; stale_after_s?: number; stale?: boolean; cancel_requested?: boolean;
 };
 
 export const isActive = (j: Job | null | undefined) => !!j && (j.state === "queued" || j.state === "running");
@@ -29,7 +29,8 @@ function getDismissed(id: string) { try { return window.sessionStorage.getItem(d
 function setDismissed(id: string, v: string) { try { window.sessionStorage.setItem(dismissedKey(id), v); } catch { /* ignore */ } }
 
 /** Live status of the automated pass: phase, progress, the criterion being evaluated, and an activity log. */
-export default function JobPanel({ id, job }: { id: string; job: Job | null }) {
+export default function JobPanel({ id, job, onCancel }: { id: string; job: Job | null; onCancel?: () => Promise<void> }) {
+  const [cancelling, setCancelling] = useState(false);
   const [now, setNow] = useState(Date.now());
   const [dismissed, setDis] = useState<string | null>(() => getDismissed(id));
   const logRef = useRef<HTMLDivElement>(null);
@@ -59,7 +60,10 @@ export default function JobPanel({ id, job }: { id: string; job: Job | null }) {
   if (job.state === "queued") title = "Queued";
   else if (job.state === "running") title = job.phase ? `Running · ${job.phase}` : "Running";
   else if (job.state === "done") { title = "Automated pass finished"; tone = job.warnings ? "warn" : "ok"; }
+  else if (job.state === "cancelled") { title = "Automated pass cancelled"; tone = "warn"; }
   else { title = "Automated pass failed"; tone = "bad"; }
+  const stopping = active && (job.cancel_requested || cancelling);
+  if (stopping && !stale) title = "Cancelling…";
   if (stale) { title = `No progress for ${dur(quiet)}`; tone = "bad"; }
 
   return (
@@ -76,6 +80,13 @@ export default function JobPanel({ id, job }: { id: string; job: Job | null }) {
         </span>
         {!active && job.finished_at && (
           <button className="link" onClick={() => { setDismissed(id, job.finished_at!); setDis(job.finished_at!); }}>Dismiss</button>
+        )}
+        {active && onCancel && (
+          <button disabled={stopping && !stale} onClick={async () => {
+            if (!window.confirm("Cancel this automated pass? Nothing from this run will be saved; the assessment keeps its previous results.")) return;
+            setCancelling(true);
+            try { await onCancel(); } finally { setCancelling(false); }
+          }}>{stopping && !stale ? "Cancelling…" : "Cancel run"}</button>
         )}
       </div>
 
@@ -95,7 +106,9 @@ export default function JobPanel({ id, job }: { id: string; job: Job | null }) {
           {/^[A-Z]+-AT-\d+-C\d+/.test(job.current) && <span className="muted"> · waiting for the model for {dur(since(job.updated_at, now))}</span>}
         </p>
       )}
-      {job.state === "queued" && !stale && <p className="small muted" style={{ margin: "8px 0 0" }}>Waiting for a worker to pick up the job…</p>}
+      {job.state === "queued" && !stale && !stopping && <p className="small muted" style={{ margin: "8px 0 0" }}>Waiting for a worker to pick up the job…</p>}
+      {stopping && !stale && <p className="small muted" style={{ margin: "8px 0 0" }}>Stopping at the next step; a model call in progress is abandoned within a second or two.</p>}
+      {job.state === "cancelled" && <p className="small" style={{ margin: "8px 0 0" }}>Nothing from this run was saved; the assessment keeps its previous results.</p>}
       {stale && (
         <p className="small" style={{ margin: "8px 0 0" }}>
           The run has not reported anything for {dur(quiet)}, longer than one model call is allowed to take. The server or worker
@@ -112,7 +125,7 @@ export default function JobPanel({ id, job }: { id: string; job: Job | null }) {
       )}
 
       {!!lines.length && (
-        <details className="job-log-wrap" open={active || job.state === "failed" || !!warnLines.length}>
+        <details className="job-log-wrap" open={active || job.state === "failed" || job.state === "cancelled" || !!warnLines.length}>
           <summary className="small">Activity log ({lines.length}{job.warnings ? `, ${job.warnings} warnings` : ""})</summary>
           <div className="job-log mono small" ref={logRef}>
             {lines.map((l, i) => (

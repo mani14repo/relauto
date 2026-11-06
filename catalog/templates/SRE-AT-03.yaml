@@ -34,6 +34,15 @@ criteria:
   example_risk: High — unstructured logs prevent root-cause correlation
   example_recommendation: Enforce structured logging standard; validate in Splunk before production deploy
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-03-C02
   number: 2
   name: Application Metrics Coverage
@@ -51,6 +60,15 @@ criteria:
   example_risk: High — only 5% work-time captured on human incidents
   example_recommendation: Instrument golden signals per application service; align to AppDynamics business transactions
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-03-C03
   number: 3
   name: Alert Actionability & Ownership
@@ -68,6 +86,15 @@ criteria:
   example_risk: Critical — 4,066 auto-closed to 1 parent event; 94.8% monitoring-generated
   example_recommendation: Audit and tune all alerts; implement correlation for Rebates Batch and similar high-volume sources
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-03-C04
   number: 4
   name: Distributed Tracing Coverage
@@ -85,6 +112,15 @@ criteria:
   example_risk: Medium — upstream/downstream failures not traceable without distributed tracing
   example_recommendation: Enable AppDynamics correlation ID propagation; instrument top transaction paths
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-03-C05
   number: 5
   name: Executive / Leadership Dashboard Availability
@@ -102,5 +138,16 @@ criteria:
   example_risk: High — 4/5 exec questions unanswerable from live data
   example_recommendation: Build per-family Splunk dashboard; distinguish monitoring-generated vs. human-reported incidents
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 source_file: SRE-AT-03 — Observability Coverage & Instrumentation Assessment.docx
 references: []
+version: V1
+rubric_refs: []

@@ -44,7 +44,10 @@ def path_setting(name: str, default: Path) -> Path:
 
 
 DOCS_DIR = path_setting("SRA_DOCS_DIR", ROOT / "docs" / "OIPReqs")
-TEMPLATES_DIR = DOCS_DIR / "Assessment Templates" / "Assessment Templates" / "V1"
+# Flat layout: each folder holds its documents directly. File names carry the ID and, from V2 on, the version
+# ("CMDB-AT-01 — … — V2.docx"); when two versions of one ID sit side by side, the catalog uses the highest.
+TEMPLATES_DIR = DOCS_DIR / "Assessment Templates"
+CMDB_CRITERIA_XLSX = DOCS_DIR / "CMDB-CSDM Readiness Criteria Catalog — V2.xlsx"
 STANDARDS_DIR = DOCS_DIR / "Standards Policies Procedures"
 PLAYBOOKS_DIR = DOCS_DIR / "Playbooks"
 RUBRIC_DOCX = STANDARDS_DIR / "Reliability Readiness Score Rubric — V1 Draft.docx"

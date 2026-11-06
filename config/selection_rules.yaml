@@ -114,6 +114,7 @@ templates:
   CMDB-AT-06:
     rules:
       - { if: "cross_team_dependencies", weight: 3, reason: "Cross-team / cross-portfolio dependencies" }
+      - { if: "tier in [1, 2]", weight: 2, reason: "Tier 1/2 Production Application Service (V2 assessment unit)" }
   CMDB-AT-07:
     rules:
       - { if: "hosting in [cloud, hybrid]", weight: 3, reason: "Cloud or hybrid hosting" }
@@ -128,3 +129,14 @@ templates:
   CMDB-AT-11:
     rules:
       - { if: "trigger == periodic", weight: 3, reason: "Periodic CMDB certification" }
+  # V2: telemetry-to-CMDB identity; needed before SLOs or MTTR can be reported per Application Service (Gate C)
+  CMDB-AT-12:
+    rules:
+      - { if: "tier in [1, 2]", weight: 3, reason: "Tier 1/2 Production Application Service with telemetry" }
+      - { if: "containerized", weight: 1, reason: "Kubernetes workloads need namespace/workload identity mapping" }
+      - { if: "has_sla", weight: 1, reason: "SLO/SLA reporting depends on telemetry identity" }
+  # V2: CMDB Readiness Index and reporting gates per Business Application
+  CMDB-AT-13:
+    rules:
+      - { if: "trigger == periodic", weight: 3, reason: "Periodic readiness scorecard" }
+      - { if: "tier == 1", weight: 3, reason: "Tier 1: reporting gates decide which executive metrics are authoritative" }

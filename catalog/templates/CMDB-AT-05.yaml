@@ -1,109 +1,218 @@
 id: CMDB-AT-05
 title: Infrastructure Configuration Accuracy Assessment
 domain: CMDB
-variant: A
+variant: C
 priority: P2
-applicability: All production infrastructure CIs (servers, network devices, databases, middleware) supporting FSI REO applications
-accountable_owner: Platform Engineering / CMDB
-purpose: Evaluate whether infrastructure CI records in ServiceNow CMDB accurately reflect actual deployed configurations.
-  Accurate infrastructure CIs are required for change impact analysis, capacity planning, and security posture assessment.
-relevance: Infrastructure configuration accuracy unknown from extract. Supports G-20 (CMDB completeness). Platform dependency
-  confirmed for Jenkins migration (G-17). Region A has 8 apps with 86.2% of incident volume.
-reassessment_trigger: Major release, architecture change, or Post-Incident Review recommendation
-scope: []
+applicability: Hosting CIs of Tier 1/2 Production Application Services, sampled per class. • Servers/VMs, databases, middleware,
+  network, container platforms• Hosting relationships• Configuration drift detection
+accountable_owner: Platform Engineering / CMDB Platform Owner
+purpose: Determine whether infrastructure CI attributes and hosting relationships match the deployed estate, using an independent
+  authoritative source for each class.
+relevance: Region A (8 apps, 86.2% of incidents) is the sampling priority. Rebate APIs moved to container platforms; server-centric
+  checks alone miss them.
+reassessment_trigger: Semi-annually; after migrations
+scope:
+- • Servers/VMs, databases, middleware, network, container platforms• Hosting relationships• Configuration drift detection
+- • Discovery coverage (CMDB-AT-02)• Cloud tagging (CMDB-AT-07)
 signoff_roles:
 - Assessment Lead
-- Domain Reviewer
-- Engineering / Service Owner
-- PSE Representative
+- Data Steward (portfolio)
+- SRE Region Lead
+- Business Application Owner / Engineering Owner
+- CMDB Process Owner
 criteria:
 - id: CMDB-AT-05-C01
   number: 1
-  name: Server CI Accuracy
-  standard_ref: ServiceNow Discovery; ITPN G-20
-  applicability: All production servers (physical and virtual) supporting FSI REO applications
-  required_evidence: Comparison of Discovery-sourced server CIs against platform team inventory; discrepancy count
-  evaluation_method: 'Deterministic: Discovery-sourced server CIs match platform inventory for > 95% of production servers'
+  name: Server and VM accuracy
+  standard_ref: CMDB-STD-01 R05; CMDB-STD-06
+  applicability: Sample
+  required_evidence: name/FQDN, IP, OS, used_for, support_group vs platform inventory
+  evaluation_method: Deterministic
   methods:
   - deterministic
-  acceptance_criteria: '> 95% of production servers in CMDB match platform inventory; discrepancies resolved within 30 days'
+  acceptance_criteria: ≥ 95%
   default_risk: Medium
   default_risk_assumed: false
-  accountable_owner: CMDB / Platform Engineering
+  accountable_owner: ''
   reassessment: ''
-  example_risk: Medium — inaccurate server CIs lead to incorrect change impact analysis
-  example_recommendation: Run Discovery-to-inventory comparison for Region A servers first; remediate discrepancies
-  references: []
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-01
+  - CMDB-STD-06
+  - CMDB-PB-08
+  rubric_refs:
+  - P2-10
+  rubric_enablers: []
+  csdm_layer: Foundation
+  data_source: cmdb_ci_server / cmdb_ci_vm_instance
+  formula: Sampled CIs with all key attributes matching ÷ sample
+  maturity_bands: L0 < 25%  |  L1 25–49%  |  L2 50–79%  |  L3 80% to tier threshold  |  L4 ≥ tier threshold sustained 2 cycles
+  look_for: • used_for = Production on DR or test hosts
+  risk_if_gap: Medium
+  playbooks:
+  - CMDB-PB-08
 - id: CMDB-AT-05-C02
   number: 2
-  name: Database CI Accuracy
-  standard_ref: ServiceNow Discovery; ITPN G-20
-  applicability: All production databases supporting FSI REO applications
-  required_evidence: Discovery-sourced database CIs vs. DBA team inventory; version, schema, and owner fields populated
-  evaluation_method: 'Deterministic: all production databases in CMDB with version, schema, and owner; Discovery confirms
-    existence'
+  name: Database accuracy
+  standard_ref: CMDB-STD-01 R05
+  applicability: Production DB instances
+  required_evidence: instance, version, used_for, DBA support group vs DBA inventory; linked to consuming Application Services
+  evaluation_method: Deterministic
   methods:
   - deterministic
-  acceptance_criteria: 100% of production databases registered in CMDB; version and DBA owner populated
+  acceptance_criteria: 100% registered; ≥ 95% attribute match
   default_risk: High
   default_risk_assumed: false
-  accountable_owner: CMDB / DBA team
+  accountable_owner: ''
   reassessment: ''
-  example_risk: High — unregistered databases create shadow IT risk and prevent change impact analysis
-  example_recommendation: Cross-reference DBA inventory against CMDB; register missing databases; assign DBA owner per record
-  references: []
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-01
+  - CMDB-PB-03
+  rubric_refs:
+  - P2-10
+  rubric_enablers: []
+  csdm_layer: Foundation
+  data_source: cmdb_ci_db_*
+  formula: Matching and linked ÷ DBA inventory production instances
+  maturity_bands: L0 < 25%  |  L1 25–49%  |  L2 50–79%  |  L3 80% to tier threshold  |  L4 ≥ tier threshold sustained 2 cycles
+  look_for: • Shared DB serving several rebate apps linked to one
+  risk_if_gap: High
+  playbooks:
+  - CMDB-PB-03
 - id: CMDB-AT-05-C03
   number: 3
-  name: Network CI Accuracy
-  standard_ref: ServiceNow Discovery; ITPN G-20
-  applicability: All production network devices in FSI REO environments
-  required_evidence: Discovery-sourced network device CIs vs. network team inventory; IP address, location, and owner populated
-  evaluation_method: 'Deterministic: > 90% of production network devices in CMDB match network team inventory'
+  name: Middleware and app-server accuracy
+  standard_ref: CMDB-STD-01 R05
+  applicability: WebSphere/JBoss/Tomcat/IIS and MQ instances
+  required_evidence: Instance, version, owner, Runs on and service membership
+  evaluation_method: Deterministic
   methods:
   - deterministic
-  acceptance_criteria: '> 90% of production network devices in CMDB with IP, location, and owner populated'
-  default_risk: Medium
-  default_risk_assumed: false
-  accountable_owner: CMDB / Network Engineering
-  reassessment: ''
-  example_risk: Medium — inaccurate network CIs prevent correct blast-radius analysis during incidents
-  example_recommendation: Enable Discovery for network devices; cross-reference with network team inventory quarterly
-  references: []
-- id: CMDB-AT-05-C04
-  number: 4
-  name: Middleware & Application Server Accuracy
-  standard_ref: ServiceNow Discovery; ITPN G-20
-  applicability: All middleware platforms (WebSphere, JBoss, IIS, Tomcat) supporting FSI REO applications
-  required_evidence: Discovery-sourced middleware CIs vs. application team inventory; version and linked application populated
-  evaluation_method: 'Deterministic: all production middleware instances in CMDB; version and linked application populated'
-  methods:
-  - deterministic
-  acceptance_criteria: 100% of production middleware instances in CMDB with version, owner, and linked application
+  acceptance_criteria: 100% registered; ≥ 95% match
   default_risk: High
   default_risk_assumed: false
-  accountable_owner: CMDB / Application Engineering
+  accountable_owner: ''
   reassessment: ''
-  example_risk: High — unregistered middleware creates undetectable single points of failure
-  example_recommendation: Enumerate middleware instances from application team inventory; register in CMDB; link to application
-    CIs
-  references: []
-- id: CMDB-AT-05-C05
-  number: 5
-  name: Configuration Drift Detection
-  standard_ref: ServiceNow Discovery — Change Detection; ITIL Configuration Management
-  applicability: All CIs with Discovery-managed attributes
-  required_evidence: 'ServiceNow Discovery change log: unauthorized configuration changes detected and flagged'
-  evaluation_method: 'Deterministic: Discovery-detected configuration changes compared to Change Record history; unauthorized
-    drifts flagged'
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-01
+  - CMDB-PB-01
+  rubric_refs:
+  - P2-10
+  rubric_enablers: []
+  csdm_layer: Foundation
+  data_source: cmdb_ci_app_server_*; MQ classes
+  formula: Matching and linked ÷ inventory
+  maturity_bands: L0 < 25%  |  L1 25–49%  |  L2 50–79%  |  L3 80% to tier threshold  |  L4 ≥ tier threshold sustained 2 cycles
+  look_for: • Middleware unregistered — hidden SPOF
+  risk_if_gap: High
+  playbooks:
+  - CMDB-PB-01
+- id: CMDB-AT-05-C04
+  number: 4
+  name: Network and load-balancer accuracy
+  standard_ref: CMDB-STD-01 R05
+  applicability: LB VIPs and network devices on Tier 1 paths
+  required_evidence: VIP/pool members mapped to Application Service entry points
+  evaluation_method: Deterministic
   methods:
   - deterministic
-  acceptance_criteria: Configuration drift detection enabled; unauthorized drifts trigger Problem record within 24h
+  acceptance_criteria: 100% Tier 1
   default_risk: Medium
   default_risk_assumed: false
-  accountable_owner: CMDB / Change Management
+  accountable_owner: ''
   reassessment: ''
-  example_risk: Medium — configuration drift without detection creates unknown variance from approved baselines
-  example_recommendation: Enable Discovery change detection; wire unauthorized drift to Problem Management process
-  references: []
-source_file: CMDB-AT-05 — Infrastructure Configuration Accuracy Assessment.docx
-references: []
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-01
+  - CMDB-PB-05
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: Foundation
+  data_source: cmdb_ci_lb_*; cmdb_ci_netgear
+  formula: Tier 1 entry-point VIPs registered and linked ÷ Tier 1 VIPs
+  maturity_bands: L0 < 25%  |  L1 25–49%  |  L2 50–79%  |  L3 80% to tier threshold  |  L4 ≥ tier threshold sustained 2 cycles
+  look_for: • VIPs with no service — blast radius unknown
+  risk_if_gap: Medium
+  playbooks:
+  - CMDB-PB-05
+- id: CMDB-AT-05-C05
+  number: 5
+  name: Container platform accuracy
+  standard_ref: CMDB-STD-01 R06; CMDB-STD-12
+  applicability: GKE/AKS clusters and namespaces hosting FSI workloads
+  required_evidence: Cluster, namespace, workload CIs vs kubectl/cloud API inventory; environment derived correctly
+  evaluation_method: Deterministic
+  methods:
+  - deterministic
+  acceptance_criteria: 100% clusters; ≥ 95% namespaces
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: ''
+  reassessment: ''
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-01
+  - CMDB-STD-12
+  - CMDB-PB-10
+  rubric_refs:
+  - P2-10
+  rubric_enablers: []
+  csdm_layer: Foundation
+  data_source: Kubernetes classes; cloud API
+  formula: Matching namespaces/workloads ÷ inventory
+  maturity_bands: L0 < 25%  |  L1 25–49%  |  L2 50–79%  |  L3 80% to tier threshold  |  L4 ≥ tier threshold sustained 2 cycles
+  look_for: • '-nonprod' clusters with workloads recorded as Production
+  risk_if_gap: High
+  playbooks:
+  - CMDB-PB-10
+- id: CMDB-AT-05-C06
+  number: 6
+  name: Configuration drift detection
+  standard_ref: CMDB-STD-06 R12
+  applicability: Tier 1 hosting CIs
+  required_evidence: Discovery-detected attribute changes compared with change records; unauthorized changes raise a task
+    within 24 h
+  evaluation_method: Deterministic
+  methods:
+  - deterministic
+  acceptance_criteria: 100% triaged within 24 h
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: ''
+  reassessment: ''
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-06
+  - CMDB-PB-08
+  rubric_refs: []
+  rubric_enablers:
+  - P1-07
+  csdm_layer: Foundation
+  data_source: sys_audit; change_request
+  formula: Unauthorized changes detected and triaged ÷ unauthorized changes detected
+  maturity_bands: L0 not enabled  |  L1 detected, not triaged  |  L2 partial  |  L3 100% triaged  |  L4 L3 + trend reported
+  look_for: • Drift noise from autoscaling attributes — exclude by attribute list
+  risk_if_gap: Medium
+  playbooks:
+  - CMDB-PB-08
+source_file: CMDB-AT-05 — Infrastructure Configuration Accuracy Assessment — V2.docx
+references:
+- CMDB-STD-01
+- CMDB-STD-06
+- CMDB-STD-12
+- CMDB-PB-08
+- CMDB-PB-03
+- CMDB-PB-01
+- CMDB-PB-05
+- CMDB-PB-10
+version: V2
+rubric_refs:
+- P2-10

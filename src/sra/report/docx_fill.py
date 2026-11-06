@@ -23,7 +23,7 @@ from pathlib import Path
 from lxml import etree
 
 from ..catalog.models import Result, Risk, Template
-from ..models import Assessment, CriterionResult, Finding
+from ..models import Assessment, CriterionResult, Finding, Source
 from ..ooxml import W, text_of
 
 XML_SPACE = "{http://www.w3.org/XML/1998/namespace}space"
@@ -39,8 +39,8 @@ def set_cell_text(tc, text: str) -> None:
     p = paras[0]
     for extra in paras[1:]:
         tc.remove(extra)
-    runs = p.findall(W + "r")
-    rpr = copy.deepcopy(runs[0].find(W + "rPr")) if runs and runs[0].find(W + "rPr") is not None else None
+    styled = next((r for r in p.findall(W + "r") if r.find(W + "rPr") is not None), None)
+    rpr = copy.deepcopy(styled.find(W + "rPr")) if styled is not None else None
     for child in list(p):
         if child.tag != W + "pPr":
             p.remove(child)
@@ -178,19 +178,23 @@ def fill_template(template: Template, src: Path, assessment: Assessment, out: Pa
                       assessment.application.name + (f" ({assessment.application.cmdb_id})" if assessment.application.cmdb_id else ""))
     _insert_row_after(meta, "Application", "Assessor", assessment.assessor or "[Assessor]")
     _set_row(meta, "Date", f"{assessment.assessment_date.isoformat()} (template: {_cell(meta, 'Date')})")
-    if template.variant == "A":
-        _set_row(meta, "Approval Status", f"Assessment status: {assessment.status.upper()}")
-    else:
-        _set_row(meta, "Status", f"Assessment status: {assessment.status.upper()}")
+    status_row = {"A": "Approval Status", "B": "Status", "C": "Version / Status"}[template.variant]
+    template_status = _cell(meta, status_row)
+    _set_row(meta, status_row, f"Assessment status: {assessment.status.upper()}"
+             + (f" (template {template_status})" if template.variant == "C" and template_status else ""))
+
+    by_crit: dict[str, list[Finding]] = {}
+    for f in assessment.findings:
+        for cid in f.criterion_ids:
+            by_crit.setdefault(cid, []).append(f)
+    if template.variant == "C":
+        _fill_variant_c(template, tables, assessment, by_crit)
+        return _write(root, parts, infos, tables, assessment, out)
 
     # Criterion tables, in template order
     crit_tables = [t for t in tables if _row(t, "Acceptance Criteria") is not None and _row(t, "Result") is not None]
     if len(crit_tables) != len(template.criteria):
         raise ValueError(f"{template.id}: {len(crit_tables)} criterion tables vs {len(template.criteria)} criteria")
-    by_crit: dict[str, list[Finding]] = {}
-    for f in assessment.findings:
-        for cid in f.criterion_ids:
-            by_crit.setdefault(cid, []).append(f)
 
     for tbl, c in zip(crit_tables, template.criteria):
         r = assessment.results.get(c.id)
@@ -208,7 +212,11 @@ def fill_template(template: Template, src: Path, assessment: Assessment, out: Pa
             _set_row(tbl, "Validation", _validation(r))
         _insert_row_after(tbl, "Result", EVIDENCE_LABEL, evidence_text(r, fs), like_label="Required Evidence")
 
-    # Sign-off table (Variant A)
+    return _write(root, parts, infos, tables, assessment, out)
+
+
+def _write(root, parts, infos, tables, assessment: Assessment, out: Path) -> Path:
+    # Sign-off table
     signoff = next((t for t in tables if _label(_rows(t)[0]) == "Role"), None)
     if signoff is not None:
         by_role = {s.role: s for s in assessment.signoffs}
@@ -226,6 +234,94 @@ def fill_template(template: Template, src: Path, assessment: Assessment, out: Pa
         for name, data in parts.items():
             z.writestr(infos[name], data, compress_type=zipfile.ZIP_DEFLATED)
     return out
+
+
+# ---------------------------------------------------------------- Variant C (CMDB/CSDM V2)
+def result_text_c(result: Result | None) -> str:
+    return "   ".join(f"{r.value}  {TICK if r == result else BOX}" for r in RESULT_ORDER)
+
+
+def level_text(level: int | None) -> str:
+    return "  ".join(f"L{i} {TICK if i == level else BOX}" for i in range(5))
+
+
+def _fill_variant_c(template: Template, tables, assessment: Assessment, by_crit: dict[str, list[Finding]]) -> None:
+    defs = [t for t in tables if _row(t, "Measurement / formula") is not None]
+    results = [t for t in tables if _label(_rows(t)[0]) == "Measured value"]
+    if not (len(defs) == len(results) == len(template.criteria)):
+        raise ValueError(f"{template.id}: {len(defs)} criterion / {len(results)} result tables vs {len(template.criteria)} criteria")
+    for tbl, c in zip(results, template.criteria):
+        r = assessment.results.get(c.id)
+        fs = by_crit.get(c.id, [])
+        _set_row(tbl, "Measured value", (r.measured_value if r and r.measured_value else
+                                         "[Pending evaluation]" if r is None or r.result is None else "Not measured"))
+        _set_row(tbl, "Result", result_text_c(r.result if r else None))
+        _set_row(tbl, "Maturity level", level_text(r.maturity_level if r else None)
+                 + ("" if r and r.maturity_level is not None else "   (not yet assessed)"))
+        _set_row(tbl, "Evidence reference", evidence_text(r, fs))
+        _set_row(tbl, "Recommendation", recommendation_text(r, fs))
+        if r and r.result is not None:
+            who = r.reviewer or ("Pending reviewer validation" if r.source != Source.HUMAN else assessment.assessor or "Assessor")
+            _set_row(tbl, "Validated by / date", f"{who} — {assessment.assessment_date.isoformat()}")
+
+    # 8. Results Summary
+    summary = next((t for t in tables if [c.strip() for c in _texts(_rows(t)[0])][:3] == ["Criterion", "Name", "Result"]), None)
+    if summary is not None:
+        by_num = {f"C{c.number:02d}": c for c in template.criteria}
+        for tr in _rows(summary)[1:]:
+            c = by_num.get(_label(tr))
+            if not c:
+                continue
+            r = assessment.results.get(c.id)
+            tcs = tr.findall(W + "tc")
+            vals = [r.result.value if r and r.result else "Not evaluated",
+                    f"L{r.maturity_level}" if r and r.maturity_level is not None else "—",
+                    (r.measured_value if r else "") or "—",
+                    (r.risk or c.default_risk).value if r and r.result in (Result.GAP, Result.INSUFFICIENT) else "—"]
+            for tc, v in zip(tcs[2:6], vals):
+                set_cell_text(tc, v)
+    p1 = sorted({rid for c in template.criteria for rid in c.rubric_refs if rid.startswith("P1") and _gaplike(assessment, c.id)})
+    p2 = sorted({rid for c in template.criteria for rid in c.rubric_refs if rid.startswith("P2") and _gaplike(assessment, c.id)})
+    outcome = next((t for t in tables if _row(t, "Rubric outcome contribution") is not None), None)
+    if outcome is not None:
+        _set_row(outcome, "Rubric outcome contribution",
+                 f"P1 gaps: {', '.join(p1) or 'none'}   P2 gaps: {', '.join(p2) or 'none'}")
+        levels = [assessment.results[c.id].maturity_level for c in template.criteria
+                  if c.id in assessment.results and assessment.results[c.id].maturity_level is not None]
+        _set_row(outcome, "Assessment-level maturity",
+                 f"L{min(levels)} (lowest of {len(levels)} assessed criteria)" if len(levels) == len(template.criteria)
+                 else f"Not determined: {len(levels)} of {len(template.criteria)} criteria have a maturity level")
+
+    # 9. Remediation Plan: one row per open finding on this template's criteria
+    plan = next((t for t in tables if [c.strip() for c in _texts(_rows(t)[0])][:2] == ["Finding", "Severity"]), None)
+    if plan is not None:
+        ids = {c.id for c in template.criteria}
+        seen, items = set(), []
+        for f in assessment.findings:
+            if f.id not in seen and ids & set(f.criterion_ids) and f.status.value != "resolved":
+                seen.add(f.id)
+                items.append(f)
+        rows = _rows(plan)[1:]
+        while len(rows) < len(items):
+            clone = copy.deepcopy(rows[-1])
+            rows[-1].addnext(clone)
+            rows.append(clone)
+        for tr, f in zip(rows, items):
+            rec = f.recommendation
+            vals = [f"{f.id}: {f.title}", f.severity.value, (rec.owner if rec else "") or "",
+                    rec.due_date.isoformat() if rec and rec.due_date else "",
+                    ", ".join(rec.playbooks) if rec and rec.playbooks else "", f.status.value]
+            for tc, v in zip(tr.findall(W + "tc"), vals):
+                set_cell_text(tc, v)
+
+
+def _texts(tr) -> list[str]:
+    return [text_of(tc) for tc in tr.findall(W + "tc")]
+
+
+def _gaplike(a: Assessment, cid: str) -> bool:
+    r = a.results.get(cid)
+    return r is not None and r.result in (Result.GAP, Result.INSUFFICIENT)
 
 
 def _cell(tbl, label: str) -> str:

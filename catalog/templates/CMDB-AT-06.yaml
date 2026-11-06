@@ -1,110 +1,219 @@
 id: CMDB-AT-06
 title: Application Service Dependency Mapping Assessment
 domain: CMDB
-variant: A
+variant: C
 priority: P1
-applicability: All FSI REO applications with cross-team or cross-portfolio dependencies; immediate focus on GDX->RCI->CRS
-  revenue chain and CFAO->Eos dependency chain
-accountable_owner: CMDB / Architecture / SRE
-purpose: Evaluate whether application service dependencies are accurately mapped in ServiceNow CMDB, enabling correct change
-  impact analysis, incident blast-radius assessment, and AI-assisted reliability recommendations.
-relevance: RCI->GDX->CRS chain has no dependency map in ServiceNow. CFAO has 9 apps in CMDB but 0 linked to incidents (G-15).
-  Upstream/downstream failures not traceable. G-12, G-20, G-21.
-reassessment_trigger: Major release, architecture change, or Post-Incident Review recommendation
-scope: []
+applicability: One Production Application Service (Tier 1/2) and its direct upstream/downstream dependencies; chains assessed
+  end-to-end. • Service population (hosting)• App-to-app and app-to-platform dependencies• Validation against observed traffic•
+  Currency
+accountable_owner: SRE Region Lead / Architecture
+purpose: Determine whether runtime dependencies are modeled in the CMDB accurately enough to support blast-radius assessment
+  during incidents, change impact analysis, and recurrence correlation across CIs.
+relevance: GDX → RCI → CRS and CFAO → Eos chains have no CMDB dependency map (V1). Rebate API error clusters (CPR 33%, CRR
+  23%) need upstream/downstream context to explain recurrence — Henry's 'why are they recurring' question. CFAO has 9 apps
+  in CMDB and 0 linked to incidents.
+reassessment_trigger: Tier 1 every 6 months; Tier 2 every 12 months; after topology change or cascading incident
+scope:
+- • Service population (hosting)• App-to-app and app-to-platform dependencies• Validation against observed traffic• Currency
+- • Business Service Offering linkage (CMDB-AT-01 C05)
 signoff_roles:
 - Assessment Lead
-- Domain Reviewer
-- Engineering / Service Owner
-- PSE Representative
+- Data Steward (portfolio)
+- SRE Region Lead
+- Business Application Owner / Engineering Owner
+- CMDB Process Owner
 criteria:
 - id: CMDB-AT-06-C01
   number: 1
-  name: Critical Path Dependency Coverage
-  standard_ref: ServiceNow CSDM — Application Service; ITPN G-12
-  applicability: 'Revenue-critical application chains: GDX->RCI->CRS and CFAO->Eos'
-  required_evidence: ServiceNow service map or relationship record showing each link in the dependency chain
-  evaluation_method: 'Deterministic: each application in the critical chain linked to its upstream and downstream CIs in ServiceNow'
+  name: Critical chain coverage
+  standard_ref: CMDB-STD-04 R01–R02
+  applicability: 'Named critical chains: GDX→RCI→CRS, CFAO→Eos, rebate CPR/CRR/repricing flows'
+  required_evidence: Each hop modeled as Depends on::Used by between Production Application Services
+  evaluation_method: Deterministic
   methods:
   - deterministic
-  acceptance_criteria: All links in GDX->RCI->CRS and CFAO->Eos chains mapped in ServiceNow CMDB; relationships visible in
-    Service Map
+  acceptance_criteria: 100%
   default_risk: Critical
   default_risk_assumed: false
-  accountable_owner: CMDB / Architecture
+  accountable_owner: ''
   reassessment: ''
-  example_risk: Critical — critical chain has no dependency map; upstream failures are invisible to incident responders
-  example_recommendation: Build CMDB service map for Region A revenue chain (GDX->RCI->CRS) as top priority
-  references: []
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-04
+  - CMDB-PB-05
+  rubric_refs:
+  - P2-01
+  rubric_enablers: []
+  csdm_layer: Service Delivery
+  data_source: cmdb_rel_ci
+  formula: Modeled hops ÷ hops in the approved chain definition
+  maturity_bands: L0 < 25%  |  L1 25–49%  |  L2 50–79%  |  L3 80% to tier threshold  |  L4 ≥ tier threshold sustained 2 cycles
+  look_for: • Chain modeled through non-prod services• Hops modeled to servers instead of services
+  risk_if_gap: Critical
+  playbooks:
+  - CMDB-PB-05
 - id: CMDB-AT-06-C02
   number: 2
-  name: Business Service Linkage
-  standard_ref: ServiceNow CSDM — Business Service; ITPN G-20
-  applicability: All FSI REO production applications
-  required_evidence: 'ServiceNow business service records: each FSI application linked to at least one business service'
-  evaluation_method: 'Deterministic: all 63 FSI applications linked to a business service record in CMDB'
+  name: Service population (no empty services)
+  standard_ref: CMDB-STD-03 R10–R11
+  applicability: Production Application Services
+  required_evidence: Documented population method (tag-based, top-down mapping, dynamic CI group, manual entry points) and
+    ≥ 1 hosting CI
+  evaluation_method: Deterministic
   methods:
   - deterministic
-  acceptance_criteria: All 63 FSI applications linked to at least one ServiceNow business service record
+  acceptance_criteria: Tier 1/2 100%; Tier 3 ≥ 90%
   default_risk: High
   default_risk_assumed: false
-  accountable_owner: CMDB / Application Engineering
+  accountable_owner: ''
   reassessment: ''
-  example_risk: High — applications without business service linkage cannot be attributed in SLO or business impact analysis
-  example_recommendation: Create business service records for Region A (8 apps) first; extend to all 63 apps within 60 days
-  references: []
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-03
+  - CMDB-PB-03
+  rubric_refs:
+  - P2-01
+  rubric_enablers: []
+  csdm_layer: Service Delivery
+  data_source: svc_ci_assoc; service definition
+  formula: Populated services ÷ Production Application Services
+  maturity_bands: L0 < 25%  |  L1 25–49%  |  L2 50–79%  |  L3 80% to tier threshold  |  L4 ≥ tier threshold sustained 2 cycles
+  look_for: • Application Services that are names only• Manual population with no review date
+  risk_if_gap: High
+  playbooks:
+  - CMDB-PB-03
 - id: CMDB-AT-06-C03
   number: 3
-  name: Dependency Map Accuracy Validation
-  standard_ref: ServiceNow Service Mapping; ITPN G-12
-  applicability: All mapped application service dependencies
-  required_evidence: Service Mapping discovery run on critical application chains; comparison of map to architecture documentation
-  evaluation_method: 'Human review: service map reviewed with application architect; discrepancies documented and resolved'
+  name: Dependencies classified
+  standard_ref: CMDB-STD-04 R03–R05
+  applicability: All modeled dependencies of the service
+  required_evidence: Each dependency has criticality (Critical/Important/Informational), interaction (sync API / async message
+    / batch file / DB / shared cache) and failure behaviour note for Critical
+  evaluation_method: Deterministic + AI-assisted review of failure notes
   methods:
-  - human
-  acceptance_criteria: Dependency map validated by application architect for each critical chain; discrepancies < 10%
+  - deterministic
+  - ai
+  acceptance_criteria: 100% classified; Critical ones have failure behaviour and SPOF flag
   default_risk: High
   default_risk_assumed: false
-  accountable_owner: CMDB / Architecture
+  accountable_owner: ''
   reassessment: ''
-  example_risk: High — inaccurate dependency maps produce incorrect change impact analysis and blast-radius alerts
-  example_recommendation: Validate each critical chain map with the application architect; document any dynamic dependencies
-    not in CMDB
-  references: []
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-04
+  - CMDB-PB-05
+  rubric_refs: []
+  rubric_enablers:
+  - P1-08
+  csdm_layer: Service Delivery
+  data_source: cmdb_rel_ci attributes or companion table [CONFIRM]
+  formula: Classified dependencies ÷ dependencies
+  maturity_bands: L0 < 25%  |  L1 25–49%  |  L2 50–79%  |  L3 80% to tier threshold  |  L4 ≥ tier threshold sustained 2 cycles
+  look_for: • Batch file handoffs between rebate systems not modeled at all
+  risk_if_gap: High
+  playbooks:
+  - CMDB-PB-05
 - id: CMDB-AT-06-C04
   number: 4
-  name: Shared Service Dependency Registration
-  standard_ref: ServiceNow CSDM; ITPN G-20
-  applicability: All shared platform services (authentication, messaging, file transfer) used by FSI REO applications
-  required_evidence: 'ServiceNow shared service CIs: each shared service linked to all consuming FSI applications'
-  evaluation_method: 'Deterministic: all shared platform services registered in CMDB; each linked to consuming application
-    CIs'
+  name: Shared platforms modeled as Technical Service Offerings
+  standard_ref: CMDB-STD-04 R06
+  applicability: Shared clusters, DB platforms, MQ, IAM, file transfer
+  required_evidence: Technical Service Offering per environment with Dynamic CI Group; consuming Application Services linked
+  evaluation_method: Deterministic
   methods:
   - deterministic
-  acceptance_criteria: All shared services registered; consumer relationships defined in CMDB for each
+  acceptance_criteria: 100% for platforms used by Tier 1
   default_risk: Medium
   default_risk_assumed: false
-  accountable_owner: CMDB / Platform Engineering
+  accountable_owner: ''
   reassessment: ''
-  example_risk: Medium — shared service outages affect multiple applications but are not tracked without registration
-  example_recommendation: Enumerate shared services from application team interviews; register in CMDB; link all consumers
-  references: []
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-04
+  - CMDB-PB-05
+  rubric_refs:
+  - P2-01
+  rubric_enablers: []
+  csdm_layer: Service Delivery
+  data_source: service_offering; cmdb_ci_query_based_service; cmdb_rel_ci
+  formula: Shared platforms used by FSI with modeled offering and consumer links ÷ shared platforms used
+  maturity_bands: L0 < 25%  |  L1 25–49%  |  L2 50–79%  |  L3 80% to tier threshold  |  L4 ≥ tier threshold sustained 2 cycles
+  look_for: • Platform outages raising incidents on each app separately — no parent
+  risk_if_gap: Medium
+  playbooks:
+  - CMDB-PB-05
 - id: CMDB-AT-06-C05
   number: 5
-  name: Dependency Map Currency
-  standard_ref: ServiceNow Service Mapping; ITIL Configuration Management
-  applicability: All mapped application service dependencies
-  required_evidence: Dependency map last-validated date; Change Records linked to map updates when topology changes
-  evaluation_method: 'Deterministic: dependency maps reviewed and validated against recent Changes each quarter'
+  name: Validated against observed traffic
+  standard_ref: CMDB-STD-04 R07–R08
+  applicability: Tier 1/2 services with APM or trace coverage
+  required_evidence: Comparison of modeled vs observed dependencies (AppDynamics flow map / traces / log call evidence)
+  evaluation_method: Deterministic where APM exists; Human review otherwise
   methods:
   - deterministic
-  acceptance_criteria: All dependency maps reviewed at least quarterly; Change Records trigger map review when topology changes
+  - human
+  acceptance_criteria: Discrepancy ≤ 10%; 0 observed-not-modeled Critical dependencies
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: ''
+  reassessment: ''
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-04
+  - CMDB-PB-05
+  rubric_refs:
+  - P2-01
+  rubric_enablers: []
+  csdm_layer: Service Delivery → Observability
+  data_source: AppDynamics; Splunk; cmdb_rel_ci
+  formula: Discrepancy = (observed-not-modeled + modeled-not-observed) ÷ union of both
+  maturity_bands: L0 never compared  |  L1 > 40%  |  L2 20–40%  |  L3 10–20%  |  L4 ≤ 10%
+  look_for: • Telemetry identity unmapped (CMDB-AT-12) prevents comparison — record as Insufficient Evidence
+  risk_if_gap: High
+  playbooks:
+  - CMDB-PB-05
+- id: CMDB-AT-06-C06
+  number: 6
+  name: Map currency
+  standard_ref: CMDB-STD-04 R09–R10
+  applicability: Production Application Services
+  required_evidence: Last validated date within TH-07; topology changes since then have triggered review
+  evaluation_method: Deterministic
+  methods:
+  - deterministic
+  acceptance_criteria: 100% within TH-07
   default_risk: Medium
   default_risk_assumed: false
-  accountable_owner: CMDB / Change Management
+  accountable_owner: ''
   reassessment: ''
-  example_risk: Medium — stale dependency maps mislead change impact analysis months after topology changes
-  example_recommendation: Add dependency map review to Change post-implementation checklist for topology changes
-  references: []
-source_file: CMDB-AT-06 — Application Service Dependency Mapping Assessment.docx
-references: []
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-04
+  - CMDB-PB-05
+  rubric_refs:
+  - P2-01
+  rubric_enablers: []
+  csdm_layer: Service Delivery
+  data_source: Validation record; change_request
+  formula: Services validated within interval ÷ services
+  maturity_bands: L0 < 25%  |  L1 25–49%  |  L2 50–79%  |  L3 80% to tier threshold  |  L4 ≥ tier threshold sustained 2 cycles
+  look_for: • Maps validated once at go-live and never again
+  risk_if_gap: Medium
+  playbooks:
+  - CMDB-PB-05
+source_file: CMDB-AT-06 — Application Service Dependency Mapping Assessment — V2.docx
+references:
+- CMDB-STD-04
+- CMDB-STD-03
+- CMDB-PB-05
+- CMDB-PB-03
+version: V2
+rubric_refs:
+- P2-01
+- P1-08

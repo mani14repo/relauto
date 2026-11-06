@@ -19,7 +19,14 @@ from .rubric import parse_rubric
 def compile_catalog(templates_dir: Path = config.TEMPLATES_DIR, out_dir: Path = config.CATALOG_DIR) -> list[Template]:
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "templates").mkdir(exist_ok=True)
-    templates = [parse_template(p) for p in sorted(templates_dir.glob("*-AT-*.docx"))]
+    templates = latest_versions([parse_template(p) for p in sorted(templates_dir.glob("*-AT-*.docx"))])
+    playbook_files = sorted(config.PLAYBOOKS_DIR.glob("*-PB-*.docx"))
+    if not templates or not playbook_files:   # never overwrite a good catalog with an empty one
+        raise RuntimeError(f"found {len(templates)} templates in {templates_dir} and {len(playbook_files)} playbooks; "
+                           "check SRA_DOCS_DIR and the docs/OIPReqs folder layout")
+    for old in (out_dir / "templates").glob("*.yaml"):     # drop templates that no longer exist
+        if old.stem not in {t.id for t in templates}:
+            old.unlink()
     for t in templates:
         _dump(out_dir / "templates" / f"{t.id}.yaml", t.model_dump(mode="json"))
     rubric = parse_rubric(config.RUBRIC_DOCX, config.EVIDENCE_XLSX)
@@ -27,14 +34,24 @@ def compile_catalog(templates_dir: Path = config.TEMPLATES_DIR, out_dir: Path = 
     index = [{"id": t.id, "title": t.title, "domain": t.domain.value, "variant": t.variant,
               "priority": t.priority, "criteria": len(t.criteria)} for t in templates]
     _dump(out_dir / "index.yaml", {"templates": index, "total_criteria": sum(i["criteria"] for i in index)})
-    playbooks = [parse_playbook(p) for p in sorted((config.PLAYBOOKS_DIR / "V1").glob("*-PB-*.docx"))]
+    playbooks = latest_versions([parse_playbook(p) for p in playbook_files])
     _dump(out_dir / "playbooks.yaml", {"playbooks": [pb.model_dump(mode="json") for pb in playbooks]})
-    titles = parse_titles(config.STANDARDS_DIR / "V1") | {pb.id: pb.title for pb in playbooks}
+    titles = parse_titles(config.STANDARDS_DIR) | {pb.id: pb.title for pb in playbooks}
     _dump(out_dir / "documents.yaml", {"titles": dict(sorted(titles.items()))})
     load_templates.cache_clear()
     load_rubric.cache_clear()
     load_playbooks.cache_clear()
     return templates
+
+
+def latest_versions(docs: list) -> list:
+    """Keep one document per ID: the highest version (a folder may hold both 'X' and 'X — V2')."""
+    best: dict[str, object] = {}
+    for d in docs:
+        cur = best.get(d.id)
+        if cur is None or int(d.version.lstrip("Vv") or 1) > int(cur.version.lstrip("Vv") or 1):
+            best[d.id] = d
+    return [best[k] for k in sorted(best)]
 
 
 def _dump(path: Path, data) -> None:

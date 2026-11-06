@@ -1,13 +1,15 @@
 titles:
-  CMDB-PB-01: CI Discovery & Onboarding Playbook
-  CMDB-PB-02: CMDB Data Quality Management Playbook
-  CMDB-PB-03: Application-to-Service Mapping Playbook
-  CMDB-PB-04: CI Ownership & Lifecycle Management Playbook
+  CMDB-PB-01: CI Registration & Onboarding Playbook
+  CMDB-PB-02: CMDB Data Quality Management Playbook (Monthly Cycle)
+  CMDB-PB-03: Application-to-Service (CSDM) Modeling Playbook
+  CMDB-PB-04: CI Ownership, Lifecycle & Certification Playbook
   CMDB-PB-05: Service Dependency Mapping Playbook
-  CMDB-PB-06: CI-to-Incident-Problem-Change Association Playbook
+  CMDB-PB-06: CI Association on Incident, Problem & Change Records Playbook
   CMDB-PB-07: Infrastructure Change Impact Analysis Playbook
-  CMDB-PB-08: CMDB Discovery Reconciliation Playbook
+  CMDB-PB-08: Discovery & Reconciliation Playbook
   CMDB-PB-09: Application Criticality & Service Tiering Playbook
+  CMDB-PB-10: Observability Identity & Telemetry-to-CMDB Mapping Playbook
+  CMDB-PB-11: CSDM Foundation Remediation Program Playbook — 90 Days
   CMDB-POL-01: Configuration Item Classification Policy
   CMDB-POL-02: Business Application Registration Policy
   CMDB-POL-03: Application Service Mapping Policy
@@ -19,6 +21,7 @@ titles:
   CMDB-POL-09: Change Impact Analysis Policy
   CMDB-POL-10: Service Criticality & Tiering Policy
   CMDB-POL-11: CMDB Certification & Audit Policy
+  CMDB-POL-12: Observability Identity & Telemetry Mapping Policy
   CMDB-PRC-01: Configuration Item Classification Process
   CMDB-PRC-02: Business Application Registration Process
   CMDB-PRC-03: Application Service Mapping Process
@@ -30,6 +33,8 @@ titles:
   CMDB-PRC-09: Change Impact Analysis Process
   CMDB-PRC-10: Service Criticality & Tiering Process
   CMDB-PRC-11: CMDB Certification & Audit Process
+  CMDB-PRC-12: Observability Identity & Telemetry Mapping Process
+  CMDB-STD-00: CSDM Data Model, Field Dictionary & Thresholds Reference
   CMDB-STD-01: Configuration Item Classification Standard
   CMDB-STD-02: Business Application Registration Standard
   CMDB-STD-03: Application Service Mapping Standard
@@ -41,6 +46,7 @@ titles:
   CMDB-STD-09: Change Impact Analysis Standard
   CMDB-STD-10: Service Criticality & Tiering Standard
   CMDB-STD-11: CMDB Certification & Audit Standard
+  CMDB-STD-12: Observability Identity & Telemetry Mapping Standard
   ITSM-PB-01: Incident Detection, Triage & Resolution Playbook
   ITSM-PB-02: Major Incident Management Playbook
   ITSM-PB-03: Problem Management & RCA Playbook

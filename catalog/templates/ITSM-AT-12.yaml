@@ -41,6 +41,15 @@ criteria:
   example_recommendation: ''
   references:
   - ITSM-STD-12
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: ITSM-AT-12-C02
   number: 2
   name: Service continuity plan exists, is current, and has been tested
@@ -63,6 +72,15 @@ criteria:
   references:
   - ITSM-STD-12
   - ITSM-PRC-12
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: ITSM-AT-12-C03
   number: 3
   name: Business continuity requirements are integrated with DR procedures
@@ -85,6 +103,15 @@ criteria:
   references:
   - ITSM-STD-12
   - SRE-STD-13
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: ITSM-AT-12-C04
   number: 4
   name: Continuity plan is reviewed after major incidents or architecture changes
@@ -108,6 +135,15 @@ criteria:
   references:
   - ITSM-POL-12
   - ITSM-PRC-12
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 source_file: ITSM-AT-12 — Service Continuity Management Assessment.docx
 references:
 - ITSM-STD-12
@@ -115,3 +151,5 @@ references:
 - SRE-STD-13
 - ITSM-POL-12
 - CMDB-AT-10
+version: V1
+rubric_refs: []

@@ -18,7 +18,7 @@ from .catalog.compiler import template_path
 from .catalog.models import Result, Risk
 from .events.bus import envelope
 from .models import ApplicationRef, Assessment, CriterionResult, FindingStatus, SignOff, Source
-from .progress import NullProgress, Progress
+from .progress import JobCancelled, NullProgress, Progress
 from .pipeline import completeness_gate, propose_templates, rescore, run_assessment
 from .report.docx_fill import fill_template
 from .report.summary import build_summary
@@ -120,10 +120,20 @@ class AssessmentService:
         """Run a queued 'run' job, recording live progress where the UI can read it (store.set_job)."""
         aid, llm, who = job["assessment_id"], job.get("llm", False), job.get("actor", "system")
         queued = self.store.get_job(aid) or {}
-        progress = Progress(sink=lambda s: self.store.set_job(aid, s), job=job, label=aid, history=queued.get("log"))
-        progress.info(f"Automated pass started by {who} " + ("with the local LLM" if llm else "(rules only, no LLM)"))
+        current_id = (queued.get("job") or {}).get("id")
+        if job.get("id") and current_id and current_id != job["id"]:
+            log.info("skipping superseded job %s for %s (current run is %s)", job["id"], aid, current_id)
+            return None
+        progress = Progress(sink=lambda s: self.store.set_job(aid, s), job=job, label=aid, history=queued.get("log"),
+                            cancelled=lambda: self.store.cancel_requested(aid))
         try:
+            progress.check()             # cancelled while still queued
+            progress.info(f"Automated pass started by {who} " + ("with the local LLM" if llm else "(rules only, no LLM)"))
             out = self.run(aid, use_llm=llm, actor=who, progress=progress)
+        except JobCancelled:
+            progress.cancelled("Cancelled. Nothing from this run was saved; the assessment keeps its previous results.")
+            self.store.clear_cancel(aid)
+            return None
         except Exception as exc:  # noqa: BLE001 - reported to the user through the job record
             log.exception("run failed for %s", aid)
             progress.failed(f"{type(exc).__name__}: {exc}")
@@ -142,9 +152,14 @@ class AssessmentService:
         cur = a.results.get(cid) or CriterionResult(criterion_id=cid)
         before = cur.model_dump(mode="json")
         new = cur.model_copy(deep=True)
-        for k in ("rationale", "recommendation", "na_justification", "validation"):
+        for k in ("rationale", "recommendation", "na_justification", "validation", "measured_value"):
             if k in patch:
                 setattr(new, k, patch[k])
+        if "maturity_level" in patch:
+            lv = patch["maturity_level"]
+            if lv not in (None, "", 0, 1, 2, 3, 4):
+                raise ValueError("maturity_level must be 0-4 or empty")
+            new.maturity_level = None if lv in (None, "") else int(lv)
         if "result" in patch:
             new.result = Result(patch["result"]) if patch["result"] else None
         if "risk" in patch:

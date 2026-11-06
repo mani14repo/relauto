@@ -30,6 +30,32 @@ anomalies:
   mttr_outlier_factor: 3.0           # x median
   change_induced_window_hours: 24
   ci_linkage_min_pct: 90
+incident_clusters:                   # recurring incidents grouped by meaning (advisory; never sets a result)
+  enabled: true
+  method: auto                       # auto (embeddings, else TF-IDF) | embedding | tfidf
+  similarity:                        # cosine similarity to the cluster representative (app name removed first)
+    embedding: 0.72                  # tuned on a small hand-made set; raise it if clusters mix unrelated issues
+    tfidf: 0.35
+  margin_over_typical: 0.12          # and at least this much above the app's median similarity between incidents
+  min_size: 3                        # same as rubric_rules.recurrence_min_incidents
+  min_descriptions: 3                # one wording is the exact-match rule's job; two are usually two routine issues
+  text_fields: [short_description, description]
+  max_incidents: 3000                # newest incidents in the window
+  max_findings: 5
+criteria_rules:                      # template criteria settled from data already ingested (sra.detectors.criteria_rules)
+  placement_fields: [u_portfolio, u_sub_portfolio, u_region, business_criticality]   # CMDB-AT-01-C03; CONFIRM names
+  # CMDB-AT-07-C03 / CMDB-AT-12-C04: keys proposed in CMDB-PB-10 step 11 (pending OD-4)
+  required_labels: [app.kubernetes.io/name, app.kubernetes.io/part-of, fsi-reo/app-service, fsi-reo/business-app, fsi-reo/env, fsi-reo/support-group]
+  workload_metadata_keys: [service.name, service.namespace, deployment.environment.name]   # labels or OTEL_RESOURCE_ATTRIBUTES
+  outage_max_priority: { 1: 2, 2: 2, 3: 3 }   # CMDB-AT-10-C04: lowest acceptable priority for an outage, by tier; CONFIRM
+  pse_groups: []                     # ITSM-AT-04-C01: PSE assignment groups; empty counts every incident
+  kb_owner_fields: [u_review_owner, ownership_group, kb_owner, author]   # ITSM-AT-07-C02; CONFIRM
+  hpa_cpu_target_pct: 70             # SRE-AT-06-C05
+  reporting_fields: [category, subcategory, priority, assignment_group, opened_at, resolved_at, close_code]   # ITSM-AT-11-C02
+  audit_fields:                      # ITSM-AT-09-C03 completeness standard per record type; CONFIRM
+    change_request: [short_description, cmdb_ci, start_date, end_date, backout_plan, test_plan, close_code]
+    problem: [short_description, state, cmdb_ci]
+    incident: [short_description, category, priority, assignment_group, opened_at, resolved_at, close_code, close_notes]
 vulnerabilities:
   report_min_severity: Low           # every scanner finding at or above this becomes a finding
   block_severities: [Critical, High] # mapped onto SRE-AT-11 Gap

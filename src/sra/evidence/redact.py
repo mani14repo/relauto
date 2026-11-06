@@ -31,6 +31,19 @@ SECRETS = [
 ]
 
 
+# Personal data removed from evidence before storage or the LLM (CMDB/CSDM V2 review: incident records carry
+# email addresses). Kept apart from SECRETS so the secrets detector does not report them as leaked credentials.
+PII = [
+    ("email", re.compile(r"(?<![\w.+-])(?!git@)[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}\b"), "[REDACTED-EMAIL]"),
+]
+
+
+def redact_pii(text: str) -> str:
+    for _, pattern, repl in PII:
+        text = pattern.sub(repl, text)
+    return text
+
+
 def find_secrets(text: str) -> list[tuple[str, int]]:
     """(secret kind, 1-based line number) for each likely secret; values are never returned."""
     hits = []
@@ -42,14 +55,14 @@ def find_secrets(text: str) -> list[tuple[str, int]]:
 
 def clean_text(text: str) -> str:
     text = MARKUP.sub(" ", text or "")
-    for _, pattern, repl in SECRETS:
+    for _, pattern, repl in SECRETS + PII:
         text = pattern.sub(repl, text)
     return re.sub(r"[ \t]+", " ", re.sub(r"\r\n?", "\n", text)).strip()
 
 
 def redact(text: str) -> str:
-    """Secrets only, keeping layout (for documents)."""
-    for _, pattern, repl in SECRETS:
+    """Secrets and personal data, keeping layout (for documents)."""
+    for _, pattern, repl in SECRETS + PII:
         text = pattern.sub(repl, text)
     return text
 

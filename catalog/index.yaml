@@ -2,69 +2,81 @@ templates:
 - id: CMDB-AT-01
   title: CMDB & Service Mapping Assessment
   domain: CMDB
-  variant: A
+  variant: C
   priority: P1
-  criteria: 5
+  criteria: 7
 - id: CMDB-AT-02
   title: CI Discovery & Reconciliation Assessment
   domain: CMDB
-  variant: A
+  variant: C
   priority: P1
-  criteria: 5
+  criteria: 6
 - id: CMDB-AT-03
-  title: Asset Lifecycle Management Assessment
+  title: Asset & CI Lifecycle Management Assessment
   domain: CMDB
-  variant: A
+  variant: C
   priority: P2
-  criteria: 5
+  criteria: 6
 - id: CMDB-AT-04
   title: CMDB Data Quality Governance Assessment
   domain: CMDB
-  variant: A
+  variant: C
   priority: P1
-  criteria: 5
+  criteria: 6
 - id: CMDB-AT-05
   title: Infrastructure Configuration Accuracy Assessment
   domain: CMDB
-  variant: A
+  variant: C
   priority: P2
-  criteria: 5
+  criteria: 6
 - id: CMDB-AT-06
   title: Application Service Dependency Mapping Assessment
   domain: CMDB
-  variant: A
+  variant: C
   priority: P1
-  criteria: 5
+  criteria: 6
 - id: CMDB-AT-07
-  title: Cloud & Hybrid Infrastructure Registration Assessment
+  title: Cloud & Container Infrastructure Registration Assessment
   domain: CMDB
-  variant: A
-  priority: P2
-  criteria: 5
+  variant: C
+  priority: P1
+  criteria: 6
 - id: CMDB-AT-08
   title: CMDB-Driven Change Impact Analysis Assessment
   domain: CMDB
-  variant: A
+  variant: C
   priority: P1
-  criteria: 5
+  criteria: 6
 - id: CMDB-AT-09
   title: End-of-Life & Technical Debt Registration Assessment
   domain: CMDB
-  variant: A
+  variant: C
   priority: P2
-  criteria: 5
+  criteria: 6
 - id: CMDB-AT-10
   title: Service Criticality & Operational Risk Assessment
   domain: CMDB
-  variant: B
-  priority: ''
-  criteria: 4
+  variant: C
+  priority: P1
+  criteria: 6
 - id: CMDB-AT-11
   title: CMDB Certification & Audit Assessment
   domain: CMDB
-  variant: B
-  priority: ''
-  criteria: 4
+  variant: C
+  priority: P2
+  criteria: 6
+- id: CMDB-AT-12
+  title: Observability Identity & Telemetry-to-CMDB Mapping Assessment
+  domain: CMDB
+  variant: C
+  priority: P1
+  criteria: 7
+- id: CMDB-AT-13
+  title: CMDB/CSDM Readiness Scorecard & Reporting Gates
+  domain: CMDB
+  variant: C
+  priority: P1
+  criteria: 5
 - id: ITSM-AT-01
   title: Change & Production Readiness Assessment
   domain: ITSM
@@ -233,4 +245,4 @@ templates:
   variant: B
   priority: ''
   criteria: 4
-total_criteria: 189
+total_criteria: 215

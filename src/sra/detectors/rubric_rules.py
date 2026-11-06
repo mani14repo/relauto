@@ -16,6 +16,8 @@ from ..config import load_yaml
 from ..evidence.bundle import EvidenceBundle
 from ..evidence.model import DocType, Kind
 from ..models import FindingType
+from ..scoring.cmdb import level_from_pct
+from ..scoring.cmdb import threshold as cmdb_threshold
 from .base import Context, DetectorReport, finding, ref, result, truthy
 
 IE, MET, GAP = Result.INSUFFICIENT, Result.MET, Result.GAP
@@ -64,11 +66,31 @@ def p1_01(b, ctx, rep):
     if not (b.has_table(cfg["app_table"]) or b.has_table("u_business_application")):
         return _emit(rep, "P1-01", IE, "No CMDB application export provided", action="Provide the cmdb_ci / business application record export")
     cis = _app_ci(b, ctx)
+    # V2 CMDB-AT-01-C01: exactly one Business Application record for the application
+    reg = result("CMDB-AT-01-C01", MET if len(cis) == 1 else GAP,
+                 f"{len(cis)} Business Application record(s) match '{ctx.app_name}'" + (" (duplicates)" if len(cis) > 1 else ""),
+                 [ref(c, "name") for c in cis[:5]] or b.table_ids(cfg["app_table"]), review=len(cis) == 1)
+    reg.measured_value = f"{len(cis)} matching record(s)"
+    reg.maturity_level = 4 if len(cis) == 1 else 0
+    rep.results["CMDB-AT-01-C01"] = reg
     if not cis:
         return _emit(rep, "P1-01", GAP, f"No CMDB application record found for '{ctx.app_name}'", b.table_ids(cfg["app_table"]),
                      action="Register the business application in CMDB with an accountable owner and support group")
     ci = cis[0]
     missing = [f for f in (cfg["owner_field"], cfg["support_group_field"]) if not truthy(ci.get(f))]
+    # V2 CMDB-AT-01-C02 (a): ownership fields populated (TH-02 = 100%). Active-user status and owner
+    # concentration need sys_user and the full portfolio, so a Met here still needs the assessor's review.
+    own_fields = [f for f in (cfg["owner_field"], cfg["support_group_field"], "it_application_owner", "change_control")
+                  if f in ci or f in (cfg["owner_field"], cfg["support_group_field"])]
+    own_missing = [f for f in own_fields if not truthy(ci.get(f))]
+    pct = 100 * (len(own_fields) - len(own_missing)) / len(own_fields)
+    own = result("CMDB-AT-01-C02", GAP if own_missing else MET,
+                 (f"Ownership fields empty: {', '.join(own_missing)}" if own_missing else
+                  f"Ownership fields populated ({', '.join(own_fields)}); confirm the users/groups are active and owner concentration"),
+                 [ref(ci, "name")], review=True)
+    own.measured_value = f"{pct:.0f}% of {len(own_fields)} ownership fields populated"
+    own.maturity_level = None if not own_missing else (0 if ctx.tier == 1 else 1)
+    rep.results["CMDB-AT-01-C02"] = own
     if missing:
         return _emit(rep, "P1-01", GAP, f"CMDB record {ci.get('name')} missing {', '.join(missing)}", [ref(ci, "name")],
                      action=f"Populate {', '.join(missing)} on the CMDB application record")
@@ -229,6 +251,18 @@ def p2_01(b, ctx, rep):
                      action="Map upstream and downstream dependencies in CMDB (CMDB-PB-05)")
     months = ctx.cfg["rubric_rules"]["dependency_review_max_age_months"]
     stale = [r for r in mine if r.get("_sys_updated_on") and r["_sys_updated_on"] < ctx.months_ago(months)]
+    # V2 CMDB-AT-06-C06 (map currency) uses TH-07: 6 months Tier 1, 12 months Tier 2; Tier 3 not gated
+    th07 = cmdb_threshold("TH-07", ctx.tier)
+    if th07:
+        current = [r for r in mine if r.get("_sys_updated_on") and r["_sys_updated_on"] >= ctx.months_ago(th07)]
+        pct = 100 * len(current) / len(mine)
+        cur = result("CMDB-AT-06-C06", MET if len(current) == len(mine) else GAP,
+                     f"{len(current)} of {len(mine)} dependency relationships updated within {th07:.0f} months "
+                     f"(TH-07, Tier {ctx.tier or 2}); last-updated date used as the validation date", [ref(r, "sys_id") for r in mine[:5]],
+                     review=True)
+        cur.measured_value = f"{pct:.0f}% validated within {th07:.0f} months"
+        cur.maturity_level = level_from_pct(pct, 100)
+        rep.results["CMDB-AT-06-C06"] = cur
     if stale and len(stale) == len(mine):
         return _emit(rep, "P2-01", GAP, f"All {len(mine)} dependency relationships unreviewed for {months}+ months",
                      [ref(r, "sys_id") for r in mine[:5]], action="Review and recertify the dependency map")
@@ -364,6 +398,16 @@ def p2_10(b, ctx, rep):
         return _emit(rep, "P2-10", IE, "CMDB export does not include the required attribute columns")
     filled = sum(1 for ci in cis for f in present if truthy(ci.get(f)))
     pct = round(100 * filled / (len(cis) * len(present)), 1)
+    # V2 CMDB-AT-04-C02 measures the same completeness against TH-01 (95/90/85%)
+    th01 = cmdb_threshold("TH-01", tier)
+    v2 = result("CMDB-AT-04-C02", MET if pct >= th01 else GAP,
+                f"Required-attribute completeness {pct}% (TH-01 for Tier {tier}: {th01:.0f}%) over {', '.join(present)}",
+                [ref(ci, "name") for ci in cis[:5]])
+    v2.measured_value = f"{pct}% of {len(present)} required fields"
+    v2.maturity_level = level_from_pct(pct, th01)
+    rep.results["CMDB-AT-04-C02"] = v2
+    # CMDB-AT-11-C04 (certification view) measures the same required-field completeness against TH-01
+    rep.results["CMDB-AT-11-C04"] = v2.model_copy(update={"criterion_id": "CMDB-AT-11-C04"})
     absent = [f for f in fields if f not in present]
     note = f" (columns not in export: {', '.join(absent)})" if absent else ""
     if pct < threshold:

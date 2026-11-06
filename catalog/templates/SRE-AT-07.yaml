@@ -36,6 +36,15 @@ criteria:
   example_risk: Critical — six Rebates Batch patterns close via OneNote workarounds with no formal runbooks
   example_recommendation: Migrate all OneNote procedures to ServiceNow; create runbook stubs for each of 6 named batch patterns
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-07-C02
   number: 2
   name: Recovery Step Completeness
@@ -54,6 +63,15 @@ criteria:
   example_risk: High — incomplete runbooks extend MTTR and require senior engineer involvement for every incident
   example_recommendation: Apply standard 5-section runbook template; validate each section with the on-call engineer
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-07-C03
   number: 3
   name: Runbook Currency (Review Date)
@@ -72,6 +90,15 @@ criteria:
   example_recommendation: Assign review owner per runbook; schedule 6-month cadence in team calendar; automate reminder via
     ServiceNow
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-07-C04
   number: 4
   name: P1 Scenario Coverage
@@ -89,6 +116,15 @@ criteria:
   example_risk: High — untested P1 runbooks may fail under real outage pressure
   example_recommendation: Conduct game-day exercise for each P1 runbook; document outcomes and update procedures
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-07-C05
   number: 5
   name: Runbook Automation Opportunity Identification
@@ -106,5 +142,16 @@ criteria:
   example_risk: Medium — manual execution of automatable steps accumulates toil and delays recovery
   example_recommendation: Partner with AE lead to identify and score automation candidates per IO-01 and IO-03 scoring model
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 source_file: SRE-AT-07 — Runbook Quality & Recovery Readiness Assessment.docx
 references: []
+version: V1
+rubric_refs: []

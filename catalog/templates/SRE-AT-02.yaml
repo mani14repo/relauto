@@ -34,6 +34,15 @@ criteria:
   example_risk: High — unmitigated SPOFs = unplanned outage risk
   example_recommendation: Conduct risk storming session with application and SRE leads; document all SPOFs
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-02-C02
   number: 2
   name: Upstream / Downstream Dependency Mapping
@@ -51,6 +60,15 @@ criteria:
   example_risk: High — RCI->GDX->CRS chain has no dependency map or escalation path
   example_recommendation: Build service dependency map in ServiceNow; wire upstream CIs to shared incidents
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-02-C03
   number: 3
   name: Failure Scenario Coverage
@@ -68,6 +86,15 @@ criteria:
   example_risk: Medium — low RCA maturity limits scenario identification
   example_recommendation: Derive failure scenarios from top incident categories for this application family
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-02-C04
   number: 4
   name: Recovery Design — RTO/RPO
@@ -85,6 +112,15 @@ criteria:
   example_risk: High — no DR tests found for any FSI application in current extract
   example_recommendation: Define RTO/RPO per application criticality tier; schedule annual DR test
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-02-C05
   number: 5
   name: Risk Mitigation for Critical Paths
@@ -102,5 +138,16 @@ criteria:
   example_risk: High — 27 gaps identified (G-01–G-27) with no formal risk register
   example_recommendation: Create a risk register aligned to G-01–G-27; assign SRE risk owners per application family
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 source_file: SRE-AT-02 — Architecture Reliability & Failure-Mode Assessment.docx
 references: []
+version: V1
+rubric_refs: []

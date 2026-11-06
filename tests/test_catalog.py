@@ -3,32 +3,49 @@ from collections import Counter
 import pytest
 
 from sra import config
+from sra.catalog.compiler import latest_versions
 from sra.catalog.docx_reader import parse_template
 from sra.catalog.models import Method, Risk
 from sra.catalog.rubric import parse_rubric
 from sra.crosswalk import playbooks_for, rubric_criteria_map, standards_for
 
 FILES = sorted(config.TEMPLATES_DIR.glob("*-AT-*.docx"))
-VARIANT_B = {"SRE-AT-14", "SRE-AT-15", "SRE-AT-16", "ITSM-AT-11", "ITSM-AT-12", "CMDB-AT-10", "CMDB-AT-11"}
+VARIANT_B = {"SRE-AT-14", "SRE-AT-15", "SRE-AT-16", "ITSM-AT-11", "ITSM-AT-12"}
+CMDB_V2_COUNTS = {"CMDB-AT-01": 7, "CMDB-AT-12": 7, "CMDB-AT-13": 5}   # every other V2 CMDB template has 6
 
 
 @pytest.fixture(scope="module")
 def templates():
-    return {t.id: t for t in (parse_template(p) for p in FILES)}
+    return {t.id: t for t in latest_versions([parse_template(p) for p in FILES])}
 
 
 def test_all_templates_parse(templates):
-    assert len(FILES) == 39
-    assert sum(len(t.criteria) for t in templates.values()) == 189
+    # 28 SRE/ITSM (V1) + 13 CMDB/CSDM (V2); older CMDB-AT-10/11 V1 copies in the folder are superseded
+    assert len(templates) == 41
+    assert sum(len(t.criteria) for t in templates.values()) == 136 + 79
 
 
 def test_variants_and_counts(templates):
     for tid, t in templates.items():
-        if tid in VARIANT_B:
+        if tid.startswith("CMDB"):
+            assert t.variant == "C" and t.version == "V2", tid
+            assert len(t.criteria) == CMDB_V2_COUNTS.get(tid, 6), tid
+        elif tid in VARIANT_B:
             assert t.variant == "B" and len(t.criteria) == 4, tid
         else:
             assert t.variant == "A", tid
             assert len(t.criteria) == (6 if tid == "SRE-AT-01" else 5), tid
+
+
+def test_v2_matches_criteria_workbook(templates):
+    from sra.ooxml import xlsx_sheets
+    rows = {r[0]: r for r in xlsx_sheets(config.CMDB_CRITERIA_XLSX)["Criteria"][1:] if r and r[0].startswith("CMDB-AT")}
+    v2 = {c.id: c for t in templates.values() if t.variant == "C" for c in t.criteria}
+    assert set(rows) == set(v2)
+    for cid, c in v2.items():
+        assert rows[cid][3].strip() == c.name, cid
+        refs = __import__("re").findall(r"(P[12]-\d{2})( \(enabler\))?", rows[cid][6])
+        assert c.rubric_refs == [r for r, e in refs if not e] and c.rubric_enablers == [r for r, e in refs if e], cid
 
 
 def test_criterion_fields(templates):
@@ -39,6 +56,8 @@ def test_criterion_fields(templates):
             assert c.methods
             if t.variant == "B":
                 assert c.default_risk_assumed and not c.example_recommendation
+            elif t.variant == "C":
+                assert c.formula and c.maturity_bands and c.playbooks and not c.default_risk_assumed, c.id
             else:
                 assert not c.default_risk_assumed and c.example_risk, c.id
 
@@ -76,8 +95,9 @@ def test_crosswalk_ids_exist(templates):
 
 
 def test_every_criterion_has_playbook_and_standard(templates):
-    pb = {p.name.split(" — ")[0] for p in (config.PLAYBOOKS_DIR / "V1").glob("*.docx")}
-    std = {p.name.split(" — ")[0] for p in (config.STANDARDS_DIR / "V1").glob("*.docx")}
+    pb = {p.name.split(" — ")[0] for p in config.PLAYBOOKS_DIR.glob("*-PB-*.docx")}
+    assert {f"CMDB-PB-{i:02d}" for i in range(1, 12)} <= pb
+    std = {p.name.split(" — ")[0] for p in config.STANDARDS_DIR.glob("*-*-*.docx")}
     for t in templates.values():
         for c in t.criteria:
             assert playbooks_for(c.id), c.id

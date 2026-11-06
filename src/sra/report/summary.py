@@ -159,6 +159,24 @@ def build_summary(a: Assessment, sc: ScoreCard, templates: dict[str, Template], 
         for c in sc.conflicts:
             doc.add_paragraph(c, style="List Bullet")
 
+    if sc.cmdb is not None:
+        cm = sc.cmdb
+        _bar(doc, "9. CMDB / CSDM Readiness (CMDB-AT-13)")
+        _kv(doc, [
+            ("CMDB Readiness Index (CRI)", "not computed — no CMDB criterion has a maturity level yet" if cm.cri is None else
+                f"{cm.cri} / 100" + ("" if cm.complete else f" (partial: {cm.assessed} of {cm.total} criteria assessed)")),
+            ("Indicative maturity", "n/a" if cm.level is None else f"L{cm.level} — {cm.level_name}"),
+            ("Thresholds", cm.thresholds_status),
+        ])
+        _table(doc, ["Dimension", "Weight", "Score", "Assessed", "Not yet assessed"],
+               [[d.name, f"{d.weight:.0%}", "n/a" if d.score is None else f"{d.score}", f"{d.assessed} of {d.total}",
+                 ", ".join(d.missing) or "—"] for d in cm.dimensions], widths=[1.6, 0.6, 0.6, 0.8, 3.4])
+        doc.add_paragraph("Reporting gates decide which application-level metrics may be presented as authoritative.")
+        _table(doc, ["Gate", "Status", "Unlocks", "Why"],
+               [[f"{g.id} — {g.name}", g.status, g.unlocks,
+                 "; ".join(g.failed + [f"pending {p}" for p in g.pending]) or "all conditions met"] for g in cm.gates],
+               widths=[1.4, 0.9, 1.9, 2.8])
+
     _bar(doc, "Sign-Off")
     _table(doc, ["Role", "Name", "Date", "Decision"],
            [[s.role, s.name, s.date.isoformat() if s.date else "", s.decision] for s in a.signoffs]

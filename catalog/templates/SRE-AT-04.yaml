@@ -35,6 +35,15 @@ criteria:
   example_risk: High — SLOs undefined for 58 of 61 FSI applications
   example_recommendation: Define SLIs using Four Golden Signals; align to existing AppDynamics business transaction metrics
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-04-C02
   number: 2
   name: SLO Targets & Error Budget
@@ -52,6 +61,15 @@ criteria:
   example_risk: High — no error budgets defined; reliability investment decisions ad hoc
   example_recommendation: Adopt SLO template from Google SRE Workbook; start with 99.5% availability target for P1 apps
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-04-C03
   number: 3
   name: Error Budget Burn Rate Monitoring
@@ -69,6 +87,15 @@ criteria:
   example_risk: Medium — SLOs without burn-rate monitoring give no early warning
   example_recommendation: 'Configure Splunk alert: alert when error budget consumed > 50% in 6h window'
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-04-C04
   number: 4
   name: SLO Attainment Reporting
@@ -86,6 +113,15 @@ criteria:
   example_risk: Medium — without reporting, SLOs are compliance theatre
   example_recommendation: Include SLO attainment in monthly REO operations review; automate from Splunk
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-04-C05
   number: 5
   name: Error Budget Policy
@@ -103,5 +139,16 @@ criteria:
   example_risk: Medium — without a policy, error budgets are metrics without decision authority
   example_recommendation: Draft error budget policy with SRE lead and application owner; submit for REO governance approval
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 source_file: SRE-AT-04 — Service-Level Reliability Assessment.docx
 references: []
+version: V1
+rubric_refs: []

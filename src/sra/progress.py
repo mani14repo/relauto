@@ -20,6 +20,10 @@ from datetime import datetime, timezone
 from typing import Callable
 
 log = logging.getLogger("sra.job")
+
+
+class JobCancelled(Exception):
+    """Raised inside a job when the user asked to cancel it; nothing from the run is saved."""
 MAX_LOG = 200
 
 
@@ -29,8 +33,9 @@ def _now() -> str:
 
 class Progress:
     def __init__(self, sink: Callable[[dict], None] | None = None, job: dict | None = None, label: str = "",
-                 history: list[dict] | None = None) -> None:
+                 history: list[dict] | None = None, cancelled: Callable[[], bool] | None = None) -> None:
         self.sink = sink
+        self._cancelled = cancelled
         self.label = label
         self._lock = threading.Lock()
         self._step_started = 0.0
@@ -40,8 +45,24 @@ class Progress:
                             "log": list(history or [])[-MAX_LOG:], "warnings": 0, "error": None, "summary": None, "job": job or {}}
         self._save()
 
+    # -------------------------------------------------------------- cancellation
+    def is_cancelled(self) -> bool:
+        if self._cancelled is None:
+            return False
+        try:
+            return bool(self._cancelled())
+        except Exception:  # a store hiccup must not look like a cancel
+            log.exception("could not read the cancel flag")
+            return False
+
+    def check(self) -> None:
+        """Stop here if the user cancelled. Called at every step boundary."""
+        if self.is_cancelled():
+            raise JobCancelled("cancelled by user")
+
     # -------------------------------------------------------------- reporting
     def phase(self, name: str, total: int = 0, msg: str = "") -> None:
+        self.check()
         with self._lock:
             self.state.update(phase=name, step=0, total=total, current="", eta_s=None)
             self._durations = []
@@ -49,6 +70,7 @@ class Progress:
 
     def start_item(self, step: int, current: str) -> None:
         """Called before working on item `step` (1-based) of the phase."""
+        self.check()
         with self._lock:
             self._step_started = time.monotonic()
             self.state.update(step=step - 1, current=current)
@@ -80,6 +102,11 @@ class Progress:
         with self._lock:
             self.state.update(state="done", phase="Finished", current="", eta_s=None, finished_at=_now(), summary=summary)
         self._line("info", msg)
+
+    def cancelled(self, msg: str) -> None:
+        with self._lock:
+            self.state.update(state="cancelled", current="", eta_s=None, finished_at=_now())
+        self._line("warn", msg)
 
     def failed(self, error: str) -> None:
         with self._lock:

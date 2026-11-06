@@ -36,6 +36,15 @@ criteria:
   example_risk: Critical — 39% no subcategory; 99.1% cmdb_ci_business_app blank — application-level analysis is impossible
   example_recommendation: Enforce mandatory fields on closure; wire cmdb_ci_business_app in ServiceNow assignment routing
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: ITSM-AT-02-C02
   number: 2
   name: MTTR Accuracy & Measurement Integrity
@@ -57,6 +66,15 @@ criteria:
   example_recommendation: Tag auto-resolved incidents; exclude from engineering MTTR KPI; report separately for monitoring
     compliance
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: ITSM-AT-02-C03
   number: 3
   name: Work-Time Capture
@@ -74,6 +92,15 @@ criteria:
   example_risk: High — 5% work-time captured currently; engineering effort is unmeasured and unmanageable
   example_recommendation: Make time-worked mandatory on all human-handled incident closures; report weekly until > 80%
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: ITSM-AT-02-C04
   number: 4
   name: Monitoring-Generated vs. Human-Reported Distinction
@@ -92,6 +119,15 @@ criteria:
   example_risk: Critical — 94.8% monitoring-generated but reported as one pool; inflates incident count and distorts MTTR
   example_recommendation: Implement contact_type or u_source flag; apply retroactively where caller_id pattern is deterministic
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: ITSM-AT-02-C05
   number: 5
   name: Major Incident (P1) Process Adherence
@@ -110,5 +146,16 @@ criteria:
   example_risk: High — ~20 handoffs with no SLA; P1 process not documented or measured
   example_recommendation: Define P1 incident SLA (bridge < 15 min, notification < 30 min); measure and report monthly
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 source_file: ITSM-AT-02 — Incident Management Quality Assessment.docx
 references: []
+version: V1
+rubric_refs: []

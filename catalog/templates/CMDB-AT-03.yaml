@@ -1,110 +1,215 @@
 id: CMDB-AT-03
-title: Asset Lifecycle Management Assessment
+title: Asset & CI Lifecycle Management Assessment
 domain: CMDB
-variant: A
+variant: C
 priority: P2
-applicability: All hardware and software assets supporting FSI REO production applications
-accountable_owner: CMDB / Application Engineering
-purpose: Evaluate whether IT assets are tracked through their full lifecycle in ServiceNow, from procurement through decommission.
-  Ensures asset lifecycle data supports capacity planning, EOL management, and cost attribution.
-relevance: Jenkins decommission deadline Oct 2026 (G-17 High Severity). No EOL register found in extract. Asset lifecycle
-  management maturity unknown. Supports CMDB completeness program.
-reassessment_trigger: Major release, architecture change, or Post-Incident Review recommendation
-scope: []
+applicability: CI classes supporting FSI REO Production Application Services; sampled per class. • Life cycle and operational
+  status accuracy• Transition governance (change linkage)• Asset ↔ CI linkage for hardware• Decommission completeness including
+  telemetry mappings
+accountable_owner: CMDB Process Owner / Platform Engineering
+purpose: Determine whether CI life cycle states reflect reality so that retired components drop out of impact analysis and
+  attribution, new components enter governance before go-live, and decommissions leave no residue in CMDB or monitoring.
+relevance: Jenkins decommission (28/35 apps not migrated) shows life cycle state is not tracked as a control. Retired CIs
+  left in service maps and telemetry mappings produce false impact and orphan telemetry.
+reassessment_trigger: Semi-annually; after decommission programs
+scope:
+- • Life cycle and operational status accuracy• Transition governance (change linkage)• Asset ↔ CI linkage for hardware• Decommission
+  completeness including telemetry mappings
+- • EOL register and technical debt (CMDB-AT-09)
 signoff_roles:
 - Assessment Lead
-- Domain Reviewer
-- Engineering / Service Owner
-- PSE Representative
+- Data Steward (portfolio)
+- SRE Region Lead
+- Business Application Owner / Engineering Owner
+- CMDB Process Owner
 criteria:
 - id: CMDB-AT-03-C01
   number: 1
-  name: Asset Lifecycle State Accuracy
-  standard_ref: ServiceNow HAM; ITIL Asset Management
-  applicability: All hardware and software CIs in ServiceNow CMDB
-  required_evidence: 'ServiceNow asset records: install_status field distribution; comparison to known operational state'
-  evaluation_method: 'Deterministic: install_status accurately reflects operational state for > 95% of sampled assets'
+  name: Life cycle state accuracy
+  standard_ref: CMDB-STD-07 R06–R08
+  applicability: Sample of 30 CIs per class supporting Tier 1/2 services
+  required_evidence: State compared with discovery recency, monitoring activity and owner confirmation
+  evaluation_method: Deterministic + Human confirmation for mismatches
   methods:
   - deterministic
-  acceptance_criteria: install_status accurate for > 95% of production assets; decommissioned assets in "Retired" state
+  acceptance_criteria: ≥ 95% accurate; 0 Retired CIs on open records
   default_risk: Medium
   default_risk_assumed: false
-  accountable_owner: CMDB
+  accountable_owner: ''
   reassessment: ''
-  example_risk: Medium — inaccurate lifecycle state leads to cost attribution errors and capacity planning gaps
-  example_recommendation: Audit install_status for all production CIs; correct to match actual operational state
-  references: []
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-07
+  - CMDB-PB-04
+  rubric_refs:
+  - P2-10
+  rubric_enablers: []
+  csdm_layer: Foundation
+  data_source: cmdb_ci; last_discovered; telemetry activity
+  formula: Accuracy = sampled CIs whose state matches observed reality ÷ sample; plus count of Retired CIs referenced by open
+    incidents/changes
+  maturity_bands: L0 < 70%  |  L1 70–84%  |  L2 85–94%  |  L3 ≥ 95%  |  L4 ≥ 95% with automated state alignment
+  look_for: • Installed CIs silent in discovery and telemetry for 90 days• Retired Application Services still receiving incidents
+  risk_if_gap: Medium
+  playbooks:
+  - CMDB-PB-04
 - id: CMDB-AT-03-C02
   number: 2
-  name: End-of-Life Tracking
-  standard_ref: ITIL Asset Management; ITPN G-17
-  applicability: All software assets with vendor EOL dates (including Jenkins)
-  required_evidence: 'EOL register: each asset with EOL date, migration plan, and owner; Jenkins decommission tracker'
-  evaluation_method: 'Deterministic: EOL register exists; assets past EOL have migration plans with owners and target dates'
+  name: Life cycle transition governance
+  standard_ref: CMDB-STD-07 R09
+  applicability: Transitions to In Maintenance, Retiring and Retired in last 180 days
+  required_evidence: Linked change record for each transition; transition recorded ≤ 5 business days after change closure
+  evaluation_method: Deterministic
   methods:
   - deterministic
-  acceptance_criteria: EOL register exists covering all software assets; each past-EOL asset has a migration plan
-  default_risk: Critical
+  acceptance_criteria: ≥ 95% for Tier 1/2 hosting CIs and all Application Services
+  default_risk: Medium
   default_risk_assumed: false
-  accountable_owner: CMDB / Application Engineering
+  accountable_owner: ''
   reassessment: ''
-  example_risk: Critical — Jenkins is past decommission deadline with 28/35 FSI apps not migrated
-  example_recommendation: Create EOL register from CMDB software records; escalate Jenkins immediately as critical overdue
-    item
-  references: []
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-07
+  - CMDB-PB-04
+  rubric_refs: []
+  rubric_enablers:
+  - P1-07
+  csdm_layer: Foundation
+  data_source: sys_audit; change_request; task_ci
+  formula: Governed transitions ÷ transitions
+  maturity_bands: L0 < 25%  |  L1 25–49%  |  L2 50–79%  |  L3 80% to tier threshold  |  L4 ≥ tier threshold sustained 2 cycles
+  look_for: • Bulk retirements by script with no change• Change closed but CI still Installed months later
+  risk_if_gap: Medium
+  playbooks:
+  - CMDB-PB-04
 - id: CMDB-AT-03-C03
   number: 3
-  name: Software License Reconciliation
-  standard_ref: ServiceNow SAM; ITIL License Management
-  applicability: All licensed software used by FSI REO applications
-  required_evidence: 'ServiceNow SAM license records: entitlement vs. deployment count; under/over-license summary'
-  evaluation_method: 'Deterministic: license reconciliation run; no under-licensed software; over-licensed software reviewed
-    for optimization'
+  name: Hosting CI linked to Application Service
+  standard_ref: CMDB-STD-03 R10
+  applicability: Production servers, VMs, DB instances, app servers, Kubernetes namespaces/workloads
+  required_evidence: Membership in ≥ 1 Production Application Service (svc_ci_assoc or relationship)
+  evaluation_method: Deterministic
   methods:
   - deterministic
-  acceptance_criteria: Zero under-licensed software; over-licensed software reviewed for cost optimization quarterly
+  acceptance_criteria: ≥ 90% (≥ 98% for CIs serving Tier 1)
   default_risk: Medium
   default_risk_assumed: false
-  accountable_owner: CMDB / Procurement
+  accountable_owner: ''
   reassessment: ''
-  example_risk: Medium — unlicensed software creates compliance and audit risk
-  example_recommendation: Enable ServiceNow SAM; run license reconciliation quarterly; report to REO leadership
-  references: []
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-03
+  - CMDB-PB-03
+  rubric_refs:
+  - P2-01
+  rubric_enablers: []
+  csdm_layer: Service Delivery
+  data_source: svc_ci_assoc; cmdb_rel_ci
+  formula: Linked production hosting CIs ÷ production hosting CIs
+  maturity_bands: L0 < 25%  |  L1 25–49%  |  L2 50–79%  |  L3 80% to tier threshold  |  L4 ≥ tier threshold sustained 2 cycles
+  look_for: • Shared DB servers linked to one application only• Namespaces with no Application Service
+  risk_if_gap: Medium — unlinked infrastructure is invisible to impact analysis
+  playbooks:
+  - CMDB-PB-03
 - id: CMDB-AT-03-C04
   number: 4
-  name: Asset-to-Application Linkage
-  standard_ref: ServiceNow CSDM; ITPN G-20
-  applicability: All production infrastructure assets
-  required_evidence: 'ServiceNow asset records: used_by and application_service fields linking assets to business applications'
-  evaluation_method: 'Deterministic: production assets linked to at least one business application in CMDB'
+  name: Asset-to-CI linkage (hardware)
+  standard_ref: CMDB-STD-07 R10
+  applicability: Physical hardware supporting Tier 1/2 (N/A for cloud-only services)
+  required_evidence: alm_hardware record with ci reference and vice versa
+  evaluation_method: Deterministic
   methods:
   - deterministic
-  acceptance_criteria: '> 90% of production assets linked to at least one FSI application record'
-  default_risk: Medium
+  acceptance_criteria: ≥ 95%; N/A with justification if HAM not in use
+  default_risk: Low
   default_risk_assumed: false
-  accountable_owner: CMDB / Application Engineering
+  accountable_owner: ''
   reassessment: ''
-  example_risk: Medium — unlinked assets cannot be attributed in incident or change impact analysis
-  example_recommendation: Build asset-to-application mapping using CMDB_Mapping.xlsx as the master application list
-  references: []
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-07
+  - CMDB-PB-04
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: Foundation
+  data_source: alm_hardware; cmdb_ci_hardware
+  formula: Hardware CIs with linked asset ÷ hardware CIs
+  maturity_bands: L0 < 25%  |  L1 25–49%  |  L2 50–79%  |  L3 80% to tier threshold  |  L4 ≥ tier threshold sustained 2 cycles
+  look_for: • Assets disposed while CI remains Installed
+  risk_if_gap: Low
+  playbooks:
+  - CMDB-PB-04
 - id: CMDB-AT-03-C05
   number: 5
-  name: Decommission Process Adherence
-  standard_ref: ITIL Asset Management — Disposal; ServiceNow Decommission Workflow
-  applicability: All assets decommissioned or scheduled for decommission
-  required_evidence: 'Decommission workflow records: each decommission has a Change Record, data wipe confirmation, and CMDB
-    update'
-  evaluation_method: 'Deterministic: decommission workflow completed for all retired assets; no active assets in "Retired"
-    state'
+  name: Decommission completeness
+  standard_ref: CMDB-STD-07 R11–R13
+  applicability: Decommissions completed in last 180 days
+  required_evidence: Change record; data sanitization evidence (hardware); relationships removed; CI set Retired ≤ 5 business
+    days; telemetry mappings and alert rules retired; OIP maps updated
+  evaluation_method: Deterministic + Human review of evidence
   methods:
   - deterministic
-  acceptance_criteria: All decommissions have a Change Record; data wipe confirmed; CMDB updated within 5 business days
+  - human
+  acceptance_criteria: 100% for Tier 1/2-related CIs
   default_risk: Medium
   default_risk_assumed: false
-  accountable_owner: CMDB / Platform Engineering
+  accountable_owner: ''
   reassessment: ''
-  example_risk: Medium — unmanaged decommissions leave data on retired assets and CMDB in inconsistent state
-  example_recommendation: Implement ServiceNow decommission workflow; enforce Change Record requirement for all retirements
-  references: []
-source_file: CMDB-AT-03 — Asset Lifecycle Management Assessment.docx
-references: []
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-07
+  - CMDB-PB-04
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: Foundation → Observability
+  data_source: change_request; cmdb_rel_ci; OIP config maps; em_alert rules
+  formula: Decommissions meeting all six conditions ÷ decommissions
+  maturity_bands: L0 < 25%  |  L1 25–49%  |  L2 50–79%  |  L3 80% to tier threshold  |  L4 ≥ tier threshold sustained 2 cycles
+  look_for: • Alerts still firing against retired CIs and creating incidents• Telemetry mapping still pointing at retired
+    service
+  risk_if_gap: Medium
+  playbooks:
+  - CMDB-PB-04
+- id: CMDB-AT-03-C06
+  number: 6
+  name: Software normalization for EOL (conditional)
+  standard_ref: CMDB-STD-07 R14
+  applicability: Software platforms supporting Tier 1/2 (N/A if SAM not licensed — document)
+  required_evidence: Software installs normalized to product models with vendor life cycle dates
+  evaluation_method: Deterministic
+  methods:
+  - deterministic
+  acceptance_criteria: ≥ 90% or documented N/A
+  default_risk: Low
+  default_risk_assumed: false
+  accountable_owner: ''
+  reassessment: ''
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-07
+  - CMDB-PB-04
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: Foundation
+  data_source: cmdb_sam_sw_install / cmdb_software_product_model [CONFIRM]
+  formula: Normalized installs ÷ installs on Tier 1/2 hosting CIs
+  maturity_bands: L0 < 25%  |  L1 25–49%  |  L2 50–79%  |  L3 80% to tier threshold  |  L4 ≥ tier threshold sustained 2 cycles
+  look_for: • Jenkins and middleware versions not normalized — EOL cannot be computed
+  risk_if_gap: Low
+  playbooks:
+  - CMDB-PB-04
+source_file: CMDB-AT-03 — Asset & CI Lifecycle Management Assessment — V2.docx
+references:
+- CMDB-STD-07
+- CMDB-STD-03
+- CMDB-PB-04
+- CMDB-PB-03
+version: V2
+rubric_refs:
+- P2-10

@@ -37,6 +37,15 @@ criteria:
   example_risk: High — no SLA framework means no accountability baseline; corrective actions have no SLA
   example_recommendation: 'Define SLA targets: P1 response 15min/resolution 4h; P2 30min/8h; P3 4h/3d; P4 8h/5d'
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: ITSM-AT-06-C02
   number: 2
   name: SLA Measurement & Reporting
@@ -54,6 +63,15 @@ criteria:
   example_risk: High — without measurement, SLAs are aspirational targets with no operational force
   example_recommendation: Enable ServiceNow SLA reporting; include in monthly REO governance review
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: ITSM-AT-06-C03
   number: 3
   name: OLA Formalization for Inter-Team Handoffs
@@ -71,6 +89,15 @@ criteria:
   example_risk: Critical — ~20 handoffs with no SLA; corrective action delivery has no commitment
   example_recommendation: Conduct OLA workshop with PSE, SRE, and Engineering leads; document and ratify within 30 days
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: ITSM-AT-06-C04
   number: 4
   name: SLA Breach Trending & Root Cause
@@ -89,6 +116,15 @@ criteria:
   example_risk: Medium — without breach trending, the same causes recur without systemic remediation
   example_recommendation: Create SLA breach register in ServiceNow; review in monthly governance meeting
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: ITSM-AT-06-C05
   number: 5
   name: Corrective Action SLA Compliance
@@ -107,5 +143,16 @@ criteria:
   example_recommendation: Add due date and owner fields to corrective action register; measure and publish completion rate
     monthly
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 source_file: ITSM-AT-06 — SLA Compliance & OLA Governance Assessment.docx
 references: []
+version: V1
+rubric_refs: []

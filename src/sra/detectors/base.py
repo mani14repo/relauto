@@ -48,6 +48,8 @@ class DetectorReport:
     rubric: dict[str, CriterionResult] = field(default_factory=dict)    # rubric id -> result
     findings: list[Finding] = field(default_factory=list)
     status: str = "ran"
+    # criterion id -> note: ask for human review of whatever result the criterion gets, without changing it
+    review: dict[str, str] = field(default_factory=dict)
 
 
 def result(cid: str, res: Result, rationale: str, refs: list[str] | None = None, risk: Risk | None = None,

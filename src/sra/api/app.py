@@ -7,6 +7,7 @@ is set (consumed by `sra worker`), otherwise an in-process thread.
 from __future__ import annotations
 
 import logging
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -58,8 +59,16 @@ def create_app(store=None, run_jobs_inline: bool = False) -> FastAPI:
             age = (datetime.now(timezone.utc) - datetime.fromisoformat(j.get("updated_at"))).total_seconds()
         except (TypeError, ValueError):
             age = 0
+        active = j.get("state") in ("queued", "running")
         return {**j, "seconds_since_update": int(age), "stale_after_s": stale_after,
-                "stale": j.get("state") in ("queued", "running") and age > stale_after}
+                "stale": active and age > stale_after,
+                "cancel_requested": active and store.cancel_requested(aid)}
+
+    def _close_job(aid: str, j: dict, msg: str) -> None:
+        """Mark a job cancelled from the API (used when no worker is running it)."""
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        store.set_job(aid, {**j, "state": "cancelled", "current": "", "eta_s": None, "finished_at": now, "updated_at": now,
+                            "log": (j.get("log") or []) + [{"t": now, "level": "warn", "msg": msg}]})
 
     kafka = bool(config.setting("KAFKA_BOOTSTRAP_SERVERS"))
     local_jobs = None if kafka else LocalJobs(handle_job)
@@ -180,7 +189,8 @@ def create_app(store=None, run_jobs_inline: bool = False) -> FastAPI:
         cur = job_view(aid)
         if cur["state"] in ("queued", "running") and not cur["stale"]:
             raise HTTPException(409, "An automated pass is already running for this assessment")
-        job = {"job": "run", "assessment_id": aid, "llm": llm, "actor": who}
+        job = {"job": "run", "assessment_id": aid, "llm": llm, "actor": who, "id": uuid.uuid4().hex[:12]}
+        store.clear_cancel(aid)           # a cancel aimed at an earlier run must not stop this one
         now = datetime.now(timezone.utc).isoformat(timespec="seconds")
         where = "the Kafka worker" if kafka else "this server"
         store.set_job(aid, {"state": "queued", "phase": "Queued", "step": 0, "total": 0, "current": "", "started_at": now,
@@ -193,6 +203,25 @@ def create_app(store=None, run_jobs_inline: bool = False) -> FastAPI:
             store.bus.publish(JOBS_TOPIC, aid, job)
         else:
             local_jobs.submit(job)
+        return job_view(aid)
+
+    @app.post("/api/assessments/{aid}/cancel", status_code=202)
+    def cancel(aid: str, who: str = Depends(actor)):
+        """Stop the automated pass. The worker stops at its next step or model token; nothing from the run is saved."""
+        get_or_404(aid)
+        cur = job_view(aid)
+        if cur["state"] not in ("queued", "running"):
+            raise HTTPException(409, "No automated pass is running for this assessment")
+        log.info("cancel requested for %s by %s", aid, who)
+        store.request_cancel(aid)
+        raw = store.get_job(aid) or {}
+        if cur["stale"]:
+            # Nothing is running it any more (e.g. the server restarted); close the record now.
+            _close_job(aid, raw, f"Cancelled by {who}. The run had stopped reporting; nothing from it was saved.")
+            store.clear_cancel(aid)
+        elif cur["state"] == "queued":
+            # Not started yet: close it now; the flag stays so the worker skips it when it gets there.
+            _close_job(aid, raw, f"Cancelled by {who} before it started.")
         return job_view(aid)
 
     @app.get("/api/assessments/{aid}/job")

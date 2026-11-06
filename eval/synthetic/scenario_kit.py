@@ -38,11 +38,15 @@ class Defect:
     findings: tuple[tuple[str, str], ...] = ()  # (detector prefix, title substring); "{service}" etc. are filled in
     needs: tuple[str, ...] = ()                 # profile flags that must be true
     tier1_p2: tuple[str, ...] = ()              # extra P2 gaps only for Tier 1 (stricter thresholds)
+    periodic_tier2_p2: tuple[str, ...] = ()     # extra P2 gaps for Tier 2 periodic assessments (CMDB-AT-04 / TH-01)
 
 
 DEFECTS: dict[str, Defect] = {
     # CMDB
+    # 6 of 7 required fields = 85.7%: below the rubric's Tier 1 threshold (95%), and below V2 TH-01 for Tier 2 (90%),
+    # which applies when CMDB-AT-04 is selected (periodic assessments)
     "cmdb_missing_support_group": Defect("CMDB record has no support group", p1=("P1-01", "P1-02"), tier1_p2=("P2-10",),
+                                         periodic_tier2_p2=("P2-10",),
                                          findings=(("rubric:P1-01", "support_group"),)),
     "cmdb_incomplete_attributes": Defect("CMDB record missing region and environment", p2=("P2-10",),
                                          findings=(("rubric:P2-10", "completeness"),)),
@@ -69,13 +73,19 @@ DEFECTS: dict[str, Defect] = {
                                     findings=(("rubric:P2-08", "No post-deployment validation"),)),
     "recurring_without_problem": Defect("Recurring incident with no Problem record", p2=("P2-02",),
                                         findings=(("incident_anomalies:recurrence", "{recurring_key}"), ("rubric:P2-02", "recurring"))),
+    # The same queue problem worded four ways in four categories: the category and exact-wording rules cannot see it,
+    # so no rubric gap is expected; only the text-clustering detector (advisory) reports it.
+    "hidden_recurrence": Defect("Same issue reported in different words and categories, no Problem record",
+                                findings=(("incident_clusters:recurrence", "similar incidents"),)),
     "problems_without_workaround": Defect("Open Problem with no documented workaround", p2=("P2-09",),
                                           findings=(("rubric:P2-09", "without a documented workaround"),)),
     "no_alerting": Defect("No monitoring alerts; all incidents raised by people", p1=("P1-03",),
                           findings=(("rubric:P1-03", "No monitoring alerts"),)),
     "change_induced_spike": Defect("Burst of incidents right after a release", findings=(("incident_anomalies:change_induced", "after a change"),)),
     "mttr_outlier": Defect("One incident took days to restore", findings=(("incident_anomalies:mttr_outliers", "restore time"),)),
-    "poor_ci_linkage": Defect("Most incidents not linked to the CMDB CI", findings=(("incident_anomalies:ci_linkage", "linked to a CMDB CI"),)),
+    # CMDB-AT-01-C06 (attribution, TH-03) feeds P2-10 in the V2 CMDB templates
+    "poor_ci_linkage": Defect("Most incidents not attributed to the Business Application", p2=("P2-10",),
+                              findings=(("incident_anomalies:ci_linkage", "attributed to the Business Application"),)),
     "offsystem_resolution_notes": Defect("Close notes point to OneNote instead of KB",
                                          findings=(("incident_anomalies:pointer_resolutions", "OneNote"),)),
     # Configuration and security
@@ -167,6 +177,7 @@ def expected(spec: Spec) -> dict:
         df = DEFECTS[d]
         p1 |= set(df.p1)
         p2 |= set(df.p2) | (set(df.tier1_p2) if spec.tier == 1 else set())
+        p2 |= set(df.periodic_tier2_p2) if spec.tier == 2 and spec.trigger == "periodic" else set()
         seeded += [[det, sub.format(**subs)] for det, sub in df.findings]
     rating = next(name for name, test in RATING_BANDS if test(len(p1), len(p2)))
     always = ["SRE-AT-01", "SRE-AT-03", "SRE-AT-08", "SRE-AT-11", "ITSM-AT-02", "CMDB-AT-01", "CMDB-AT-10"]
@@ -275,6 +286,13 @@ def render(spec: Spec, out: Path | None = None) -> Path:
         inc(safe_time(12 + j * 17), spec.recurring_issue, "Batch", "Scheduler",
             "Restarted the job from the failed step and verified the reconciliation totals matched.",
             hours=rnd.uniform(1, 2.5), problem="" if has("recurring_without_problem") else "PRB0071001")
+    if has("hidden_recurrence"):
+        reworded = [f"{svc} message queue backlog growing", f"Message backlog building up in the {svc} queue",
+                    f"{app} queue consumer stopped, message backlog", f"Queue backlog: {app} messages not consumed"]
+        where = [("Software", "Messaging"), ("Network", "Connectivity"), ("Inquiry / Help", "General"), ("Application", "Integration")]
+        for j, (short, (cat, sub)) in enumerate(zip(reworded, where)):
+            inc(safe_time(9 + j * 19), short, cat, sub, "Restarted the queue consumer and confirmed the backlog drained.",
+                hours=rnd.uniform(1, 3))
     if has("change_induced_spike"):
         end = change_ends[-1]
         for j in range(6):

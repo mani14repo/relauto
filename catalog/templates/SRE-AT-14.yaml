@@ -40,6 +40,15 @@ criteria:
   references:
   - SRE-STD-14
   - SRE-POL-14
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-14-C02
   number: 2
   name: Automation authorization and human oversight process is in place
@@ -62,6 +71,15 @@ criteria:
   references:
   - SRE-POL-14
   - SRE-PRC-14
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-14-C03
   number: 3
   name: Automation failure handling and recovery procedures are defined
@@ -84,6 +102,15 @@ criteria:
   references:
   - SRE-STD-14
   - SRE-PB-11
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-14-C04
   number: 4
   name: Automation operational ownership is assigned and active
@@ -106,9 +133,20 @@ criteria:
   references:
   - SRE-POL-14
   - SRE-STD-14
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 source_file: SRE-AT-14 — Reliability Automation Readiness Assessment.docx
 references:
 - SRE-STD-14
 - SRE-POL-14
 - SRE-PRC-14
 - SRE-PB-11
+version: V1
+rubric_refs: []

@@ -13,7 +13,7 @@ import re
 from collections.abc import Mapping
 from typing import Any
 
-from .redact import clean_text, parse_datetime, split_notes
+from .redact import clean_text, parse_datetime, redact_pii, split_notes
 
 MONITORING_CALLERS = re.compile(r"event management|_alert\b|monitoring|appdynamics|splunk", re.I)
 DATE_FIELDS = {"opened_at", "resolved_at", "closed_at", "sys_updated_on", "sys_created_on", "start_date",
@@ -64,7 +64,7 @@ def normalize(record: Mapping[str, Any]) -> dict:
             notes = split_notes(s)
             row["_human_notes"] = [n.text for n in notes if n.by_person][-10:]
             continue
-        row[k] = clean_text(s) if len(s) > 40 else s
+        row[k] = clean_text(s) if len(s) > 40 else redact_pii(s)
         if k in DATE_FIELDS:
             row["_" + k] = parse_datetime(s)
     return row

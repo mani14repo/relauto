@@ -1,112 +1,222 @@
 id: CMDB-AT-07
-title: Cloud & Hybrid Infrastructure Registration Assessment
+title: Cloud & Container Infrastructure Registration Assessment
 domain: CMDB
-variant: A
-priority: P2
-applicability: All FSI REO applications hosted on or migrating to cloud or hybrid infrastructure
-accountable_owner: CMDB / Platform Engineering / Application Engineering
-purpose: Evaluate whether cloud and hybrid infrastructure resources used by FSI REO applications are registered in ServiceNow
-  CMDB with accurate owner, region, and application linkage. Cloud resources outside CMDB governance create blind spots in
-  incident attribution, cost management, and security posture.
-relevance: Cloud CI registration coverage unknown from extract. Jenkins migration (G-17) implies a CI/CD platform shift. Region
-  classification gaps (28 apps with Region = None) suggest cloud registration may lag on-premises. G-20.
-reassessment_trigger: Major release, architecture change, or Post-Incident Review recommendation
-scope: []
+variant: C
+priority: P1
+applicability: Each cloud account/project/subscription and Kubernetes cluster hosting FSI workloads; rolled up per Application
+  Service. • Account/project/subscription coverage• Kubernetes clusters, namespaces, workloads• Labels/tags• Ephemeral resource
+  retirement• Hybrid consistency• Cost attribution (conditional)
+accountable_owner: Cloud / Platform Engineering with CMDB Platform Owner
+purpose: Determine whether cloud and container resources that run FSI services are registered, labelled and linked to Application
+  Services so that incidents, telemetry and cost can be attributed and ephemeral resources do not accumulate as stale CIs.
+relevance: 'Rebate CPR, CRR and repricing APIs run on GCP/GKE; AFP API integration runs on Azure AKS (non-prod). Nov 5 review:
+  services appear under similar names across environments — cluster/namespace naming is the main evidence of environment.
+  Raised from P2 to P1 because telemetry attribution (Gate C) depends on it.'
+reassessment_trigger: Quarterly; on new account, project or cluster
+scope:
+- • Account/project/subscription coverage• Kubernetes clusters, namespaces, workloads• Labels/tags• Ephemeral resource retirement•
+  Hybrid consistency• Cost attribution (conditional)
+- • Telemetry-source mapping detail (CMDB-AT-12)
 signoff_roles:
 - Assessment Lead
-- Domain Reviewer
-- Engineering / Service Owner
-- PSE Representative
+- Data Steward (portfolio)
+- SRE Region Lead
+- Business Application Owner / Engineering Owner
+- CMDB Process Owner
 criteria:
 - id: CMDB-AT-07-C01
   number: 1
-  name: Cloud Resource Inventory Coverage
-  standard_ref: ServiceNow Cloud Management; ITPN G-20
-  applicability: All cloud resources (VMs, containers, functions, storage) used by FSI REO applications
-  required_evidence: 'Cloud Management Platform integration: cloud resource count vs. CMDB registered CI count'
-  evaluation_method: 'Deterministic: cloud resource discovery enabled for all active cloud accounts; coverage > 90%'
+  name: Cloud account coverage
+  standard_ref: CMDB-STD-06 R02
+  applicability: All cloud accounts/projects/subscriptions hosting FSI workloads
+  required_evidence: Account registered and discovered (Cloud Discovery or Service Graph Connector) in last 7 days
+  evaluation_method: Deterministic
   methods:
   - deterministic
-  acceptance_criteria: '> 90% of active cloud resources registered in CMDB; coverage confirmed by cloud management platform
-    comparison'
+  acceptance_criteria: 100%
   default_risk: High
   default_risk_assumed: false
-  accountable_owner: CMDB / Platform Engineering
+  accountable_owner: ''
   reassessment: ''
-  example_risk: High — unregistered cloud resources are invisible to cost attribution, incident, and change management
-  example_recommendation: Enable ServiceNow Cloud Management integration for all active cloud accounts; reconcile gaps
-  references: []
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-06
+  - CMDB-PB-08
+  rubric_refs:
+  - P2-10
+  rubric_enablers: []
+  csdm_layer: Foundation
+  data_source: Cloud account CIs; discovery status
+  formula: Discovered accounts ÷ inventory accounts
+  maturity_bands: L0 < 25%  |  L1 25–49%  |  L2 50–79%  |  L3 80% to tier threshold  |  L4 ≥ tier threshold sustained 2 cycles
+  look_for: • Rebate GCP projects not in discovery scope
+  risk_if_gap: High
+  playbooks:
+  - CMDB-PB-08
 - id: CMDB-AT-07-C02
   number: 2
-  name: Cloud CI Ownership & Tagging Compliance
-  standard_ref: ServiceNow Cloud Management; FSI Cloud Tagging Policy
-  applicability: All cloud CIs in CMDB
-  required_evidence: 'Cloud CI records: application tag, owner tag, and environment tag compliance rate'
-  evaluation_method: 'Deterministic: owned_by, application, and environment tags populated for > 95% of cloud CIs'
+  name: Kubernetes cluster, namespace and workload registration
+  standard_ref: CMDB-STD-01 R06; CMDB-STD-12 R03
+  applicability: Clusters running FSI workloads
+  required_evidence: Cluster and namespace CIs exist; each FSI namespace/workload belongs to exactly one Application Service
+    with environment
+  evaluation_method: Deterministic
   methods:
   - deterministic
-  acceptance_criteria: '> 95% of cloud CIs have owned_by, application, and environment populated'
+  acceptance_criteria: 100% clusters; ≥ 95% namespaces (100% for Tier 1)
   default_risk: High
   default_risk_assumed: false
-  accountable_owner: CMDB / Platform Engineering
+  accountable_owner: ''
   reassessment: ''
-  example_risk: High — untagged cloud CIs cannot be attributed to applications or cost centres
-  example_recommendation: Enforce cloud tagging policy via IaC policy enforcement; remediate untagged resources via platform
-    automation
-  references: []
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-01
+  - CMDB-STD-12
+  - CMDB-PB-10
+  rubric_refs:
+  - P2-10
+  rubric_enablers: []
+  csdm_layer: Foundation → Service Delivery
+  data_source: Kubernetes classes; svc_ci_assoc
+  formula: FSI namespaces mapped to one Application Service ÷ FSI namespaces
+  maturity_bands: L0 < 25%  |  L1 25–49%  |  L2 50–79%  |  L3 80% to tier threshold  |  L4 ≥ tier threshold sustained 2 cycles
+  look_for: • Shared namespaces hosting several applications — require workload-level mapping• Namespaces mapped to a BA directly
+    (skipping Application Service)
+  risk_if_gap: High
+  playbooks:
+  - CMDB-PB-10
 - id: CMDB-AT-07-C03
   number: 3
-  name: Container & Kubernetes CI Registration
-  standard_ref: ServiceNow Cloud Management; ITPN G-20
-  applicability: All Kubernetes clusters and containerized workloads supporting FSI REO applications
-  required_evidence: Kubernetes cluster CIs in CMDB; pod/deployment records linked to application CIs
-  evaluation_method: 'Deterministic: all Kubernetes clusters registered in CMDB; at least cluster-level linkage to application
-    CIs'
+  name: Required labels/tags present
+  standard_ref: CMDB-STD-12 R04–R05
+  applicability: Production workloads and cloud resources
+  required_evidence: 'Labels: app service ID, business application ID, environment, owner/support group, cost center (proposed
+    keys in CMDB-STD-12); enforced by policy-as-code'
+  evaluation_method: Deterministic
   methods:
   - deterministic
-  acceptance_criteria: All active Kubernetes clusters registered in CMDB with owner and application linkage
-  default_risk: Medium
-  default_risk_assumed: false
-  accountable_owner: CMDB / Platform Engineering
-  reassessment: ''
-  example_risk: Medium — containerized workloads outside CMDB create blind spots during incident impact analysis
-  example_recommendation: Enable Kubernetes Discovery integration; register clusters; link to application CIs
-  references: []
-- id: CMDB-AT-07-C04
-  number: 4
-  name: Hybrid Infrastructure Consistency
-  standard_ref: ServiceNow CSDM; ITPN G-20
-  applicability: Applications with both on-premises and cloud components
-  required_evidence: 'CMDB records for hybrid application components: on-premises and cloud CIs linked under the same application
-    record'
-  evaluation_method: 'Human review: on-premises and cloud components visible under the same application record in CMDB'
-  methods:
-  - human
-  acceptance_criteria: All hybrid applications have both on-premises and cloud CIs linked under a single application record
-    in CMDB
+  acceptance_criteria: ≥ 95% production; admission/policy control enforced for new deployments
   default_risk: High
   default_risk_assumed: false
-  accountable_owner: CMDB / Application Engineering
+  accountable_owner: ''
   reassessment: ''
-  example_risk: High — split CMDB records for hybrid apps create incomplete impact analysis during incidents
-  example_recommendation: Audit hybrid applications against CMDB; consolidate split records under unified application record
-  references: []
-- id: CMDB-AT-07-C05
-  number: 5
-  name: Cloud Cost Allocation Accuracy
-  standard_ref: FinOps Foundation; ServiceNow Cloud Cost Management
-  applicability: All cloud CIs with active cost attribution
-  required_evidence: 'Cloud cost allocation report: % cloud spend attributed to named FSI applications'
-  evaluation_method: 'Deterministic: > 90% of cloud spend attributable to named FSI application via CMDB tags'
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-12
+  - CMDB-PB-10
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: Foundation
+  data_source: Workload manifests; cloud tags
+  formula: Resources with all required labels ÷ resources
+  maturity_bands: L0 < 25%  |  L1 25–49%  |  L2 50–79%  |  L3 80% to tier threshold  |  L4 ≥ tier threshold sustained 2 cycles
+  look_for: • Only app.kubernetes.io/name present — no CMDB key• Environment inferred only from cluster name
+  risk_if_gap: High
+  playbooks:
+  - CMDB-PB-10
+- id: CMDB-AT-07-C04
+  number: 4
+  name: Ephemeral resource retirement
+  standard_ref: CMDB-STD-07 R08
+  applicability: Cloud and Kubernetes classes
+  required_evidence: Retire policy retires CIs not seen for 7 days; pods not individually governed
+  evaluation_method: Deterministic
   methods:
   - deterministic
-  acceptance_criteria: '> 90% of cloud spend attributable to named FSI application in cost allocation report'
+  acceptance_criteria: ≤ 2%
   default_risk: Medium
   default_risk_assumed: false
-  accountable_owner: CMDB / Finance / Platform Engineering
+  accountable_owner: ''
   reassessment: ''
-  example_risk: Medium — unattributed cloud spend prevents cost accountability and capacity optimization
-  example_recommendation: Align cloud tagging with CMDB application records; reconcile unattributed spend monthly
-  references: []
-source_file: CMDB-AT-07 — Cloud & Hybrid Infrastructure Registration Assessment.docx
-references: []
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-07
+  - CMDB-PB-08
+  rubric_refs:
+  - P2-10
+  rubric_enablers: []
+  csdm_layer: Foundation
+  data_source: CMDB Data Manager; last_discovered
+  formula: Stale cloud CIs (> 7 days unseen, still Installed) ÷ cloud CIs
+  maturity_bands: L0 no policy  |  L1 > 20%  |  L2 5–20%  |  L3 2–5%  |  L4 ≤ 2%
+  look_for: • Thousands of pod CIs inflating counts
+  risk_if_gap: Medium
+  playbooks:
+  - CMDB-PB-08
+- id: CMDB-AT-07-C05
+  number: 5
+  name: Hybrid consistency
+  standard_ref: CMDB-STD-03 R05
+  applicability: Applications with on-prem and cloud components
+  required_evidence: Both component sets belong to the same BA through Application Services per environment
+  evaluation_method: Human review
+  methods:
+  - human
+  acceptance_criteria: 100%
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: ''
+  reassessment: ''
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-03
+  - CMDB-PB-03
+  rubric_refs:
+  - P2-01
+  rubric_enablers: []
+  csdm_layer: Service Delivery
+  data_source: cmdb_rel_ci; svc_ci_assoc
+  formula: Hybrid apps with unified model ÷ hybrid apps
+  maturity_bands: L0 < 25%  |  L1 25–49%  |  L2 50–79%  |  L3 80% to tier threshold  |  L4 ≥ tier threshold sustained 2 cycles
+  look_for: • Separate BAs created for 'cloud version' of same product
+  risk_if_gap: Medium
+  playbooks:
+  - CMDB-PB-03
+- id: CMDB-AT-07-C06
+  number: 6
+  name: Cloud cost attribution (conditional)
+  standard_ref: CMDB-STD-12 R05
+  applicability: Where FinOps reporting uses CMDB
+  required_evidence: Cloud spend attributable to Application Service via tags
+  evaluation_method: Deterministic
+  methods:
+  - deterministic
+  acceptance_criteria: ≥ 90% or N/A with justification
+  default_risk: Low
+  default_risk_assumed: false
+  accountable_owner: ''
+  reassessment: ''
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-12
+  - CMDB-PB-10
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: Manage Portfolio
+  data_source: Cloud billing export
+  formula: Attributed spend ÷ total FSI spend
+  maturity_bands: L0 < 25%  |  L1 25–49%  |  L2 50–79%  |  L3 80% to tier threshold  |  L4 ≥ tier threshold sustained 2 cycles
+  look_for: —
+  risk_if_gap: Low
+  playbooks:
+  - CMDB-PB-10
+source_file: CMDB-AT-07 — Cloud & Container Infrastructure Registration Assessment — V2.docx
+references:
+- CMDB-STD-06
+- CMDB-STD-01
+- CMDB-STD-12
+- CMDB-STD-07
+- CMDB-STD-03
+- CMDB-PB-08
+- CMDB-PB-10
+- CMDB-PB-03
+version: V2
+rubric_refs:
+- P2-10
+- P1-03

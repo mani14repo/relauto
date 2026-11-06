@@ -40,6 +40,15 @@ criteria:
   example_recommendation: Facilitate toil identification workshop per team using Google SRE toil categories; complete within
     30 days
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-10-C02
   number: 2
   name: Toil-as-Percentage-of-Engineering-Capacity
@@ -58,6 +67,15 @@ criteria:
   example_risk: High — toil currently unmeasured; 5% work-time captured means engineering capacity is invisible
   example_recommendation: Implement IO-04 (mandatory time-worked) first; use work category data to calculate toil percentage
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-10-C03
   number: 3
   name: Automation Opportunity Scoring
@@ -76,6 +94,15 @@ criteria:
   example_risk: High — 0 realized automation savings despite AE capability; scoring model not applied to backlog
   example_recommendation: Score all automation candidates against IO model; ensure top-2 are in AE sprint within 30 days
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-10-C04
   number: 4
   name: Automation Delivery & Realized Value
@@ -95,6 +122,15 @@ criteria:
   example_recommendation: Require before/after measurement for every automation delivery; include in monthly REO governance
     report
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-10-C05
   number: 5
   name: Toil Reduction Trend
@@ -112,5 +148,16 @@ criteria:
   example_risk: Medium — toil that is not actively decreasing is implicitly growing as the portfolio grows
   example_recommendation: Publish quarterly toil trend in REO governance report; celebrate measurable reductions publicly
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 source_file: SRE-AT-10 — Toil Measurement & Automation Readiness Assessment.docx
 references: []
+version: V1
+rubric_refs: []

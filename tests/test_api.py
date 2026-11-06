@@ -26,7 +26,7 @@ def client(tmp_path):
 
 def test_full_flow(client):
     c, store = client
-    assert c.get("/healthz").json()["templates"] == 39
+    assert c.get("/healthz").json()["templates"] == 41
     profile = yaml.safe_load((SCENARIO / "profile.yaml").read_text(encoding="utf-8"))
     r = c.post("/api/assessments", json={"profile": profile}, headers=H)
     assert r.status_code == 201, r.text
@@ -47,7 +47,7 @@ def test_full_flow(client):
     j = r.json()
     assert j["state"] == "done" and j["summary"]["rating"] == "Not Ready" and not j["stale"]
     msgs = [x["msg"] for x in j["log"]]
-    assert msgs[0].startswith("Queued by") and any("rule-based detectors" in m for m in msgs)
+    assert msgs[0].startswith("Queued by") and any("detectors over" in m for m in msgs)
     assert any("Local LLM not requested" in m for m in msgs) and msgs[-1].startswith("Finished: rated Not Ready")
     assert c.get(f"/api/assessments/{aid}/job").json()["state"] == "done"
     body = c.get(f"/api/assessments/{aid}").json()

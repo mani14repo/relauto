@@ -36,6 +36,15 @@ criteria:
   example_risk: High — no formal risk register found; 27 gaps have no governance accountability
   example_recommendation: Create risk register from G-01–G-27 gap list; assign risk owners per sub-portfolio
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: ITSM-AT-09-C02
   number: 2
   name: Policy Compliance for Critical Controls
@@ -54,6 +63,15 @@ criteria:
   example_risk: Critical — 28/35 FSI apps still on Jenkins past deadline; G-17 rated High Severity
   example_recommendation: Escalate Jenkins migration to REO leadership immediately; daily burn-down tracking per app
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: ITSM-AT-09-C03
   number: 3
   name: Audit Readiness
@@ -71,6 +89,15 @@ criteria:
   example_risk: High — 0% Change-to-Incident linkage and incomplete records represent audit findings
   example_recommendation: Conduct internal audit readiness review before next scheduled audit; remediate critical gaps first
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: ITSM-AT-09-C04
   number: 4
   name: Regulatory Control Mapping
@@ -88,6 +115,15 @@ criteria:
   example_risk: High — regulatory findings can arise from operational gaps already identified (G-08, G-17)
   example_recommendation: Map G-01–G-27 gaps to applicable regulatory controls; prioritize remediation for regulated controls
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: ITSM-AT-09-C05
   number: 5
   name: Policy Exception Management
@@ -107,5 +143,16 @@ criteria:
   example_recommendation: Create policy exception register; grandfather existing known exceptions with 90-day remediation
     timeline
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 source_file: ITSM-AT-09 — IT Governance, Risk & Compliance Assessment.docx
 references: []
+version: V1
+rubric_refs: []

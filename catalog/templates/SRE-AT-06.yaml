@@ -34,6 +34,15 @@ criteria:
   example_risk: High — no load test evidence found in current extract
   example_recommendation: Run load test before next major release; retain results in engineering artefacts
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-06-C02
   number: 2
   name: Performance Baselines
@@ -51,6 +60,15 @@ criteria:
   example_risk: Medium — without baselines, degradation goes undetected until user impact
   example_recommendation: Enable AppDynamics dynamic baselines for all business transactions; alert on > 2-sigma deviation
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-06-C03
   number: 3
   name: Capacity Forecast & Plan
@@ -69,6 +87,15 @@ criteria:
   example_recommendation: Document capacity plan for Region A; include Sep peak (4,684 burst records in 2 days) as planning
     scenario
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-06-C04
   number: 4
   name: Resource Limits & Throttling
@@ -86,6 +113,15 @@ criteria:
   example_risk: Medium — unbounded resource consumption causes neighbour impact on shared platforms
   example_recommendation: Set resource limits in deployment configuration; enforce via platform policy
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-06-C05
   number: 5
   name: Scaling Behaviour Tested
@@ -103,5 +139,16 @@ criteria:
   example_risk: Medium — untested auto-scaling may fail under actual load
   example_recommendation: Conduct scaling test in staging; confirm trigger thresholds and cool-down periods
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 source_file: SRE-AT-06 — Performance, Load & Capacity Readiness Assessment.docx
 references: []
+version: V1
+rubric_refs: []

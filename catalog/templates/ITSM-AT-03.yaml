@@ -36,6 +36,15 @@ criteria:
   example_recommendation: Create Problem records for all 6 Rebates Batch patterns and RD_GDX3M pipeline immediately; assign
     owners
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: ITSM-AT-03-C02
   number: 2
   name: Root-Cause Analysis Quality
@@ -55,6 +64,15 @@ criteria:
   example_recommendation: Adopt 5-why or Fishbone template for all Problem investigations; require root-cause statement to
     name a specific system state
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: ITSM-AT-03-C03
   number: 3
   name: Problem-to-Change Linkage
@@ -73,6 +91,15 @@ criteria:
   example_recommendation: Make CHG linkage mandatory on Problem resolution; reject Problem closure without linked Change or
     accepted risk
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: ITSM-AT-03-C04
   number: 4
   name: RCA-to-Fix Cycle Time
@@ -90,6 +117,15 @@ criteria:
   example_risk: High — current median 37.5d; Region B open Problems median age 194 days
   example_recommendation: Set 14-day SLA for P1 Problem permanent fix; escalate to REO leadership if exceeded
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: ITSM-AT-03-C05
   number: 5
   name: Known Error Database (KEDB) Completeness
@@ -107,5 +143,16 @@ criteria:
   example_risk: Medium — current workarounds in OneNote/personal notes; PSE cannot resolve without senior engineer
   example_recommendation: Migrate all workarounds to ServiceNow KEDB; validate each with PSE lead
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 source_file: ITSM-AT-03 — Problem Management Effectiveness Assessment.docx
 references: []
+version: V1
+rubric_refs: []

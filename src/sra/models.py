@@ -73,6 +73,8 @@ class CriterionResult(BaseModel):
     reviewer: str = ""
     recommendation: str = ""              # text for the template's Recommendation row
     validation: str = ""                  # Variant B "Validation" row
+    measured_value: str = ""              # Variant C "Measured value" (e.g. "87% of 214 incidents")
+    maturity_level: int | None = Field(None, ge=0, le=4)   # Variant C criterion maturity L0-L4
 
 
 class ApplicationRef(BaseModel):
@@ -124,6 +126,37 @@ class RubricOutcome(BaseModel):
     contributing: list[str] = Field(default_factory=list)
 
 
+class CmdbDimension(BaseModel):
+    name: str
+    weight: float
+    score: float | None          # 0-100: mean criterion level / 4; None when nothing assessed yet
+    assessed: int
+    total: int
+    missing: list[str] = Field(default_factory=list)   # criteria without a maturity level yet
+
+
+class CmdbGate(BaseModel):
+    id: str                      # A-D
+    name: str
+    unlocks: str
+    status: str                  # passed | not passed | undetermined
+    failed: list[str] = Field(default_factory=list)
+    pending: list[str] = Field(default_factory=list)
+
+
+class CmdbReadiness(BaseModel):
+    """CMDB/CSDM V2 view (CMDB-AT-13): Readiness Index, indicative maturity L0-L4 and reporting gates."""
+    cri: float | None
+    complete: bool               # every in-scope CRI criterion has a level
+    assessed: int
+    total: int
+    level: int | None
+    level_name: str | None
+    dimensions: list[CmdbDimension]
+    gates: list[CmdbGate]
+    thresholds_status: str = ""
+
+
 class ScoreCard(BaseModel):
     matrix_version: str
     template_scores: list[TemplateScore]
@@ -143,3 +176,4 @@ class ScoreCard(BaseModel):
     insufficient: list[str]
     evidence_coverage_pct: float
     conflicts: list[str] = Field(default_factory=list)
+    cmdb: CmdbReadiness | None = None    # present when a V2 CMDB template is assessed

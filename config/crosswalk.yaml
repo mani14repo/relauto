@@ -1,7 +1,9 @@
 # Crosswalk: template criteria  <->  rubric P1/P2 criteria  <->  standards  <->  remediation playbooks.
 #
-# No OIPReqs document maps the 189 template criteria to the 18 rubric criteria; this file does.
-# It is curated by hand (status: DRAFT, pending SRE Standards Owner review).
+# The V1 SRE and ITSM templates do not say which rubric criterion each of their criteria feeds; this file
+# does, curated by hand (status: DRAFT, pending SRE Standards Owner review).
+# The V2 CMDB/CSDM templates (variant C) state their own rubric links, standards and playbooks, so CMDB
+# criteria are not listed here: src/sra/crosswalk.py reads them from the compiled catalog.
 #
 # Resolution order for a template criterion's playbooks/standards:
 #   templates.<ID>.criteria.<Cnn>  ->  templates.<ID>  ->  rubric.<P-id> (if mapped)
@@ -9,7 +11,7 @@
 version: "2026-11-draft"
 
 rubric:
-  P1-01: { standards: [ CMDB-STD-02 ], playbooks: [ CMDB-PB-04, CMDB-PB-03 ], criteria: [ CMDB-AT-01-C01, CMDB-AT-01-C02, SRE-AT-01-C06, SRE-AT-08-C01 ] }
+  P1-01: { standards: [ CMDB-STD-02 ], playbooks: [ CMDB-PB-04, CMDB-PB-03 ], criteria: [ SRE-AT-01-C06, SRE-AT-08-C01 ] }
   P1-02: { standards: [ ITSM-STD-01 ], playbooks: [ ITSM-PB-09, ITSM-PB-01 ], criteria: [ SRE-AT-01-C03, SRE-AT-08-C02, SRE-AT-08-C03 ] }
   P1-03: { standards: [ SRE-STD-05, SRE-STD-06 ], playbooks: [ SRE-PB-03, ITSM-PB-06 ], criteria: [ SRE-AT-01-C02, SRE-AT-03-C01, SRE-AT-03-C02, SRE-AT-03-C03 ] }
   P1-04: { standards: [ SRE-STD-11 ], playbooks: [ SRE-PB-08 ], criteria: [ SRE-AT-07-C01, SRE-AT-07-C03 ] }
@@ -17,7 +19,7 @@ rubric:
   P1-06: { standards: [ SRE-STD-13, SRE-STD-11 ], playbooks: [ SRE-PB-10, SRE-PB-08 ], criteria: [ SRE-AT-01-C05, SRE-AT-07-C02, SRE-AT-07-C04 ] }
   P1-07: { standards: [ ITSM-STD-04 ], playbooks: [ ITSM-PB-05 ], criteria: [ SRE-AT-01-C04, ITSM-AT-01-C01, ITSM-AT-01-C03, SRE-AT-12-C03 ] }
   P1-08: { standards: [ SRE-STD-02 ], playbooks: [ SRE-PB-02 ], criteria: [ SRE-AT-02-C01, SRE-AT-02-C03 ] }
-  P2-01: { standards: [ CMDB-STD-04 ], playbooks: [ CMDB-PB-05 ], criteria: [ CMDB-AT-01-C05, CMDB-AT-06-C01, CMDB-AT-06-C05, SRE-AT-02-C02, SRE-AT-13-C01 ] }
+  P2-01: { standards: [ CMDB-STD-04 ], playbooks: [ CMDB-PB-05 ], criteria: [ SRE-AT-02-C02, SRE-AT-13-C01 ] }
   P2-02: { standards: [ ITSM-STD-03 ], playbooks: [ ITSM-PB-03 ], criteria: [ ITSM-AT-03-C01 ] }
   P2-03: { standards: [ SRE-STD-04 ], playbooks: [ SRE-PB-04 ], criteria: [ SRE-AT-04-C03, SRE-AT-04-C05 ] }
   P2-04: { standards: [ SRE-STD-07 ], playbooks: [ SRE-PB-05 ], criteria: [ SRE-AT-05-C01, SRE-AT-05-C02, SRE-AT-05-C03 ] }
@@ -26,7 +28,7 @@ rubric:
   P2-07: { standards: [ SRE-STD-13 ], playbooks: [ SRE-PB-10 ], criteria: [ ITSM-AT-12-C02, SRE-AT-05-C04 ] }
   P2-08: { standards: [ SRE-STD-15 ], playbooks: [ SRE-PB-13 ], criteria: [ ITSM-AT-01-C04, SRE-AT-15-C01, SRE-AT-15-C02 ] }
   P2-09: { standards: [ ITSM-STD-03 ], playbooks: [ ITSM-PB-07 ], criteria: [ ITSM-AT-03-C05 ] }
-  P2-10: { standards: [ CMDB-STD-05 ], playbooks: [ CMDB-PB-02 ], criteria: [ CMDB-AT-02-C03, CMDB-AT-04-C02, CMDB-AT-11-C03 ] }
+  P2-10: { standards: [ CMDB-STD-05 ], playbooks: [ CMDB-PB-02 ], criteria: [ ] }
 
 templates:
   SRE-AT-01:
@@ -66,17 +68,6 @@ templates:
   ITSM-AT-10: { standards: [ ITSM-STD-09 ], playbooks: [ ITSM-PB-09 ] }
   ITSM-AT-11: { standards: [ ITSM-STD-11 ], playbooks: [ ITSM-PB-10 ] }
   ITSM-AT-12: { standards: [ ITSM-STD-12, SRE-STD-13 ], playbooks: [ SRE-PB-10 ] }
-  CMDB-AT-01: { standards: [ CMDB-STD-02, CMDB-STD-03 ], playbooks: [ CMDB-PB-03, CMDB-PB-04 ], criteria: { C04: { playbooks: [ CMDB-PB-06 ] } } }
-  CMDB-AT-02: { standards: [ CMDB-STD-06 ], playbooks: [ CMDB-PB-01, CMDB-PB-08 ] }
-  CMDB-AT-03: { standards: [ CMDB-STD-07 ], playbooks: [ CMDB-PB-04 ] }
-  CMDB-AT-04: { standards: [ CMDB-STD-05 ], playbooks: [ CMDB-PB-02 ] }
-  CMDB-AT-05: { standards: [ CMDB-STD-01, CMDB-STD-05 ], playbooks: [ CMDB-PB-02, CMDB-PB-08 ] }
-  CMDB-AT-06: { standards: [ CMDB-STD-04 ], playbooks: [ CMDB-PB-05 ] }
-  CMDB-AT-07: { standards: [ CMDB-STD-01, CMDB-STD-06 ], playbooks: [ CMDB-PB-01 ] }
-  CMDB-AT-08: { standards: [ CMDB-STD-09 ], playbooks: [ CMDB-PB-07, CMDB-PB-06 ] }
-  CMDB-AT-09: { standards: [ CMDB-STD-07 ], playbooks: [ CMDB-PB-04 ] }
-  CMDB-AT-10: { standards: [ CMDB-STD-10 ], playbooks: [ CMDB-PB-09 ] }
-  CMDB-AT-11: { standards: [ CMDB-STD-11, CMDB-STD-05 ], playbooks: [ CMDB-PB-02 ] }
 
 # Known threshold conflicts between templates and the rubric / Evidence Catalog.
 # The template's threshold decides the template criterion; the rubric's decides the rating.
@@ -85,3 +76,15 @@ conflicts:
     criteria: [ SRE-AT-01-C05, SRE-AT-07-C03 ]
     rubric: P1-04
     text: "Runbook review period: SRE-AT-01-C05 and SRE-AT-07-C03 require review within 6 months; rubric P1-04 / Evidence Catalog use 12 months. Template criteria are evaluated at 6 months, the rubric rating at 12."
+  - templates: [ CMDB-AT-04 ]
+    criteria: [ CMDB-AT-04-C02 ]
+    rubric: P2-10
+    text: "CMDB completeness: V2 TH-01 requires 95/90/85% by tier; the rubric rule (Evidence Catalog) uses 95/85/75%. CMDB-AT-04-C02 is evaluated at TH-01 and, because it feeds P2-10, decides the P2-10 result when CMDB-AT-04 is assessed. The V2 change summary recommends the rubric adopt TH-01 (pending OD-2)."
+  - templates: [ CMDB-AT-06 ]
+    criteria: [ CMDB-AT-06-C06 ]
+    rubric: P2-01
+    text: "Dependency map currency: V2 TH-07 requires validation within 6 months (Tier 1) / 12 months (Tier 2); the rubric rule uses 12 months for every tier. CMDB-AT-06-C06 is evaluated at TH-07 and feeds P2-01 (pending OD-2)."
+  - templates: [ CMDB-AT-01 ]
+    criteria: [ CMDB-AT-01-C06 ]
+    rubric: P2-10
+    text: "Incident attribution: V2 TH-03 requires 90/85/80% of resolved incidents attributed to the Business Application by tier, counting the Business Application field (not the CI field alone); config/detectors.yaml ci_linkage_min_pct (90%) is now only the fallback."

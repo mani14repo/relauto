@@ -35,6 +35,9 @@ SCHEMA = {
         "recommendation": {"type": "string"},
         "risk": {"type": "string", "enum": ["Critical", "High", "Medium", "Low"]},
         "confidence": {"type": "number"},
+        # Optional; used for V2 CMDB/CSDM criteria that define a formula and L0-L4 maturity bands.
+        "measured_value": {"type": "string"},
+        "maturity_level": {"type": ["integer", "null"], "minimum": 0, "maximum": 4},
     },
     "required": ["result", "rationale", "cited", "gaps", "recommendation", "risk", "confidence"],
 }
@@ -53,10 +56,21 @@ Required evidence: {c.required_evidence}
 Evaluation method: {c.evaluation_method}
 Acceptance criteria: {c.acceptance_criteria}
 Default risk if not met: {c.default_risk.value}
-
+{_v2_lines(c)}
 {ev or '<evidence id="none">No evidence was provided for this criterion.</evidence>'}
 
 Evaluate the criterion."""
+
+
+def _v2_lines(c: Criterion) -> str:
+    """Extra definition text for V2 (CMDB/CSDM) criteria; empty for V1 criteria."""
+    if not c.formula:
+        return ""
+    return (f"Measurement / formula: {c.formula}\n"
+            f"Data source: {c.data_source}\n"
+            f"Maturity bands (L0-L4): {c.maturity_bands}\n"
+            "Also return measured_value (the formula's result from the evidence, with numerator and denominator, or "
+            "'not measurable from the evidence') and maturity_level (0-4 from the bands, or null if not measurable).\n")
 
 
 CHAT_SYSTEM = """You help an SRE assessor with one assessment criterion. Answer briefly and only from the criterion text

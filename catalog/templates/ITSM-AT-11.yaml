@@ -41,6 +41,15 @@ criteria:
   references:
   - ITSM-STD-11
   - ITSM-POL-11
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: ITSM-AT-11-C02
   number: 2
   name: Operational reporting data quality meets accuracy threshold
@@ -64,6 +73,15 @@ criteria:
   - ITSM-STD-11
   - ITSM-STD-01
   - ITSM-STD-03
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: ITSM-AT-11-C03
   number: 3
   name: MTTR and human-versus-automated demand segmentation are being reported
@@ -85,6 +103,15 @@ criteria:
   example_recommendation: ''
   references:
   - ITSM-STD-11
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: ITSM-AT-11-C04
   number: 4
   name: Reporting ownership and data certification are established
@@ -107,9 +134,20 @@ criteria:
   example_recommendation: ''
   references:
   - ITSM-POL-11
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 source_file: ITSM-AT-11 — Operational KPI & Reporting Assessment.docx
 references:
 - ITSM-STD-11
 - ITSM-POL-11
 - ITSM-STD-01
 - ITSM-STD-03
+version: V1
+rubric_refs: []

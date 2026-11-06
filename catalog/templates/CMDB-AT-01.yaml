@@ -1,109 +1,302 @@
 id: CMDB-AT-01
 title: CMDB & Service Mapping Assessment
 domain: CMDB
-variant: A
+variant: C
 priority: P1
-applicability: All 63 FSI REO applications; immediate priority for the 28 applications with Region = None and the 8 Region
-  A applications with highest incident volume
-accountable_owner: CMDB / Application Engineering
-purpose: Evaluate the accuracy and completeness of application and CI records in ServiceNow CMDB, including ownership, region
-  assignment, service relationships, and CI linkage on operational records. CMDB completeness is a prerequisite for AI-assisted
-  reliability assessment.
-relevance: 99.1% cmdb_ci_business_app blank on 14,034 incidents. 28/63 FSI apps have Region = None. Single application_manager
-  (Bijal Parekh) for all 62 active apps. G-20, G-21, G-15.
-reassessment_trigger: Major release, architecture change, or Post-Incident Review recommendation
-scope: []
+applicability: One Business Application (all of its Application Services and environments). Roll up to sub-portfolio and FSI
+  REO portfolio. • All Business Applications in the REO-approved FSI scope (63 apps / 17 groups pending OD-7)• Their Application
+  Services in every environment, Business/Technical Service Offering links, and incident attribution
+accountable_owner: CMDB Process Owner (assessment); Business Application Owner (remediation)
+purpose: Determine whether a Business Application is represented in the ServiceNow CMDB in a CSDM-aligned way that allows
+  incidents, changes, telemetry and reliability metrics to be attributed to it. This is the per-application foundation assessment;
+  every other CMDB assessment builds on it, and the Reliability Readiness Rubric criterion P1-01 is evaluated from its results.
+relevance: 'Business-application attribution on incidents is the binding constraint for the executive dashboard: 99.1% blank
+  on 14,034 incidents (V1), 4% identifiable in the OIP/COG sample while the CI field was 98% populated. 28 of 63 applications
+  have Region = None and one application manager is recorded for 62 of 63 apps — ownership exists on paper only. The Nov 5
+  executive review asked for application-level problem concentration; that view is only credible once this assessment reaches
+  L2 (Gate A) for the reporting scope. Baseline reference (re-measure at assessment time):'
+reassessment_trigger: Quarterly for Tier 1; semi-annually for Tier 2/3; on onboarding, major architecture change, or ownership
+  change
+scope:
+- • All Business Applications in the REO-approved FSI scope (63 apps / 17 groups pending OD-7)• Their Application Services
+  in every environment, Business/Technical Service Offering links, and incident attribution
+- • Infrastructure attribute accuracy (CMDB-AT-05)• Dependency map depth (CMDB-AT-06)• Telemetry identity detail (CMDB-AT-12)
+  — summarized only in C07
 signoff_roles:
 - Assessment Lead
-- SRE Reviewer
-- Engineering Owner
-- PSE Representative
+- Data Steward (portfolio)
+- SRE Region Lead
+- Business Application Owner / Engineering Owner
+- CMDB Process Owner
 criteria:
 - id: CMDB-AT-01-C01
   number: 1
-  name: Application Registration Completeness
-  standard_ref: ServiceNow CSDM — Business Application; ITPN G-20
-  applicability: All 63 FSI REO applications
-  required_evidence: CMDB_Mapping.xlsx record; ServiceNow application record showing mandatory fields populated
-  evaluation_method: 'Deterministic: application record exists; name, class, lifecycle state, environment all populated'
+  name: Business Application registered in the live CMDB
+  standard_ref: CMDB-STD-02 R01–R04
+  applicability: Every in-scope application
+  required_evidence: cmdb_ci_business_app record matched to the in-scope list by APM number (preferred) or exact name
+  evaluation_method: Deterministic
   methods:
   - deterministic
-  acceptance_criteria: All 63 FSI applications registered in ServiceNow CMDB with name, class, state, and environment
+  acceptance_criteria: 100% registered; zero duplicates (two BA records for one product); life cycle not Retired
   default_risk: Critical
   default_risk_assumed: false
-  accountable_owner: CMDB / Bijal Parekh
+  accountable_owner: ''
   reassessment: ''
-  example_risk: Critical — unregistered apps cannot be attributed on incidents or changes
-  example_recommendation: Audit all 63 apps against CMDB_Mapping.xlsx; register missing apps; assign to Bijal Parekh for governance
-  references: []
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-02
+  - CMDB-PB-01
+  - CMDB-PB-03
+  rubric_refs:
+  - P1-01
+  rubric_enablers: []
+  csdm_layer: Foundation / Design & Planning
+  data_source: cmdb_ci_business_app; in-scope list
+  formula: Registration coverage = in-scope apps with exactly one matching Operational BA record ÷ in-scope apps
+  maturity_bands: L0 < 25%  |  L1 25–49%  |  L2 50–79%  |  L3 80% to tier threshold  |  L4 ≥ tier threshold sustained 2 cycles
+  look_for: • Applications recorded only as generic cmdb_ci_appl or cmdb_ci records — not a Business Application• BA names
+    that are actually assignment-group names (e.g., 'REBATES') — product vs team confusion• Two BA records for one product
+    with different spellings• Retired BA still referenced by open incidents
+  risk_if_gap: Critical — an unregistered application cannot be attributed, routed or assessed (rubric P1-01 blocks)
+  playbooks:
+  - CMDB-PB-01
+  - CMDB-PB-03
 - id: CMDB-AT-01-C02
   number: 2
-  name: Ownership & Accountability Fields
-  standard_ref: ServiceNow CSDM; ITPN G-15, G-16
-  applicability: All FSI REO applications
-  required_evidence: ServiceNow application record showing owned_by, u_operational_owner, it_application_owner populated
-  evaluation_method: 'Deterministic: owned_by, u_operational_owner, and it_application_owner all populated; not all pointing
-    to same person'
+  name: Accountable ownership populated and sustainable
+  standard_ref: CMDB-STD-07 R01–R05
+  applicability: Every registered BA and its Production Application Service
+  required_evidence: it_application_owner, owned_by, business_owner (Tier 1/2), support_group on BA; owned_by, support_group,
+    change_control on Production Application Service — all referencing active users/groups
+  evaluation_method: Deterministic
   methods:
   - deterministic
-  acceptance_criteria: All three ownership fields populated; at least two different named individuals
+  acceptance_criteria: (a) 100% (TH-02); (b) no individual is it_application_owner for > 15 BAs without a named delegate per
+    sub-portfolio; owner ≠ business_owner for Tier 1
   default_risk: High
   default_risk_assumed: false
-  accountable_owner: Application Engineering / sub-portfolio owners
+  accountable_owner: ''
   reassessment: ''
-  example_risk: High — single application_manager for 62 apps = key-person concentration risk
-  example_recommendation: Assign sub-portfolio owners per region as operational owners; review Bijal Parekh single-point risk
-  references: []
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-07
+  - CMDB-PB-04
+  rubric_refs:
+  - P1-01
+  - P1-02
+  rubric_enablers: []
+  csdm_layer: Foundation
+  data_source: cmdb_ci_business_app; cmdb_ci_service_auto; sys_user.active; sys_user_group.active
+  formula: (a) Ownership completeness = populated active ownership fields ÷ required ownership fields; (b) Concentration =
+    max BAs per it_application_owner
+  maturity_bands: L0 any required owner blank on Tier 1  |  L1 owners present but inactive users/groups  |  L2 100% populated,
+    concentration > 15  |  L3 100% populated, concentration ≤ 15  |  L4 L3 + attested within TH-09
+  look_for: • One person on every record (the single-application-manager pattern)• support_group pointing to a catch-all group
+    (SRE On-Call, 'FSI REO') instead of the resolving team• change_control blank — changes cannot be routed for approval•
+    Owners who have left (sys_user.active = false)
+  risk_if_gap: High — key-person concentration and blank support groups cause misrouting and unowned remediation
+  playbooks:
+  - CMDB-PB-04
 - id: CMDB-AT-01-C03
   number: 3
-  name: Region Assignment
-  standard_ref: FSI REO Operating Model; ITPN G-20
-  applicability: 28 applications currently with Region = None
-  required_evidence: CMDB_Mapping.xlsx region field; ServiceNow application record region value
-  evaluation_method: 'Deterministic: region field populated for all 63 applications'
+  name: Portfolio placement attributes
+  standard_ref: CMDB-STD-02 R05–R07
+  applicability: Every registered BA
+  required_evidence: u_region, u_portfolio, busines_criticality (tier) and life cycle populated with controlled values
+  evaluation_method: Deterministic
   methods:
   - deterministic
-  acceptance_criteria: Region populated for all applications; Region = None reduced to 0
+  acceptance_criteria: 100%; Region = None count = 0; tier value approved per CMDB-PB-09
   default_risk: High
   default_risk_assumed: false
-  accountable_owner: Bijal Parekh / sub-portfolio owners
+  accountable_owner: ''
   reassessment: ''
-  example_risk: High — 28 unregioned apps invisible to regional capacity planning and incident dashboards
-  example_recommendation: Assign Nate Olstad's 16 apps and Ana Kumar's 12 no-region apps to Region first; complete remainder
-  references: []
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-02
+  - CMDB-PB-03
+  - CMDB-PB-09
+  rubric_refs:
+  - P2-10
+  rubric_enablers: []
+  csdm_layer: Foundation
+  data_source: cmdb_ci_business_app
+  formula: Placement completeness = BAs with all four attributes valid ÷ registered BAs; Region = None count
+  maturity_bands: L0 < 25%  |  L1 25–49%  |  L2 50–79%  |  L3 80% to tier threshold  |  L4 ≥ tier threshold sustained 2 cycles
+  look_for: • Region = None (28 apps at V1 baseline)• Tier defaulted to '3 - less critical' because the field was mandatory
+    at creation• Life cycle Operational on applications that were sunset
+  risk_if_gap: High — unregioned apps disappear from regional dashboards and SRE capacity planning
+  playbooks:
+  - CMDB-PB-03
+  - CMDB-PB-09
 - id: CMDB-AT-01-C04
   number: 4
-  name: CI Linkage on Incident Records (cmdb_ci_business_app)
-  standard_ref: ServiceNow CSDM; ITPN G-21
-  applicability: All production incidents
-  required_evidence: 'ServiceNow incident record export showing cmdb_ci_business_app populated; target: > 80% within 90 days'
-  evaluation_method: 'Deterministic: percentage of incidents with cmdb_ci_business_app populated measured from extract'
+  name: Application Service per environment, correctly named and linked
+  standard_ref: CMDB-STD-03 R01–R06; CMDB-STD-00 naming
+  applicability: Every Operational BA
+  required_evidence: ≥ 1 Application Service with environment = Production that Consumes the BA; separate Application Services
+    for each non-prod environment that receives incidents/changes; names follow '<BA> — <Component> — <ENV>'
+  evaluation_method: Deterministic (naming via regex)
   methods:
   - deterministic
-  acceptance_criteria: cmdb_ci_business_app populated on > 80% of new incidents within 90 days of remediation
+  acceptance_criteria: 100% coverage for Tier 1/2, ≥ 95% Tier 3; naming compliance ≥ 95%; zero Application Services whose
+    name equals the BA name; zero Application Services with blank environment
   default_risk: Critical
   default_risk_assumed: false
-  accountable_owner: CMDB / ServiceNow Admin
+  accountable_owner: ''
   reassessment: ''
-  example_risk: Critical — 99.1% blank makes application-level MTTR, SLO, and incident trend analysis impossible
-  example_recommendation: Wire cmdb_ci_business_app in ServiceNow routing; begin with Region A's 8 named apps (86.2% of volume)
-  references: []
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-03
+  - CMDB-STD-00
+  - CMDB-PB-03
+  rubric_refs:
+  - P1-01
+  - P2-10
+  rubric_enablers: []
+  csdm_layer: Service Delivery (Application Service / Service Instance)
+  data_source: cmdb_ci_service_auto; cmdb_rel_ci (Consumes::Consumed by)
+  formula: Service model coverage = Operational BAs with a compliant Production Application Service ÷ Operational BAs; Naming
+    compliance = compliant names ÷ Application Services
+  maturity_bands: L0 < 25%  |  L1 25–49%  |  L2 50–79%  |  L3 80% to tier threshold  |  L4 ≥ tier threshold sustained 2 cycles
+  look_for: • Application name used as the CI name for both the BA and the service — engineers pick the wrong one on incidents•
+    One Application Service covering prod and non-prod — incidents from test pollute production MTTR• '-int', '-qa', '-nonprod'
+    components registered with environment = Production
+  risk_if_gap: Critical — without a Production Application Service, production and non-production telemetry and incidents
+    cannot be separated (Nov 5 finding)
+  playbooks:
+  - CMDB-PB-03
 - id: CMDB-AT-01-C05
   number: 5
-  name: Application-to-Service Relationship Mapping
-  standard_ref: ServiceNow CSDM — Application Service relationships; ITPN G-12
-  applicability: All P1/P2 applications
-  required_evidence: ServiceNow service map or relationship record showing upstream/downstream connections
-  evaluation_method: 'AI-assisted: confirm application service linked to at least one business service; dependencies documented'
+  name: Service Offering linkage (business and technical)
+  standard_ref: CMDB-STD-03 R07–R09
+  applicability: Production Application Services, Tier 1/2 mandatory, Tier 3 recommended
+  required_evidence: Business Service Offering Depends on the Production Application Service; Production Application Service
+    Depends on ≥ 1 Technical Service Offering for each shared platform it runs on
+  evaluation_method: Deterministic (V1 used AI-assisted; this is a field/relationship check)
   methods:
+  - deterministic
   - ai
-  acceptance_criteria: Each P1 application linked to at least one business service; upstream CIs named
+  acceptance_criteria: 'Tier 1/2: 100% business linkage, ≥ 90% technical linkage'
   default_risk: High
   default_risk_assumed: false
-  accountable_owner: CMDB / Architecture
+  accountable_owner: ''
   reassessment: ''
-  example_risk: High — RCI->GDX->CRS chain has no dependency map in ServiceNow
-  example_recommendation: Build service maps for Region A revenue chain (GDX->RCI->CRS) and Region B CFAO chain first
-  references: []
-source_file: CMDB-AT-01 — CMDB & Service Mapping Assessment.docx
-references: []
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-03
+  - CMDB-PB-03
+  - CMDB-PB-05
+  rubric_refs:
+  - P2-01
+  rubric_enablers: []
+  csdm_layer: Service Consumption / Service Delivery
+  data_source: service_offering; cmdb_ci_service_business; cmdb_ci_service_technical; cmdb_rel_ci
+  formula: Business linkage = Tier 1/2 Production Application Services used by ≥ 1 Business Service Offering ÷ Tier 1/2 Production
+    Application Services; Technical linkage computed likewise
+  maturity_bands: L0 < 25%  |  L1 25–49%  |  L2 50–79%  |  L3 80% to tier threshold  |  L4 ≥ tier threshold sustained 2 cycles
+  look_for: • Business Services created per application (1:1) — offering layer missing, impact rolls up to nothing• Technical
+    services modeled as applications• Shared clusters (GKE/AKS) with no Technical Service Offering — platform incidents cannot
+    show downstream impact
+  risk_if_gap: High — business impact and platform blast radius cannot be expressed
+  playbooks:
+  - CMDB-PB-03
+  - CMDB-PB-05
+- id: CMDB-AT-01-C06
+  number: 6
+  name: Operational record attribution
+  standard_ref: CMDB-STD-08 R01–R06
+  applicability: Resolved incidents in the last 90 days for this BA's assignment groups
+  required_evidence: Incident cmdb_ci resolves to this BA through an Application Service (or the FSI business-application
+    field is populated); CI class is not generic
+  evaluation_method: Deterministic
+  methods:
+  - deterministic
+  acceptance_criteria: ≥ TH-03 for tier (90/85/80%); generic-CI rate ≤ 5%; production incidents attributed to non-prod services
+    = 0
+  default_risk: Critical
+  default_risk_assumed: false
+  accountable_owner: ''
+  reassessment: ''
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-08
+  - CMDB-PB-06
+  - CMDB-PB-11
+  rubric_refs:
+  - P2-10
+  rubric_enablers: []
+  csdm_layer: Service Delivery → ITSM
+  data_source: incident; cmdb_ci; cmdb_rel_ci
+  formula: 'Attribution rate = resolved incidents whose cmdb_ci maps to the BA via Application Service OR u_business_application
+    = BA ÷ resolved incidents for the BA''s groups. Report separately: CI populated rate, generic-CI rate, non-prod attribution
+    rate'
+  maturity_bands: L0 < 25%  |  L1 25–49%  |  L2 50–79%  |  L3 80% to tier threshold  |  L4 ≥ tier threshold sustained 2 cycles
+  look_for: • CI populated with a server or 'FSI REO' placeholder — counts as populated but not attributable• Event-generated
+    incidents bound to the monitoring tool's CI• Assignment group used as proxy for application (works for REBATES groups
+    but breaks for shared groups)
+  risk_if_gap: 'Critical — blocks Gate A/B: application-level volume and MTTR cannot be reported as authoritative'
+  playbooks:
+  - CMDB-PB-06
+  - CMDB-PB-11
+- id: CMDB-AT-01-C07
+  number: 7
+  name: Production telemetry identity registered
+  standard_ref: CMDB-STD-12
+  applicability: Production Application Services
+  required_evidence: Every production telemetry source (Splunk index/sourcetype, Loki label set, AppDynamics application/tier,
+    Kubernetes cluster/namespace/workload) mapped to this Application Service with environment
+  evaluation_method: Deterministic (summary of CMDB-AT-12)
+  methods:
+  - deterministic
+  acceptance_criteria: ≥ TH-08 for tier (100/90/75%)
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: ''
+  reassessment: ''
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-12
+  - CMDB-PB-10
+  rubric_refs:
+  - P1-03
+  rubric_enablers:
+  - P1-05
+  csdm_layer: Service Delivery → Observability
+  data_source: CMDB-AT-12 results; OIP config/splunk_source_map.json
+  formula: Mapped production sources ÷ known production sources (from CMDB-AT-12 C01)
+  maturity_bands: L0 < 25%  |  L1 25–49%  |  L2 50–79%  |  L3 80% to tier threshold  |  L4 ≥ tier threshold sustained 2 cycles
+  look_for: • Telemetry found under a name that matches no Application Service• Only non-prod sources mapped (current OIP
+    state)
+  risk_if_gap: High — logs and metrics cannot be attributed; SLO/MTTR from telemetry unreliable (Gate C)
+  playbooks:
+  - CMDB-PB-10
+source_file: CMDB-AT-01 — CMDB & Service Mapping Assessment — V2.docx
+references:
+- CMDB-STD-02
+- CMDB-STD-07
+- CMDB-STD-03
+- CMDB-STD-00
+- CMDB-STD-08
+- CMDB-STD-12
+- CMDB-PB-01
+- CMDB-PB-03
+- CMDB-PB-04
+- CMDB-PB-09
+- CMDB-PB-05
+- CMDB-PB-06
+- CMDB-PB-11
+- CMDB-PB-10
+version: V2
+rubric_refs:
+- P1-01
+- P2-01
+- P2-10

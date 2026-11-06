@@ -120,3 +120,11 @@ def test_scoping_by_alias():
 def test_unknown_file_is_reported_not_fatal():
     b = EvidenceBundle()
     assert b.ingest("photo.bmp", b"BM...") is None and b.errors
+
+
+def test_email_addresses_redacted_but_not_reported_as_secrets():
+    from sra.evidence.redact import redact
+    text = "Escalated to jane.doe@cvs.example.com; clone git@github.com:org/repo.git"
+    assert clean_text(text) == "Escalated to [REDACTED-EMAIL]; clone git@github.com:org/repo.git"
+    assert "jane.doe" not in redact(text)
+    assert find_secrets(text) == []

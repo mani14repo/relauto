@@ -9,6 +9,9 @@ Settings (env / .env):
     LLM_NUM_CTX    context window for ollama          (default 8192)
 
 All calls are temperature 0 with a JSON schema for structured output. Nothing leaves the cluster.
+Responses are streamed so a run can be cancelled mid-call: when `cancel_check()` turns true the caller is
+released within a second, and the connection is closed at the next streamed token, which makes the model
+server stop generating.
 Current Qwen 3.5 / Gemma 4 models have a thinking mode; it is turned off unless LLM_THINK=true, and any
 <think>...</think> text a model emits anyway is stripped before parsing.
 """
@@ -16,12 +19,14 @@ from __future__ import annotations
 
 import json
 import re
+import threading
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Callable, Protocol
 
 import httpx
 
 from ..config import setting
+from ..progress import JobCancelled
 
 DEFAULT_MODEL = "qwen3.5:4b"
 THINK_BLOCK = re.compile(r"<think>.*?</think>", re.S | re.I)
@@ -48,6 +53,81 @@ class LLMError(RuntimeError):
     pass
 
 
+def stream_call(url: str, payload: dict, *, timeout: float, headers: dict | None = None,
+                cancel_check: Callable[[], bool] | None = None, piece: Callable[[str], str | None]) -> str:
+    """POST with a streamed response and return the concatenated text.
+
+    `piece(line)` turns one streamed line into text (or None to skip). Servers that ignore streaming and send one
+    JSON body still work: unparseable lines are kept and the whole body is parsed at the end.
+    The request runs in a worker thread so a cancel releases the caller at once, even while the model is still
+    reading the prompt and has sent nothing yet.
+    """
+    check = cancel_check or (lambda: False)
+    out: dict = {}
+    finished = threading.Event()
+
+    def run() -> None:
+        try:
+            with httpx.stream("POST", url, json=payload, headers=headers, timeout=timeout) as r:
+                if r.status_code >= 400:
+                    r.read()
+                    r.raise_for_status()
+                parts, raw = [], []
+                for line in r.iter_lines():
+                    if check():
+                        out["cancelled"] = True
+                        return            # leaving the context closes the connection; the server stops generating
+                    if not line.strip():
+                        continue
+                    raw.append(line)
+                    try:
+                        text = piece(line)
+                    except (ValueError, KeyError, IndexError, TypeError):
+                        out["fallback"] = True
+                        continue
+                    if text:
+                        parts.append(text)
+                out["text"] = "".join(parts)
+                out["raw"] = "\n".join(raw)
+        except Exception as exc:  # noqa: BLE001 - re-raised in the caller's thread
+            out["error"] = exc
+        finally:
+            finished.set()
+
+    threading.Thread(target=run, daemon=True, name="llm-call").start()
+    while not finished.wait(0.5):
+        if check():
+            raise JobCancelled("cancelled during a model call")
+    if out.get("cancelled"):
+        raise JobCancelled("cancelled during a model call")
+    if "error" in out:
+        raise out["error"]
+    if out.get("fallback") and not out.get("text"):
+        return out.get("raw", "")
+    return out.get("text", "")
+
+
+def _ollama_piece(line: str) -> str | None:
+    obj = json.loads(line)
+    if obj.get("error"):
+        raise LLMError(str(obj["error"]))
+    return (obj.get("message") or {}).get("content") or None
+
+
+def _openai_piece(line: str) -> str | None:
+    if line.startswith("data:"):
+        data = line[5:].strip()
+        if data == "[DONE]":
+            return None
+        obj = json.loads(data)
+        if obj.get("error"):
+            raise LLMError(str(obj["error"]))
+        choice = (obj.get("choices") or [{}])[0]
+        return (choice.get("delta") or choice.get("message") or {}).get("content") or None
+    obj = json.loads(line)                          # non-streaming server: one JSON body
+    return obj["choices"][0]["message"]["content"]
+
+
 class ChatClient(Protocol):
     model: str
 
@@ -70,18 +150,21 @@ class OllamaClient:
     timeout: float = 300
     num_ctx: int = 8192
     think: bool = False
+    cancel_check: Callable[[], bool] | None = None   # set by the evaluator for cancellable runs
 
     def _post(self, payload: dict) -> dict:
         try:
-            r = httpx.post(f"{self.base_url.rstrip('/')}/api/chat", json=payload, timeout=self.timeout)
-            r.raise_for_status()
-            return r.json()
+            text = stream_call(f"{self.base_url.rstrip('/')}/api/chat", {**payload, "stream": True},
+                               timeout=self.timeout, cancel_check=self.cancel_check, piece=_ollama_piece)
         except httpx.HTTPError as exc:
             raise LLMError(f"ollama call failed: {describe(exc, self.timeout)}") from exc
+        except LLMError as exc:
+            raise LLMError(f"ollama call failed: {exc}") from exc
+        return {"message": {"content": text}}
 
     def _payload(self, system: str, user: str, temperature: float, schema: dict | None = None) -> dict:
         p = {
-            "model": self.model, "stream": False, "think": self.think,
+            "model": self.model, "stream": True, "think": self.think,
             "options": {"temperature": temperature, "num_ctx": self.num_ctx},
             "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]
         }
@@ -121,15 +204,18 @@ class OpenAICompatClient:
     timeout: float = 300
     api_key: str = "not-needed"
     think: bool = False
+    cancel_check: Callable[[], bool] | None = None
 
     def _post(self, payload: dict) -> dict:
         try:
-            r = httpx.post(f"{self.base_url.rstrip('/')}/chat/completions", json=payload, timeout=self.timeout,
-                           headers={"Authorization": f"Bearer {self.api_key}"})
-            r.raise_for_status()
-            return r.json()
+            text = stream_call(f"{self.base_url.rstrip('/')}/chat/completions", {**payload, "stream": True},
+                               timeout=self.timeout, headers={"Authorization": f"Bearer {self.api_key}"},
+                               cancel_check=self.cancel_check, piece=_openai_piece)
         except httpx.HTTPError as exc:
             raise LLMError(f"openai-compatible call failed: {describe(exc, self.timeout)}") from exc
+        except LLMError as exc:
+            raise LLMError(f"openai-compatible call failed: {exc}") from exc
+        return {"choices": [{"message": {"content": text}}]}
 
     def _payload(self, system: str, user: str, temperature: float) -> dict:
         # vLLM / llama.cpp pass chat_template_kwargs to the template; Qwen and Gemma templates read enable_thinking.

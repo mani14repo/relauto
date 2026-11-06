@@ -15,6 +15,8 @@ export interface CriterionResult {
   na_approved: boolean;
   reviewer: string;
   recommendation: string;
+  measured_value: string;          // V2 CMDB criteria
+  maturity_level: number | null;   // V2 CMDB criteria, L0-L4
 }
 
 export interface Recommendation {
@@ -76,11 +78,22 @@ export interface ScoreCard {
   p2_gaps: string[];
   evidence_coverage_pct: number;
   conflicts: string[];
+  cmdb: CmdbReadiness | null;
+}
+
+export interface CmdbReadiness {
+  cri: number | null; complete: boolean; assessed: number; total: number; level: number | null; level_name: string | null;
+  dimensions: { name: string; weight: number; score: number | null; assessed: number; total: number; missing: string[] }[];
+  gates: { id: string; name: string; unlocks: string; status: "passed" | "not passed" | "undetermined"; failed: string[]; pending: string[] }[];
+  thresholds_status: string;
 }
 
 export interface Criterion {
   id: string; number: number; name: string; standard_ref: string; applicability: string; required_evidence: string;
   evaluation_method: string; methods: string[]; acceptance_criteria: string; default_risk: Risk; accountable_owner: string;
+  // V2 (CMDB/CSDM) templates only
+  rubric_refs?: string[]; rubric_enablers?: string[]; formula?: string; maturity_bands?: string; data_source?: string;
+  look_for?: string; csdm_layer?: string; playbooks?: string[];
 }
 
 export interface Template {
@@ -131,6 +144,7 @@ export const api = {
   evidence: (id: string) => req<{ files: any[]; errors: string[]; summary: Record<string, number> }>("GET", `/api/assessments/${id}/evidence`),
   run: (id: string, llm: boolean) => req<Job>("POST", `/api/assessments/${id}/run`, { llm }),
   job: (id: string) => req<Job>("GET", `/api/assessments/${id}/job`),
+  cancel: (id: string) => req<Job>("POST", `/api/assessments/${id}/cancel`),
   patchCriterion: (id: string, cid: string, patch: Record<string, unknown>) => req<any>("PATCH", `/api/assessments/${id}/criteria/${cid}`, patch),
   confirm: (id: string, cid: string) => req<any>("POST", `/api/assessments/${id}/criteria/${cid}/confirm`),
   chat: (id: string, cid: string, question: string) => req<{ answer: string }>("POST", `/api/assessments/${id}/criteria/${cid}/chat`, { question }),

@@ -1,0 +1,186 @@
+id: CMDB-AT-13
+title: CMDB/CSDM Readiness Scorecard & Reporting Gates
+domain: CMDB
+variant: C
+priority: P1
+applicability: Each in-scope Business Application, rolled up by sub-portfolio, region and FSI REO. • Scope definition• CRI
+  computation• Maturity assignment• Gate decisions• Publication
+accountable_owner: CMDB Process Owner with OIP Product Owner
+purpose: Combine the results of CMDB-AT-01 to AT-12 into one CMDB Readiness Index (CRI) and maturity level per application,
+  and decide which executive metrics may be reported as authoritative for which applications (Reporting Gates A–D). This prevents
+  unsupported calculations — the Nov 5 leadership direction.
+relevance: 'Leadership asked for credible baselines that improve iteratively; gates make the limits explicit per metric. MG
+  asked for scope reconciliation; C01 forces a single, approved scope list. Baseline reference (re-measure at assessment time):'
+reassessment_trigger: Monthly (published in REO governance pack)
+scope:
+- • Scope definition• CRI computation• Maturity assignment• Gate decisions• Publication
+- —
+signoff_roles:
+- Assessment Lead
+- Data Steward (portfolio)
+- SRE Region Lead
+- Business Application Owner / Engineering Owner
+- CMDB Process Owner
+criteria:
+- id: CMDB-AT-13-C01
+  number: 1
+  name: Single approved scope list
+  standard_ref: CMDB-STD-05 R13
+  applicability: FSI REO
+  required_evidence: Approved list of in-scope BAs and assignment groups (17 groups / 63 apps pending OD-7) used by OIP and
+    every assessment
+  evaluation_method: Deterministic + Human approval
+  methods:
+  - deterministic
+  acceptance_criteria: Approved; incident-count variance vs Incident Management ≤ 2% for the same window
+  default_risk: Critical
+  default_risk_assumed: false
+  accountable_owner: ''
+  reassessment: ''
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-05
+  - CMDB-PB-11
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: Manage Portfolio
+  data_source: fsi_scope.json; approval record
+  formula: Exists and approved (yes/no); reconciled to Incident Management report (variance %)
+  maturity_bands: L0 none  |  L2 list exists, not reconciled  |  L4 approved and reconciled
+  look_for: • Dashboard and Incident Management using different group lists
+  risk_if_gap: Critical
+  playbooks:
+  - CMDB-PB-11
+- id: CMDB-AT-13-C02
+  number: 2
+  name: CMDB Readiness Index computed
+  standard_ref: CMDB-STD-05 R14
+  applicability: Each in-scope BA
+  required_evidence: CRI = Σ(dimension weight × dimension score) — weights below; dimension score = mean maturity level of
+    its criteria ÷ 4
+  evaluation_method: Deterministic
+  methods:
+  - deterministic
+  acceptance_criteria: 100%
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: ''
+  reassessment: ''
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-05
+  - CMDB-PB-11
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: Manage Portfolio
+  data_source: Criteria catalog / OIP
+  formula: BAs with CRI computed this month ÷ in-scope BAs
+  maturity_bands: —
+  look_for: —
+  risk_if_gap: High
+  playbooks:
+  - CMDB-PB-11
+- id: CMDB-AT-13-C03
+  number: 3
+  name: Maturity level assigned
+  standard_ref: CMDB-STD-00 maturity
+  applicability: Each in-scope BA
+  required_evidence: Level L0–L4 assigned using the maturity table (the lowest level whose all conditions are met)
+  evaluation_method: Deterministic
+  methods:
+  - deterministic
+  acceptance_criteria: 'Program targets: 30 days — Region A + REBATES groups ≥ L2; 90 days — all Tier 1 ≥ L2 and ≥ 50% at
+    L3'
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: ''
+  reassessment: ''
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-00
+  - CMDB-PB-11
+  rubric_refs:
+  - P1-01
+  - P2-10
+  rubric_enablers: []
+  csdm_layer: Manage Portfolio
+  data_source: Criteria results
+  formula: Distribution of BAs by level; % at ≥ L2
+  maturity_bands: —
+  look_for: —
+  risk_if_gap: High
+  playbooks:
+  - CMDB-PB-11
+- id: CMDB-AT-13-C04
+  number: 4
+  name: Reporting gate decisions recorded
+  standard_ref: CMDB-STD-05 R15
+  applicability: Each executive metric × application
+  required_evidence: Gate A–D status per BA; metrics shown as authoritative only where the gate passes, otherwise labelled
+    'indicative — data quality limited'
+  evaluation_method: Deterministic
+  methods:
+  - deterministic
+  acceptance_criteria: '0'
+  default_risk: Critical
+  default_risk_assumed: false
+  accountable_owner: ''
+  reassessment: ''
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-05
+  - CMDB-PB-11
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: Manage Portfolio
+  data_source: Scorecard
+  formula: Executive metrics shown without gate check
+  maturity_bands: —
+  look_for: • Application MTTR shown for apps with 4% attribution
+  risk_if_gap: Critical
+  playbooks:
+  - CMDB-PB-11
+- id: CMDB-AT-13-C05
+  number: 5
+  name: Scorecard published and acted on
+  standard_ref: CMDB-STD-05 R12
+  applicability: REO governance
+  required_evidence: Monthly publication; top 10 blocking gaps with owners; decisions recorded
+  evaluation_method: Deterministic
+  methods:
+  - deterministic
+  acceptance_criteria: 100%
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: ''
+  reassessment: ''
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-05
+  - CMDB-PB-02
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: Manage Portfolio
+  data_source: Governance pack
+  formula: Months published ÷ months
+  maturity_bands: —
+  look_for: —
+  risk_if_gap: Medium
+  playbooks:
+  - CMDB-PB-02
+source_file: CMDB-AT-13 — CMDB-CSDM Readiness Scorecard & Reporting Gates — V2.docx
+references:
+- CMDB-STD-05
+- CMDB-STD-00
+- CMDB-PB-11
+- CMDB-PB-02
+version: V2
+rubric_refs:
+- P1-01
+- P2-01
+- P2-10

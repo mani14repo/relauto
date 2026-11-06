@@ -51,6 +51,8 @@ class Evaluator:
     def evaluate_pending(self, a: Assessment, bundle: EvidenceBundle, only: list[str] | None = None,
                          progress: Progress | None = None) -> None:
         progress = progress or NullProgress()
+        if hasattr(self.client, "cancel_check"):
+            self.client.cancel_check = progress.is_cancelled   # lets a cancel interrupt the call in flight
         templates = load_templates()
         pending = []
         for tid in a.templates:
@@ -138,6 +140,8 @@ class Evaluator:
             evidence_refs=[src_names[i] for i in out["cited"]], source=Source.LLM, confidence=conf,
             risk=Risk(out["risk"]) if out["result"] != "Met" else None,
             recommendation=out["recommendation"] if out["result"] != "Met" else "",
+            measured_value=out["measured_value"] if c.formula else "",
+            maturity_level=out["maturity_level"] if c.formula else None,
             needs_human_review=human or conf < self.min_confidence)
 
     def chat(self, a: Assessment, bundle: EvidenceBundle, criterion_id: str, question: str) -> str:

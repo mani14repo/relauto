@@ -1,7 +1,7 @@
 """Vulnerability detection: scanner findings, secrets in evidence, EOL components, CI pipeline gates.
 
 Every scanner finding at or above `vulnerabilities.report_min_severity` becomes its own Finding, so
-nothing a scanner reported is dropped. Answers SRE-AT-11 C01-C04 and CMDB-AT-03-C02 / CMDB-AT-09-C01.
+nothing a scanner reported is dropped. Answers SRE-AT-11 C01-C04; EOL findings link to CMDB-AT-09-C02 / CMDB-AT-03-C06.
 """
 from __future__ import annotations
 
@@ -111,7 +111,7 @@ def run(b: EvidenceBundle, ctx: Context) -> DetectorReport:
         rep.findings.append(finding(
             FindingType.VULNERABILITY, Risk.CRITICAL if prod == "jenkins" else Risk.HIGH,
             f"End-of-life component: {name} {ver}".strip() + f" (EOL {when.date().isoformat()})",
-            criteria=["CMDB-AT-03-C02", "CMDB-AT-09-C01", "SRE-AT-11-C04" if prod == "jenkins" else "SRE-AT-11-C03"],
+            criteria=["CMDB-AT-09-C02", "CMDB-AT-03-C06", "SRE-AT-11-C04" if prod == "jenkins" else "SRE-AT-11-C03"],
             detector=f"{NAME}:eol", action=f"Plan migration off {name} {ver}".strip() + " and register the EOL risk (CMDB-PB-04)"))
 
     # ---- CI/CD pipeline security gates (SRE-AT-11-C04)

@@ -12,6 +12,7 @@ Rules (rubric V1 Draft + proposed matrix):
 """
 from __future__ import annotations
 
+from .cmdb import cmdb_readiness
 from ..catalog.models import Domain, Result, Rubric, Template
 from ..crosswalk import rubric_criteria_map
 from ..models import Assessment, CriterionResult, RubricOutcome, ScoreCard, TemplateScore
@@ -166,4 +167,5 @@ def score_assessment(a: Assessment, templates: dict[str, Template], rubric: Rubr
         not_applicable=[cid for cid in all_ids if eff[cid] == Result.NA] + [o.rubric_id for o in outcomes if o.result == Result.NA],
         insufficient=[cid for cid in all_ids if eff[cid] == Result.INSUFFICIENT] + [o.rubric_id for o in outcomes if o.result == Result.INSUFFICIENT],
         evidence_coverage_pct=coverage,
+        cmdb=cmdb_readiness(a, outcomes, matrix),
     )

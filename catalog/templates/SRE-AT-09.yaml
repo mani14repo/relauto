@@ -37,6 +37,15 @@ criteria:
   example_recommendation: Start post-mortems for RD_GDX3M and the 6 Rebates Batch patterns immediately; assign facilitator
     per incident
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-09-C02
   number: 2
   name: Post-Mortem Quality — Root Cause Specificity
@@ -55,6 +64,15 @@ criteria:
   example_recommendation: Train incident facilitators on blameless post-mortem format; review all root causes in governance
     meeting
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-09-C03
   number: 3
   name: Post-Mortem Action Item Completion
@@ -74,6 +92,15 @@ criteria:
   example_recommendation: Track post-mortem action items in ServiceNow Problem record; include completion rate in weekly SRE
     review
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-09-C04
   number: 4
   name: Blameless Post-Mortem Culture
@@ -94,6 +121,15 @@ criteria:
   example_recommendation: Train all facilitators on blameless post-mortem standards; review post-mortem quality in quarterly
     SRE retrospective
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-09-C05
   number: 5
   name: Incident Timeline Accuracy & Tooling
@@ -113,5 +149,16 @@ criteria:
   example_recommendation: Use Splunk query and ServiceNow timestamp export for timeline reconstruction; document query in
     post-mortem
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 source_file: SRE-AT-09 — Incident Response & Post-Mortem Quality Assessment.docx
 references: []
+version: V1
+rubric_refs: []

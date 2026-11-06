@@ -183,7 +183,7 @@ spec:
             ["incident_anomalies:recurrence", "or_settle1j"],
             ["incident_anomalies:change_induced", "after a change"],
             ["incident_anomalies:pointer_resolutions", "OneNote"],
-            ["incident_anomalies:ci_linkage", "linked to a CMDB CI"],
+            ["incident_anomalies:ci_linkage", "attributed to the Business Application"],
             ["incident_anomalies:mttr_outliers", "restore time"],
             ["rubric:P1-04", "not reviewed"],
             ["rubric:P1-07", "backout"],

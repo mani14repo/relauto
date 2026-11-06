@@ -1,112 +1,216 @@
 id: CMDB-AT-10
 title: Service Criticality & Operational Risk Assessment
 domain: CMDB
-variant: B
-priority: ''
-applicability: All FSI REO-managed applications and services within scope of the Reliability by Design initiative Production
-  and pre-production environments where the assessed capability is required Application Engineering, SRE, PSE, CMDB, and Architecture
-  teams responsible for the assessed capability
-accountable_owner: CMDB Standards / Practice Owner
-purpose: This assessment evaluates whether business applications and services have an approved criticality designation, documented
-  business impact, defined recovery objectives, and that the designation is reflected consistently across CMDB, ITSM, and
-  SRE records. Accurate service criticality is a prerequisite for appropriate operational investment, incident prioritization,
-  and DR test frequency.
-relevance: ''
-reassessment_trigger: ''
+variant: C
+priority: P1
+applicability: One Business Application and its Production Application Services. • Tier designation, BIA, RTO/RPO, consistency,
+  dependency inheritance
+accountable_owner: CMDB Process Owner / SRE Region Lead
+purpose: Determine whether each service has an approved tier with documented business impact and recovery objectives, and
+  whether the tier consistently drives incident priority, change risk, SRE engagement, data-quality thresholds and attestation
+  frequency.
+relevance: V1 used two tier vocabularies and two priority mappings; V2 harmonizes to the CMDB-STD-00 tier table (OD-2). Tier
+  drives which thresholds apply in every other CMDB assessment.
+reassessment_trigger: Annually; after business change or tier-mismatch incident
 scope:
-- All FSI REO-managed applications and services within scope of the Reliability by Design initiative
-- Production and pre-production environments where the assessed capability is required
-- Application Engineering, SRE, PSE, CMDB, and Architecture teams responsible for the assessed capability
-signoff_roles: []
+- • Tier designation, BIA, RTO/RPO, consistency, dependency inheritance
+- • DR testing (SRE-AT / SRE-PB-10)
+signoff_roles:
+- Assessment Lead
+- Data Steward (portfolio)
+- SRE Region Lead
+- Business Application Owner / Engineering Owner
+- CMDB Process Owner
 criteria:
 - id: CMDB-AT-10-C01
   number: 1
-  name: Service criticality tier is designated and documented
-  standard_ref: CMDB-STD-10 — Service Criticality & Tiering Standard; CMDB-POL-10
-  applicability: All production business applications and services managed by FSI REO
-  required_evidence: CMDB record showing u_service_tier or criticality field populated; documented criticality designation
-    with approver and date
-  evaluation_method: Deterministic — check u_service_tier (or equivalent) is not null on cmdb_ci record
+  name: Tier designated and approved
+  standard_ref: CMDB-STD-10 R01–R03
+  applicability: Production Application Services
+  required_evidence: busines_criticality set; approver and date recorded
+  evaluation_method: Deterministic
   methods:
   - deterministic
-  acceptance_criteria: CMDB record has approved service tier designation (Tier 1 Critical / Tier 2 Standard / Tier 3) with
-    accountable approver documented
+  acceptance_criteria: 100%
   default_risk: High
-  default_risk_assumed: true
-  accountable_owner: CMDB / Application Engineering / Architecture
-  reassessment: When application criticality changes, after material architecture change, or annually
+  default_risk_assumed: false
+  accountable_owner: ''
+  reassessment: ''
   example_risk: ''
   example_recommendation: ''
   references:
   - CMDB-STD-10
-  - CMDB-POL-10
+  - CMDB-PB-09
+  rubric_refs:
+  - P1-02
+  rubric_enablers: []
+  csdm_layer: Foundation
+  data_source: cmdb_ci_service_auto; approval record
+  formula: Approved tiers ÷ services
+  maturity_bands: L0 < 25%  |  L1 25–49%  |  L2 50–79%  |  L3 80% to tier threshold  |  L4 ≥ tier threshold sustained 2 cycles
+  look_for: • Default value never reviewed
+  risk_if_gap: High
+  playbooks:
+  - CMDB-PB-09
 - id: CMDB-AT-10-C02
   number: 2
-  name: Business impact assessment is current
-  standard_ref: CMDB-STD-10; ISO 22301:2019
-  applicability: All Tier 1 Critical services; Tier 2 Standard services where BIA is required by policy
-  required_evidence: Business impact analysis document or record with date within 12 months; approved by business owner
-  evaluation_method: 'AI-Assisted — review BIA document for completeness: financial impact, user impact, regulatory impact,
-    and reputational impact sections'
+  name: Business impact analysis current
+  standard_ref: CMDB-STD-10 R04
+  applicability: Tier 1; Tier 2 where policy requires
+  required_evidence: BIA ≤ 12 months covering financial, member/client, regulatory, reputational impact
+  evaluation_method: AI-assisted completeness review + Human approval
   methods:
   - ai
-  acceptance_criteria: BIA document exists, approved by business owner, dated within 12 months, and covers financial, user,
-    regulatory, and reputational impact dimensions
+  acceptance_criteria: 100%
   default_risk: High
-  default_risk_assumed: true
-  accountable_owner: Application Engineering / Business Owner
-  reassessment: Annually, or after significant change to service scope or business function
+  default_risk_assumed: false
+  accountable_owner: ''
+  reassessment: ''
   example_risk: ''
   example_recommendation: ''
   references:
   - CMDB-STD-10
+  - CMDB-PB-09
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: Manage Portfolio
+  data_source: BIA repository
+  formula: Current BIAs ÷ required
+  maturity_bands: L0 < 25%  |  L1 25–49%  |  L2 50–79%  |  L3 80% to tier threshold  |  L4 ≥ tier threshold sustained 2 cycles
+  look_for: • Month-end rebate processing windows not reflected
+  risk_if_gap: High
+  playbooks:
+  - CMDB-PB-09
 - id: CMDB-AT-10-C03
   number: 3
-  name: RTO and RPO are defined, approved, and reflected in operational records
-  standard_ref: CMDB-STD-10; ITSM-STD-12 — Service Continuity Standard; ISO 22301:2019
-  applicability: All Tier 1 Critical and Tier 2 Standard services
-  required_evidence: CMDB record or continuity plan with approved RTO and RPO values; evidence of SRE and business owner sign-off
-  evaluation_method: Deterministic — check RTO/RPO fields are populated on CMDB record or continuity plan; AI-Assisted — confirm
-    values are approved and consistent across CMDB, continuity plan, and DR runbook
+  name: RTO/RPO recorded and consistent
+  standard_ref: CMDB-STD-10 R05
+  applicability: Tier 1/2
+  required_evidence: u_rto/u_rpo on Application Service equal continuity plan and DR runbook values and within tier limits
+  evaluation_method: Deterministic + AI-assisted document comparison
   methods:
   - deterministic
   - ai
-  acceptance_criteria: RTO and RPO are defined with specific time values, approved by business owner and SRE, and match values
-    in the service continuity plan and DR runbook
+  acceptance_criteria: 100%
   default_risk: High
-  default_risk_assumed: true
-  accountable_owner: Application Engineering / SRE / Business Owner
-  reassessment: Annually, after major architecture change, after DR test reveals RTO/RPO cannot be met
+  default_risk_assumed: false
+  accountable_owner: ''
+  reassessment: ''
   example_risk: ''
   example_recommendation: ''
   references:
   - CMDB-STD-10
-  - ITSM-STD-12
+  - CMDB-PB-09
+  rubric_refs:
+  - P2-07
+  rubric_enablers: []
+  csdm_layer: Service Delivery
+  data_source: CMDB; continuity plan
+  formula: Consistent services ÷ Tier 1/2 services
+  maturity_bands: L0 < 25%  |  L1 25–49%  |  L2 50–79%  |  L3 80% to tier threshold  |  L4 ≥ tier threshold sustained 2 cycles
+  look_for: • RTO in plan exceeds tier maximum without exception
+  risk_if_gap: High
+  playbooks:
+  - CMDB-PB-09
 - id: CMDB-AT-10-C04
   number: 4
-  name: Criticality designation is consistently reflected across operational records
-  standard_ref: CMDB-STD-10; ITSM-STD-01 — Incident Management Standard
-  applicability: All services with a designated service tier
-  required_evidence: Incident records showing correct priority derived from service tier; Change records showing risk rating
-    consistent with service tier; SRE engagement model reflecting tier
-  evaluation_method: Deterministic — sample last 5 Incidents for this service; verify incident.priority aligns with service
-    tier (Tier 1 → P1/P2; Tier 2 → P2/P3)
+  name: Tier drives priority and engagement
+  standard_ref: CMDB-STD-10 R06–R07
+  applicability: Incidents last 90 days
+  required_evidence: Priority aligned to tier table for outage/degradation incidents
+  evaluation_method: Deterministic + Human for impact classification
   methods:
   - deterministic
-  acceptance_criteria: Incident priority, change risk classification, and SRE engagement model are consistent with the CMDB
-    service tier designation
+  acceptance_criteria: ≥ 95%
   default_risk: High
-  default_risk_assumed: true
-  accountable_owner: CMDB / ITSM Process Owner
-  reassessment: Quarterly audit; after criticality designation change; after incident where priority appeared misaligned
+  default_risk_assumed: false
+  accountable_owner: ''
+  reassessment: ''
   example_risk: ''
   example_recommendation: ''
   references:
   - CMDB-STD-10
-  - ITSM-STD-01
-source_file: CMDB-AT-10 — Service Criticality & Operational Risk Assessment.docx
+  - CMDB-PB-09
+  rubric_refs:
+  - P1-02
+  rubric_enablers: []
+  csdm_layer: ITSM
+  data_source: incident
+  formula: Aligned incidents ÷ sampled outage/degradation incidents (25 per tier)
+  maturity_bands: L0 < 25%  |  L1 25–49%  |  L2 50–79%  |  L3 80% to tier threshold  |  L4 ≥ tier threshold sustained 2 cycles
+  look_for: • Tier 1 outages logged P3 because CI was generic
+  risk_if_gap: High
+  playbooks:
+  - CMDB-PB-09
+- id: CMDB-AT-10-C05
+  number: 5
+  name: Tier drives data-quality obligations
+  standard_ref: CMDB-STD-05 R05; CMDB-STD-11 R01
+  applicability: All tiers
+  required_evidence: CMDB Health thresholds and attestation intervals applied by tier
+  evaluation_method: Deterministic
+  methods:
+  - deterministic
+  acceptance_criteria: All TH rules tier-aware
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: ''
+  reassessment: ''
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-05
+  - CMDB-STD-11
+  - CMDB-PB-02
+  rubric_refs:
+  - P2-10
+  rubric_enablers: []
+  csdm_layer: Manage Portfolio
+  data_source: Health config; certification policies
+  formula: Tier-based rules configured (yes/no per rule)
+  maturity_bands: L0 no  |  L2 partial  |  L4 yes
+  look_for: —
+  risk_if_gap: Medium
+  playbooks:
+  - CMDB-PB-02
+- id: CMDB-AT-10-C06
+  number: 6
+  name: Dependency tier inheritance
+  standard_ref: CMDB-STD-10 R08
+  applicability: Tier 1 services
+  required_evidence: No Critical dependency on a lower-tier service/offering without accepted risk
+  evaluation_method: Deterministic
+  methods:
+  - deterministic
+  acceptance_criteria: 0 unaccepted inversions
+  default_risk: High
+  default_risk_assumed: false
+  accountable_owner: ''
+  reassessment: ''
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-10
+  - CMDB-PB-09
+  rubric_refs:
+  - P2-01
+  rubric_enablers: []
+  csdm_layer: Service Delivery
+  data_source: cmdb_rel_ci + tiers
+  formula: Tier 1 services with tier-inversion on Critical dependency
+  maturity_bands: L0 not checked  |  L2 inversions known, unaccepted  |  L4 0 unaccepted
+  look_for: • Tier 1 rebate API depending on Tier 3 file transfer
+  risk_if_gap: High
+  playbooks:
+  - CMDB-PB-09
+source_file: CMDB-AT-10 — Service Criticality & Operational Risk Assessment — V2.docx
 references:
 - CMDB-STD-10
-- CMDB-POL-10
-- ITSM-STD-12
-- ITSM-STD-01
+- CMDB-STD-05
+- CMDB-STD-11
+- CMDB-PB-09
+- CMDB-PB-02
+version: V2
+rubric_refs:
+- P1-02
+- P2-07

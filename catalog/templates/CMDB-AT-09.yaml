@@ -1,114 +1,204 @@
 id: CMDB-AT-09
 title: End-of-Life & Technical Debt Registration Assessment
 domain: CMDB
-variant: A
+variant: C
 priority: P2
-applicability: All FSI REO applications and infrastructure with known or suspected EOL dates; immediate focus on Jenkins (G-17)
-  and any other platforms past or approaching vendor EOL
-accountable_owner: CMDB / Application Engineering / Platform Engineering
-purpose: Evaluate whether End-of-Life and technical debt items for FSI REO applications and infrastructure are formally registered,
-  risk-assessed, and managed through a governed remediation process. Unmanaged EOL items represent known, quantifiable risks
-  that require explicit acceptance or remediation.
-relevance: 28/35 FSI apps still on Jenkins past end-Oct 2026 decommission deadline (G-17 High Severity). No EOL register found.
-  No technical debt register found. This is the highest-severity near-term risk in the portfolio.
-reassessment_trigger: Major release, architecture change, or Post-Incident Review recommendation
-scope: []
+applicability: Software platforms and infrastructure supporting FSI Application Services. • EOL dates on product models• Exposure
+  via CMDB relationships• Plans, risk acceptance, burn-down
+accountable_owner: Platform Engineering / Application Engineering
+purpose: Determine whether end-of-life and technical debt are recorded against CMDB product models and Application Services
+  so that exposure can be computed from the CMDB, remediation is planned, and deferrals are formally risk-accepted.
+relevance: 'Jenkins: 28 of 35 apps not migrated past the Oct 2026 deadline (G-17). No EOL or technical-debt register existed
+  in V1.'
+reassessment_trigger: Quarterly
+scope:
+- • EOL dates on product models• Exposure via CMDB relationships• Plans, risk acceptance, burn-down
+- • Asset finance
 signoff_roles:
 - Assessment Lead
-- Domain Reviewer
-- Engineering / Service Owner
-- PSE Representative
+- Data Steward (portfolio)
+- SRE Region Lead
+- Business Application Owner / Engineering Owner
+- CMDB Process Owner
 criteria:
 - id: CMDB-AT-09-C01
   number: 1
-  name: EOL Register Completeness
-  standard_ref: ITIL Asset Management; ITPN G-17
-  applicability: All software platforms, middleware, and infrastructure components with vendor EOL dates
-  required_evidence: 'EOL register: each component with vendor EOL date, affected application count, and remediation plan'
-  evaluation_method: 'Deterministic: EOL register covers all components with known EOL dates; Jenkins listed as critical overdue'
+  name: EOL dates recorded on product models
+  standard_ref: CMDB-STD-07 R14
+  applicability: Platforms on Tier 1/2 hosting CIs
+  required_evidence: Vendor EOL/EOS dates on models
+  evaluation_method: Deterministic
   methods:
   - deterministic
-  acceptance_criteria: EOL register complete for all production components; Jenkins and any other past-EOL items listed as
-    P1
-  default_risk: Critical
+  acceptance_criteria: ≥ 95%
+  default_risk: High
   default_risk_assumed: false
-  accountable_owner: CMDB / Application Engineering
+  accountable_owner: ''
   reassessment: ''
-  example_risk: Critical — Jenkins EOL is confirmed overdue with 28/35 FSI apps not migrated as of Oct 2026
-  example_recommendation: Create EOL register immediately; list Jenkins, verify all other platforms; assign owner per item
-  references: []
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-07
+  - CMDB-PB-04
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: Foundation
+  data_source: Product models
+  formula: Models with EOL date ÷ models in use
+  maturity_bands: L0 < 25%  |  L1 25–49%  |  L2 50–79%  |  L3 80% to tier threshold  |  L4 ≥ tier threshold sustained 2 cycles
+  look_for: • EOL tracked in a spreadsheet outside CMDB
+  risk_if_gap: High
+  playbooks:
+  - CMDB-PB-04
 - id: CMDB-AT-09-C02
   number: 2
-  name: Technical Debt Inventory
-  standard_ref: FSI Engineering Standards; ITPN G-17, G-22, G-23
-  applicability: All known technical debt items in FSI REO applications
-  required_evidence: 'Technical debt register or engineering backlog: each item with risk classification, estimated effort,
-    and owner'
-  evaluation_method: 'Human review: technical debt register exists; each item risk-classified and owned'
+  name: Exposure computed through CMDB
+  standard_ref: CMDB-STD-07 R15
+  applicability: Past or ≤ 6-month EOL items
+  required_evidence: List of affected Application Services and tiers generated from relationships
+  evaluation_method: Deterministic
   methods:
-  - human
-  acceptance_criteria: Technical debt register exists; all known items risk-classified (Critical / High / Medium / Low) and
-    owned
+  - deterministic
+  acceptance_criteria: 100%
   default_risk: High
   default_risk_assumed: false
-  accountable_owner: Application Engineering / REO leadership
+  accountable_owner: ''
   reassessment: ''
-  example_risk: High — unregistered technical debt accumulates without visibility or governance
-  example_recommendation: Facilitate technical debt inventory workshop per application team; consolidate into single register
-  references: []
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-07
+  - CMDB-PB-04
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: Service Delivery
+  data_source: cmdb_rel_ci; svc_ci_assoc
+  formula: EOL items with computed service exposure ÷ EOL items
+  maturity_bands: L0 < 25%  |  L1 25–49%  |  L2 50–79%  |  L3 80% to tier threshold  |  L4 ≥ tier threshold sustained 2 cycles
+  look_for: • Jenkins exposure counted by hand
+  risk_if_gap: High
+  playbooks:
+  - CMDB-PB-04
 - id: CMDB-AT-09-C03
   number: 3
-  name: EOL Remediation Plan Quality
-  standard_ref: ITIL Asset Management; ITPN G-17
-  applicability: All past-EOL and within-6-month EOL components
-  required_evidence: 'Remediation plan: target date, migration path, testing plan, rollback plan, and owner for each past/near-EOL
-    item'
-  evaluation_method: 'Human review: remediation plan is specific, tested, and achievable within target date'
+  name: Remediation plan quality
+  standard_ref: CMDB-STD-07 R16
+  applicability: Past or ≤ 6-month EOL items
+  required_evidence: 'Per-application plan: target date, path, test, rollback, owner'
+  evaluation_method: Human review
   methods:
   - human
-  acceptance_criteria: Each past-EOL item has a remediation plan with target date, tested migration path, and named owner
+  acceptance_criteria: 100%
   default_risk: Critical
   default_risk_assumed: false
-  accountable_owner: Application Engineering / Platform Engineering
+  accountable_owner: ''
   reassessment: ''
-  example_risk: Critical — Jenkins migration plan missing for 28 apps with an already-missed deadline
-  example_recommendation: Produce app-by-app Jenkins migration plan within 5 days; escalate to REO leadership daily until
-    done
-  references: []
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-07
+  - CMDB-PB-04
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: Manage Portfolio
+  data_source: Plans
+  formula: Items with complete plan ÷ items
+  maturity_bands: L0 < 25%  |  L1 25–49%  |  L2 50–79%  |  L3 80% to tier threshold  |  L4 ≥ tier threshold sustained 2 cycles
+  look_for: • Plans at platform level only, not per app
+  risk_if_gap: Critical
+  playbooks:
+  - CMDB-PB-04
 - id: CMDB-AT-09-C04
   number: 4
-  name: Risk Acceptance for Deferred Remediation
-  standard_ref: FSI IT Risk Framework; ITPN G-17
-  applicability: Any EOL or technical debt item where remediation is deferred beyond the original target date
-  required_evidence: 'Risk acceptance record: each deferred item has a signed risk acceptance with residual risk, compensating
-    control, and new target date'
-  evaluation_method: 'Deterministic: no deferred EOL item without a signed risk acceptance'
+  name: Risk acceptance for deferrals
+  standard_ref: CMDB-POL-07 PS-08
+  applicability: Items past target date
+  required_evidence: Signed acceptance with residual risk, compensating control, new date, expiry
+  evaluation_method: Deterministic
   methods:
   - deterministic
-  acceptance_criteria: All deferred EOL items have a signed risk acceptance from an authorized risk owner
+  acceptance_criteria: 100%
   default_risk: High
   default_risk_assumed: false
-  accountable_owner: REO leadership / Compliance
+  accountable_owner: ''
   reassessment: ''
-  example_risk: High — deferred Jenkins migration is currently an unacknowledged risk at executive level
-  example_recommendation: Obtain signed risk acceptance for Jenkins deferral from REO leadership immediately
-  references: []
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-POL-07
+  - CMDB-PB-04
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: Manage Portfolio
+  data_source: Risk register
+  formula: Deferred items with valid acceptance ÷ deferred items
+  maturity_bands: L0 < 25%  |  L1 25–49%  |  L2 50–79%  |  L3 80% to tier threshold  |  L4 ≥ tier threshold sustained 2 cycles
+  look_for: • Jenkins deferral not acknowledged at executive level
+  risk_if_gap: High
+  playbooks:
+  - CMDB-PB-04
 - id: CMDB-AT-09-C05
   number: 5
-  name: Technical Debt Reduction Velocity
-  standard_ref: ITIL CSI; ITPN G-22, G-23
-  applicability: All active technical debt remediation efforts
-  required_evidence: 'Technical debt register: items closed per quarter; planned vs. actual closure rate'
-  evaluation_method: 'Deterministic: > 20% of critical/high technical debt items resolved per quarter'
+  name: Technical debt linked to Business Applications
+  standard_ref: CMDB-STD-07 R17
+  applicability: Known debt items
+  required_evidence: Register entries reference BA/Application Service with risk class and owner
+  evaluation_method: Deterministic
   methods:
   - deterministic
-  acceptance_criteria: '> 20% of Critical/High technical debt items resolved per quarter; progress reported to REO leadership'
+  acceptance_criteria: 100%
   default_risk: Medium
   default_risk_assumed: false
-  accountable_owner: Application Engineering / REO leadership
+  accountable_owner: ''
   reassessment: ''
-  example_risk: Medium — without measuring reduction velocity, technical debt accrual rate cannot be assessed
-  example_recommendation: Report technical debt burn-down in monthly REO governance meeting; celebrate reductions
-  references: []
-source_file: CMDB-AT-09 — End-of-Life & Technical Debt Registration Assessment.docx
-references: []
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-07
+  - CMDB-PB-04
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: Manage Portfolio
+  data_source: Debt register
+  formula: Linked items ÷ items
+  maturity_bands: L0 < 25%  |  L1 25–49%  |  L2 50–79%  |  L3 80% to tier threshold  |  L4 ≥ tier threshold sustained 2 cycles
+  look_for: —
+  risk_if_gap: Medium
+  playbooks:
+  - CMDB-PB-04
+- id: CMDB-AT-09-C06
+  number: 6
+  name: Burn-down velocity
+  standard_ref: CMDB-STD-07 R18
+  applicability: Critical/High items
+  required_evidence: Quarterly closed vs planned
+  evaluation_method: Deterministic
+  methods:
+  - deterministic
+  acceptance_criteria: ≥ 20% per quarter; reported to REO
+  default_risk: Medium
+  default_risk_assumed: false
+  accountable_owner: ''
+  reassessment: ''
+  example_risk: ''
+  example_recommendation: ''
+  references:
+  - CMDB-STD-07
+  - CMDB-PB-04
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: Manage Portfolio
+  data_source: Register
+  formula: Critical/High closed in quarter ÷ open at quarter start
+  maturity_bands: L0 not tracked  |  L1 < 5%  |  L2 5–10%  |  L3 10–20%  |  L4 ≥ 20%
+  look_for: —
+  risk_if_gap: Medium
+  playbooks:
+  - CMDB-PB-04
+source_file: CMDB-AT-09 — End-of-Life & Technical Debt Registration Assessment — V2.docx
+references:
+- CMDB-STD-07
+- CMDB-POL-07
+- CMDB-PB-04
+version: V2
+rubric_refs: []

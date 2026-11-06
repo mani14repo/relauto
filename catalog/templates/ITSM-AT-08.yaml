@@ -36,6 +36,15 @@ criteria:
   example_risk: High — 2 intake paths and no register means improvement work is invisible to governance
   example_recommendation: Consolidate improvement intake to one register; populate all 23 IOs within 14 days
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: ITSM-AT-08-C02
   number: 2
   name: Value-Based Prioritization
@@ -54,6 +63,15 @@ criteria:
   example_recommendation: Apply IO scoring model to all initiatives; require written rationale for any lower-scoring item
     prioritized above a higher-scoring one
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: ITSM-AT-08-C03
   number: 3
   name: Improvement Delivery Velocity
@@ -71,6 +89,15 @@ criteria:
   example_risk: Medium — without measuring delivery velocity, improvement commitments are nominal
   example_recommendation: Track planned vs. actual delivery date for each IO; report in monthly governance meeting
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: ITSM-AT-08-C04
   number: 4
   name: Improvement Impact Measurement
@@ -88,6 +115,15 @@ criteria:
   example_risk: Medium — without measurement, improvements cannot be credited to the CSI program
   example_recommendation: Define success metric before starting each IO; measure and record 90 days post-implementation
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: ITSM-AT-08-C05
   number: 5
   name: Governance Cadence Adherence
@@ -105,5 +141,16 @@ criteria:
   example_risk: Medium — governance gaps allow improvement work to stall without visibility
   example_recommendation: Lock monthly governance calendar; require improvement register status as standing agenda item
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 source_file: ITSM-AT-08 — Continuous Improvement & Service Improvement Plan Assessment.docx
 references: []
+version: V1
+rubric_refs: []

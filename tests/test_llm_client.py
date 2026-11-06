@@ -18,17 +18,30 @@ class Resp:
             raise httpx.HTTPStatusError("err", request=None, response=None)
 
 
+@pytest.fixture(autouse=True)
+def no_network(monkeypatch):
+    """Model calls stream through httpx.stream; never let a test reach a real server."""
+    def blocked(*a, **k):
+        raise AssertionError("test tried to reach a real model server")
+    monkeypatch.setattr(mod.httpx, "stream", blocked)
+    monkeypatch.setattr(mod.httpx, "post", blocked)
+
+
 @pytest.fixture()
 def capture(monkeypatch):
     sent = {}
 
-    def post(url, json=None, timeout=None, headers=None):
-        sent["url"], sent["json"] = url, json
-        if url.endswith("/api/chat"):
-            return Resp({"message": {"content": '<think>hmm</think>{"result": "Met"}'}})
-        return Resp({"choices": [{"message": {"content": '{"result": "Gap"}'}}]})
+    def fake_stream_call(url, payload, *, timeout, headers=None, cancel_check=None, piece):
+        sent["url"], sent["json"] = url, payload
+        if url.endswith("/api/chat"):     # Ollama streams one JSON object per line
+            lines = ['{"message": {"content": "<think>hmm</think>"}, "done": false}',
+                     '{"message": {"content": "{\\"result\\": \\"Met\\"}"}, "done": true}']
+        else:                             # OpenAI-compatible servers stream SSE
+            lines = ['data: {"choices": [{"delta": {"content": "{\\"result\\": "}}]}',
+                     'data: {"choices": [{"delta": {"content": "\\"Gap\\"}"}}]}', "data: [DONE]"]
+        return "".join(t for t in (piece(x) for x in lines) if t)
 
-    monkeypatch.setattr(mod.httpx, "post", post)
+    monkeypatch.setattr(mod, "stream_call", fake_stream_call)
     return sent
 
 
@@ -38,6 +51,7 @@ def test_ollama_disables_thinking_and_sends_schema(capture):
     assert c.json_chat("sys", "user", {"type": "object"}) == {"result": "Met"}
     p = capture["json"]
     assert p["think"] is False and p["format"] == {"type": "object"} and p["options"]["temperature"] == 0
+    assert p["stream"] is True
     c.chat("sys", "q")
     assert capture["json"]["think"] is False and "format" not in capture["json"]
 

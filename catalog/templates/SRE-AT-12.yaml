@@ -38,6 +38,15 @@ criteria:
   example_risk: Critical — 100% manual deployment; 28/35 apps still on Jenkins past decommission deadline
   example_recommendation: Escalate Jenkins migration daily; require pipeline automation as gate for any new release
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-12-C02
   number: 2
   name: Quality Gate Coverage
@@ -57,6 +66,15 @@ criteria:
   example_risk: High — no quality gates mean defects reach production without detection; change failure rate is unmeasured
   example_recommendation: Define minimum quality gate set for FSI pipelines; enforce in all pipeline configurations
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-12-C03
   number: 3
   name: Deployment Traceability
@@ -74,6 +92,15 @@ criteria:
   example_risk: Critical — no deployment traceability means deployment-caused incidents cannot be identified
   example_recommendation: Inject CHG number into pipeline at deployment trigger; record run ID in Change Record post-deploy
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-12-C04
   number: 4
   name: Deployment Frequency & Cycle Time
@@ -92,6 +119,15 @@ criteria:
   example_risk: Medium — unmeasured deployment frequency prevents DORA maturity assessment
   example_recommendation: Extract deployment frequency and lead time from pipeline logs; include in monthly engineering metrics
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-12-C05
   number: 5
   name: Rollback Automation
@@ -110,5 +146,16 @@ criteria:
   example_recommendation: Automate rollback in pipeline; test rollback for all P1/P2 applications; remove manual backout plan
     dependency
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 source_file: SRE-AT-12 — Deployment Pipeline & Release Readiness Assessment.docx
 references: []
+version: V1
+rubric_refs: []

@@ -19,7 +19,11 @@ def verify(raw: dict, provided_ids: set[str]) -> tuple[bool, list[str], dict]:
         "recommendation": str(raw.get("recommendation", "") or "").strip(),
         "risk": str(raw.get("risk", "High")).strip().capitalize(),
         "confidence": raw.get("confidence", 0),
+        "measured_value": str(raw.get("measured_value") or "").strip()[:300],
+        "maturity_level": raw.get("maturity_level"),
     }
+    lv = out["maturity_level"]
+    out["maturity_level"] = lv if isinstance(lv, int) and not isinstance(lv, bool) and 0 <= lv <= 4 else None
     if out["result"] not in VALID:
         problems.append(f"invalid result {out['result']!r}")
     if not out["rationale"]:

@@ -148,3 +148,20 @@ def test_progress_warns_when_model_unavailable():
     Evaluator(Down(None)).evaluate_pending(assessment(), bundle(), progress=Progress(sink=saved.append))
     last = saved[-1]["log"][-1]
     assert last["level"] == "warn" and "not available at http://localhost:11434" in last["msg"]
+
+
+def test_v2_criterion_gets_formula_and_level():
+    a = Assessment(application=ApplicationRef(name="Orders"), templates=["CMDB-AT-12"], assessment_date=date(2026, 11, 4))
+    fc = FakeClient(lambda u: {"result": "Gap", "rationale": "x", "cited": [first_chunk_id(u)], "gaps": ["y"],
+                               "recommendation": "z", "risk": "High", "confidence": 0.9,
+                               "measured_value": "3 of 5 sources mapped (60%)", "maturity_level": 2})
+    Evaluator(fc).evaluate_pending(a, bundle())
+    assert all("Measurement / formula:" in p and "Maturity bands (L0-L4):" in p for p in fc.prompts)
+    r = a.results["CMDB-AT-12-C02"]
+    assert r.maturity_level == 2 and r.measured_value.startswith("3 of 5")
+
+
+def test_invalid_maturity_level_is_dropped():
+    _, _, out = verify({"result": "Gap", "rationale": "r", "cited": ["a"], "gaps": ["g"], "risk": "High",
+                        "confidence": 0.5, "maturity_level": 7}, {"a"})
+    assert out["maturity_level"] is None

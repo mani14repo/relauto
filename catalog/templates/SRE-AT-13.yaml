@@ -37,6 +37,15 @@ criteria:
   example_risk: Critical — GDX->RCI->CRS chain has no inventory; integration failures are invisible to incident response
   example_recommendation: Enumerate all integrations for Region A applications first; document in CMDB as relationship records
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-13-C02
   number: 2
   name: Integration Health Monitoring
@@ -55,6 +64,15 @@ criteria:
   example_risk: High — integration failures in the GDX chain propagate silently without integration-level monitoring
   example_recommendation: Instrument each integration endpoint with success rate and latency monitors in Splunk or AppDynamics
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-13-C03
   number: 3
   name: Integration Error Handling
@@ -76,6 +94,15 @@ criteria:
   example_recommendation: Review error handling for all Region A integration endpoints; implement retry and DLQ for message-based
     integrations
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-13-C04
   number: 4
   name: Integration SLA Definition & Measurement
@@ -94,6 +121,15 @@ criteria:
   example_risk: High — ~20 handoffs with no SLA includes integration-level commitments
   example_recommendation: Define SLA for each integration in the GDX revenue chain; measure in AppDynamics; report monthly
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-13-C05
   number: 5
   name: Integration Change Impact Coverage
@@ -114,5 +150,16 @@ criteria:
   example_recommendation: Add consumer notification to Change workflow for integration endpoint changes; use CMDB relationship
     data
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 source_file: SRE-AT-13 — Application Dependency & Integration Health Assessment.docx
 references: []
+version: V1
+rubric_refs: []

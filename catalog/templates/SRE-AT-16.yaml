@@ -42,6 +42,15 @@ criteria:
   references:
   - SRE-STD-16
   - SRE-POL-16
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-16-C02
   number: 2
   name: Toil reduction targets are set and tracked against the baseline
@@ -65,6 +74,15 @@ criteria:
   references:
   - SRE-STD-16
   - SRE-PRC-16
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-16-C03
   number: 3
   name: Top toil items have identified automation candidates with prioritization rationale
@@ -87,6 +105,15 @@ criteria:
   references:
   - SRE-STD-16
   - SRE-STD-14
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-16-C04
   number: 4
   name: Engineering capacity released by automation is measured and reinvested
@@ -108,9 +135,20 @@ criteria:
   example_recommendation: ''
   references:
   - SRE-POL-16
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 source_file: SRE-AT-16 — SRE Toil & Engineering Capacity Assessment.docx
 references:
 - SRE-STD-16
 - SRE-POL-16
 - SRE-PRC-16
 - SRE-STD-14
+version: V1
+rubric_refs: []

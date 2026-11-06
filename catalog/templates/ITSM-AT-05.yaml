@@ -36,6 +36,15 @@ criteria:
   example_risk: Medium — services missing from catalog receive ad-hoc support without SLA or fulfillment path
   example_recommendation: Create catalog items for all 63 FSI apps using CMDB_Mapping.xlsx as the master list
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: ITSM-AT-05-C02
   number: 2
   name: Ownership & SLA Assignment
@@ -53,6 +62,15 @@ criteria:
   example_risk: Medium — unclaimed catalog items receive best-effort fulfillment with no accountability
   example_recommendation: Assign owners aligned to CMDB owned_by; set SLA targets consistent with service tier
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: ITSM-AT-05-C03
   number: 3
   name: Request Fulfillment Path Accuracy
@@ -71,6 +89,15 @@ criteria:
   example_risk: Medium — broken fulfillment workflows create ticket backlogs and erode user trust
   example_recommendation: Test fulfillment workflows quarterly; assign workflow owner per catalog category
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: ITSM-AT-05-C04
   number: 4
   name: User-Facing Description Quality
@@ -88,6 +115,15 @@ criteria:
   example_risk: Low — poor descriptions drive unnecessary Tier-1 contacts and reduce self-service adoption
   example_recommendation: Review and rewrite catalog descriptions with input from PSE front-line agents
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: ITSM-AT-05-C05
   number: 5
   name: Catalog-to-CMDB Alignment
@@ -105,5 +141,16 @@ criteria:
   example_risk: Medium — unlinked catalog items generate orphan requests with no CMDB attribution
   example_recommendation: Link catalog items to CMDB records as part of CMDB accuracy remediation
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 source_file: ITSM-AT-05 — Service Catalog Completeness & Accuracy Assessment.docx
 references: []
+version: V1
+rubric_refs: []

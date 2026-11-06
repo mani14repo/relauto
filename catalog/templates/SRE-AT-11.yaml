@@ -38,6 +38,15 @@ criteria:
   example_recommendation: Prioritize Jenkins CVE remediation; scan all FSI production components immediately; track remediation
     SLA
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-11-C02
   number: 2
   name: Secrets & Credential Management
@@ -58,6 +67,15 @@ criteria:
   example_recommendation: Run SAST scan for hardcoded credentials; migrate all secrets to Vault or equivalent before Jenkins
     decommission
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-11-C03
   number: 3
   name: Dependency & Third-Party Library Security
@@ -75,6 +93,15 @@ criteria:
   example_risk: High — EOL platforms typically carry vulnerable transitive dependencies
   example_recommendation: Integrate SCA tool in CI/CD pipeline; remediate Critical/High findings before each release
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-11-C04
   number: 4
   name: CI/CD Pipeline Security Controls
@@ -94,6 +121,15 @@ criteria:
   example_recommendation: Add SAST, SCA, and Change gate to every pipeline as part of Jenkins migration; block deploy without
     all three
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-11-C05
   number: 5
   name: Access Control & Privilege Review
@@ -112,5 +148,16 @@ criteria:
   example_recommendation: Conduct emergency access review for AE lead on leave; ensure shared accounts are removed; schedule
     quarterly reviews
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 source_file: SRE-AT-11 — Security & Compliance Posture Assessment.docx
 references: []
+version: V1
+rubric_refs: []

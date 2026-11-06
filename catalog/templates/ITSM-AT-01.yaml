@@ -35,6 +35,15 @@ criteria:
   example_risk: Critical — 100% of changes show no automated gate; CFAO/Eos deployments bypass Change control
   example_recommendation: Implement ServiceNow Change gate in CI/CD pipeline; block deploy without approved CHG
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: ITSM-AT-01-C02
   number: 2
   name: Risk Assessment Quality
@@ -53,6 +62,15 @@ criteria:
   example_risk: High — CAB required = FALSE for all 52 changes; no formal risk assessment found
   example_recommendation: Define risk assessment standard; require completion before change approval
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: ITSM-AT-01-C03
   number: 3
   name: Rollback Plan Documentation
@@ -70,6 +88,15 @@ criteria:
   example_risk: High — 3 of 15 backout plans reference wrong CHG number (copy-paste error)
   example_recommendation: Enforce backout plan template; prohibit free-text reference to other CHG numbers
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: ITSM-AT-01-C04
   number: 4
   name: Post-Deployment Validation Evidence
@@ -88,6 +115,15 @@ criteria:
   example_risk: Medium — 0% Change->Incident linkage means deployment-caused incidents are undetectable
   example_recommendation: Create post-deploy checklist; require completion before Change Record is Closed
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: ITSM-AT-01-C05
   number: 5
   name: Jenkins Migration Compliance (Oct 2026 Deadline)
@@ -106,5 +142,16 @@ criteria:
   example_recommendation: Escalate to REO leadership immediately; assign migration owner per application; daily burn-down
     tracking
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 source_file: ITSM-AT-01 — Change & Production Readiness Assessment.docx
 references: []
+version: V1
+rubric_refs: []

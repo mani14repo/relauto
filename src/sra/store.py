@@ -85,6 +85,10 @@ class Store(Protocol):
     def feedback(self, aid: str, criterion_id: str, ai: dict | None, human: dict) -> None: ...
     def set_job(self, aid: str, job: dict) -> None: ...
     def get_job(self, aid: str) -> dict | None: ...
+    # Cancel requests live apart from the job record so the running job's progress updates cannot overwrite them.
+    def request_cancel(self, aid: str) -> None: ...
+    def cancel_requested(self, aid: str) -> bool: ...
+    def clear_cancel(self, aid: str) -> None: ...
 
 
 def _bundle_from(rows: list[dict], blobs: BlobStore, as_of: datetime | None) -> EvidenceBundle:
@@ -141,6 +145,17 @@ class FileStore:
             return json.loads(p.read_text(encoding="utf-8"))
         except (FileNotFoundError, json.JSONDecodeError, PermissionError):
             return None
+
+    def request_cancel(self, aid):
+        d = self._dir(aid)
+        d.mkdir(parents=True, exist_ok=True)
+        (d / "cancel").write_text(datetime.now(timezone.utc).isoformat(), encoding="utf-8")
+
+    def cancel_requested(self, aid):
+        return (self._dir(aid) / "cancel").exists()
+
+    def clear_cancel(self, aid):
+        (self._dir(aid) / "cancel").unlink(missing_ok=True)
 
     def get(self, aid):
         p = self._dir(aid) / "assessment.json"
@@ -217,6 +232,20 @@ class PgStore:
         with self.pool.connection() as c:
             row = c.execute("SELECT state FROM jobs WHERE assessment_id = %s", (aid,)).fetchone()
         return row[0] if row else None
+
+    def request_cancel(self, aid):
+        with self.pool.connection() as c:
+            c.execute("INSERT INTO jobs (assessment_id, state, cancel_requested) VALUES (%s, '{}'::jsonb, true) "
+                      "ON CONFLICT (assessment_id) DO UPDATE SET cancel_requested = true", (aid,))
+
+    def cancel_requested(self, aid):
+        with self.pool.connection() as c:
+            row = c.execute("SELECT cancel_requested FROM jobs WHERE assessment_id = %s", (aid,)).fetchone()
+        return bool(row and row[0])
+
+    def clear_cancel(self, aid):
+        with self.pool.connection() as c:
+            c.execute("UPDATE jobs SET cancel_requested = false WHERE assessment_id = %s", (aid,))
 
     def publish(self, topic, key, payload):
         from psycopg.types.json import Jsonb

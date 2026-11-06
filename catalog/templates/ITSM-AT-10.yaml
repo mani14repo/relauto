@@ -34,6 +34,15 @@ criteria:
   example_risk: Medium — untracked vendor dependencies create unmanaged failure risk
   example_recommendation: Build vendor inventory from CMDB service relationships; cross-reference with procurement records
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: ITSM-AT-10-C02
   number: 2
   name: Contract & SLA Coverage
@@ -51,6 +60,15 @@ criteria:
   example_risk: High — vendor SLA gaps mean FSI cannot enforce reliability commitments upstream
   example_recommendation: Audit vendor contracts against critical application dependencies; escalate expired contracts
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: ITSM-AT-10-C03
   number: 3
   name: Vendor Incident Escalation Path
@@ -68,6 +86,15 @@ criteria:
   example_risk: Medium — no escalation path means extended MTTR during vendor-caused incidents
   example_recommendation: Document and test vendor escalation paths annually; store in ServiceNow CMDB supplier record
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: ITSM-AT-10-C04
   number: 4
   name: Vendor Performance Measurement
@@ -85,6 +112,15 @@ criteria:
   example_risk: Low — without measurement, vendor underperformance is invisible until a major incident
   example_recommendation: Implement quarterly vendor scorecard review; include top-3 metrics per vendor
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: ITSM-AT-10-C05
   number: 5
   name: Single-Vendor Concentration Risk
@@ -103,5 +139,16 @@ criteria:
   example_risk: Medium — Platform team single dependency for Jenkins migration exemplifies concentration risk
   example_recommendation: Map vendor concentration risk; ensure contingency for any vendor supporting > 30% of FSI portfolio
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 source_file: ITSM-AT-10 — Vendor & Third-Party Service Management Assessment.docx
 references: []
+version: V1
+rubric_refs: []

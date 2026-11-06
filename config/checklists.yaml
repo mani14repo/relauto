@@ -1,0 +1,268 @@
+# Document checklists (sra.detectors.checklists): criteria answered by checking that the evidence contains the
+# elements the acceptance criteria name. Written from each criterion's acceptance criteria and required evidence;
+# DRAFT, for SRE review. Patterns are case-insensitive regular expressions (single-quoted: backslashes are literal).
+# See the module docstring for every key. Missing documents leave the criterion for the assessor.
+settings:
+  # off: keywords only. auto/on: items with a `means` text may also match a document line by meaning (embeddings).
+  # Off because bge-small cannot tell the difference here: paraphrases scored 0.56-0.78 against unrelated lines
+  # up to 0.71 (e.g. "Owner: Risk Platform Operations"), which would turn missing items into false Mets.
+  semantic: off
+  semantic_threshold: 0.8   # cosine similarity between an item's `means` and a document line
+  rto_rpo_max_hours:        # CMDB-AT-10-C03 tier limits, hours; CONFIRM against CMDB-STD-00 / continuity policy
+    1: { RTO: 4, RPO: 1 }
+    2: { RTO: 24, RPO: 4 }
+    3: { RTO: 72, RPO: 24 }
+
+criteria:
+  # ---------------------------------------------------------------- CMDB / CSDM
+  CMDB-AT-04-C04:     # Governance roles staffed
+    find: ['governance charter', 'cmdb governance', '\bRACI\b', 'data steward']
+    review_met: true   # the ≤ 15 apps per steward limit needs the steward list counted
+    items:
+      - { name: CMDB process owner, any: ['process owner'] }
+      - { name: platform owner, any: ['platform owner'] }
+      - { name: data stewards, any: ['data steward', 'portfolio steward'] }
+      - { name: class managers, any: ['class manager'] }
+      - { name: RACI approved by REO, any: ['RACI[^\n]{0,80}approv', 'approv[^\n]{0,80}\bREO\b', '\bREO\b[^\n]{0,80}approv'] }
+  CMDB-AT-04-C06:     # Reporting cadence and trend
+    find: ['scorecard', 'governance pack']
+    monthly: 3
+    items:
+      - { name: trend per sub-portfolio, any: ['trend'] }
+      - { name: improvement actions completed, any: ['improvement action', 'actions? (completed|closed)'] }
+      - { name: decisions recorded, any: ['decision'] }
+  CMDB-AT-09-C03:     # Remediation plan quality (EOL)
+    find: ['remediation plan', 'end[- ]of[- ]life', '\bEOL\b']
+    items:
+      - { name: target date, any: ['target date', 'due date', '\bby (Q[1-4]|20\d{2}|[A-Z][a-z]+ 20\d{2})'] }
+      - { name: upgrade path, any: ['upgrade (path|to)', 'migrat', 'replace(ment)? with'] }
+      - { name: test, any: ['\btest'] }
+      - { name: rollback, any: ['roll ?back', 'back[- ]?out'] }
+      - { name: owner, any: ['owner'] }
+  CMDB-AT-10-C02:     # Business impact analysis current
+    find: ['business impact analysis', '\bBIA\b']
+    fresh_months: 12
+    items:
+      - { name: financial impact, any: ['financial'] }
+      - { name: member / client impact, any: ['member', 'client', 'customer', 'patient'] }
+      - { name: regulatory impact, any: ['regulat'] }
+      - { name: reputational impact, any: ['reputation'] }
+  CMDB-AT-13-C05:     # Scorecard published and acted on
+    find: ['scorecard']
+    monthly: 3
+    items:
+      - { name: top blocking gaps, any: ['blocking gap', 'top (10|ten)'] }
+      - { name: owners, any: ['owner'] }
+      - { name: decisions recorded, any: ['decision'] }
+
+  # ---------------------------------------------------------------- ITSM
+  ITSM-AT-02-C05:     # Major Incident (P1) process adherence: every P1 record
+    source: p1_incidents
+    per_record: true
+    min_pct: 100
+    review_met: true   # "within 1 hour of detection" needs the timestamps read
+    items:
+      - { name: bridge opened, any: ['bridge', 'war ?room', 'major incident (call|team)', '\bMIM\b'] }
+      - { name: stakeholder notification, any: ['notif', 'stakeholder', 'communicat', 'status page'] }
+      - { name: timeline, any: ['timeline', '\b\d{1,2}:\d{2}\b'] }
+  ITSM-AT-06-C03:     # OLA formalization for inter-team handoffs
+    find: ['\bOLA\b', 'operational level agreement', 'hand-?off']
+    review_met: true   # coverage of all ~20 handoff points needs the list
+    items:
+      - { name: OLA defined, any: ['\bOLA\b', 'operational level agreement'] }
+      - { name: handoff points named, any: ['hand-?off'] }
+      - { name: P1/P2 response under 30 minutes, any: ['(P1|P2|priority [12]|sev(erity)? ?[12])[^\n]{0,80}\b([1-9]|[12]\d|30)\s*(min|minutes)\b'] }
+  ITSM-AT-07-C05:     # AI readiness of KB content: each article
+    source: kb_articles
+    per_record: true
+    min_pct: 50
+    items:
+      - { name: trigger, any: ['trigger', 'symptom', 'when to use'] }
+      - { name: steps, any: ['steps?\b', 'procedure', '^\s*\d+[.)]\s'] }
+      - { name: expected outcome, any: ['expected (outcome|result)'] }
+      - { name: validation, any: ['validat', 'verif'] }
+  ITSM-AT-08-C05:     # Governance cadence adherence
+    find: ['governance (meeting|review|minutes)', 'meeting minutes', 'steering']
+    monthly: 3
+    items:
+      - { name: improvement register reviewed, any: ['improvement register', 'register (review|status)'] }
+      - { name: decisions documented, any: ['decision'] }
+      - { name: distributed, any: ['distribut', 'circulat', 'sent to', 'recipients'] }
+  ITSM-AT-10-C03:     # Vendor incident escalation path
+    find: ['vendor', 'supplier', 'third[- ]party']
+    review_met: true   # one contact for each critical vendor needs the vendor list
+    items:
+      - { name: named escalation contact, any: ['escalation contact', 'contact'] }
+      - { name: roles, any: ['\brole', 'account manager', 'duty manager'] }
+      - { name: response commitment per priority, any: ['(P1|P2|priority [12]|sev(erity)? ?[12])[^\n]{0,80}\d+\s*(min|minutes|hours?|h)\b'] }
+      - { name: escalation tested within 6 months, any: ['(escalation|response)[^\n]{0,40}test', 'tested'], fresh_months: 6 }
+  ITSM-AT-10-C04:     # Vendor performance measurement
+    find: ['vendor (scorecard|performance|review)', 'supplier (scorecard|performance|review)']
+    fresh_months: 3
+    items:
+      - { name: availability, any: ['availability'] }
+      - { name: response time, any: ['response time'] }
+      - { name: incident count, any: ['incident(s)? (count|volume)', 'number of incidents', '\d+\s+incidents'] }
+      - { name: remediation for underperformance, any: ['remediation plan', 'improvement plan', 'service credit', 'underperform'] }
+  ITSM-AT-11-C01:     # KPI definitions documented and approved
+    find: ['KPI', 'reporting specification', 'metric definitions']
+    items:
+      - { name: MTTR, any: ['MTTR', 'mean time to (restore|resolve|recover)'] }
+      - { name: incident volume by priority, any: ['incident volume', 'incidents by priority'] }
+      - { name: problem recurrence rate, any: ['recurrence'] }
+      - { name: change success / failure rate, any: ['change (success|failure) rate'] }
+      - { name: SLO attainment, any: ['SLO attainment'] }
+      - { name: calculation method, any: ['calculat', 'formula'] }
+      - { name: data source, any: ['data source', 'source:'] }
+      - { name: owner, any: ['owner'] }
+      - { name: approved, any: ['approved', 'approval'] }
+  ITSM-AT-11-C03:     # MTTR and human-versus-automated segmentation reported
+    find: ['MTTR', 'restoration time', 'time to restore']
+    fresh_months: 2
+    items:
+      - { name: mean, any: ['\bmean\b', 'average'] }
+      - { name: P90, any: ['\bP90\b', '90th'] }
+      - { name: human vs automated segmentation, any: ['human[- ]initiated', 'monitoring[- ]detected', 'automated (demand|incidents)', 'segment'] }
+      - { name: trend over 3 months, any: ['trend', 'last (3|three) months', 'month[- ]over[- ]month'] }
+  ITSM-AT-11-C04:     # Reporting ownership and data certification
+    find: ['report (owner|certification)', 'data certification', 'reporting governance']
+    items:
+      - { name: named report owner, any: ['report owner', 'owner:'] }
+      - { name: certified before distribution, any: ['certif', 'approved before distribution'] }
+      - { name: reviewer name and date, any: ['(reviewed|certified|approved) by[^\n]{0,60}20\d{2}', '20\d{2}[^\n]{0,60}(reviewed|certified|approved) by'] }
+      - { name: distribution list, any: ['distribution list', 'recipients'] }
+  ITSM-AT-12-C01:     # RTO/RPO defined, approved and achievable
+    doc_types: [dr_plan, dr_test]
+    find: ['continuity plan', 'recovery objective']
+    items:
+      - { name: RTO value, any: ['\bRTO\b[^\n\d]{0,30}\d+(\.\d+)?\s*(min|minutes?|hours?|hrs?|h|days?)\b'] }
+      - { name: RPO value, any: ['\bRPO\b[^\n\d]{0,30}\d+(\.\d+)?\s*(min|minutes?|hours?|hrs?|h|days?)\b'] }
+      - { name: business owner sign-off, any: ['business owner[^\n]{0,60}(approv|sign)', '(approv|signed? ?off)[^\n]{0,40}by[^\n]{0,40}(business|owner|director|VP|head of)'] }
+      - { name: DR test confirms the objectives, any: ['(failover|DR|recovery) test[^\n]{0,160}(within|met|achiev|succe|pass)'], fresh_months: 12 }
+  ITSM-AT-12-C03:     # Continuity requirements integrated with DR procedures
+    doc_types: [dr_plan]
+    find: ['disaster recovery', 'DR runbook', 'continuity']
+    items:
+      - { name: BIA-derived objectives, any: ['\bBIA\b', 'business impact analysis'] }
+      - { name: RTO / RPO, any: ['\bRTO\b', '\bRPO\b'] }
+      - { name: business owner approval, any: ['business owner[^\n]{0,60}(approv|sign)', '(approv|signed)[^\n]{0,60}business owner'] }
+      - { name: CMDB dependency map, any: ['dependency map', 'CMDB[^\n]{0,40}dependenc', 'depends on'] }
+
+  # ---------------------------------------------------------------- SRE
+  SRE-AT-02-C04:      # Recovery design: RTO/RPO and a DR test in 12 months
+    doc_types: [dr_plan, dr_test]
+    items:
+      - { name: RTO target, any: ['\bRTO\b[^\n\d]{0,30}\d'] }
+      - { name: RPO target, any: ['\bRPO\b[^\n\d]{0,30}\d'] }
+      - { name: DR test in the last 12 months, any: ['(failover|DR|recovery) test', 'DR exercise'], fresh_months: 12 }
+  SRE-AT-04-C04:      # SLO attainment reported monthly
+    doc_types: [slo]
+    find: ['SLO (attainment|report)']
+    monthly: 3
+    items:
+      - { name: attainment reported, any: ['attainment', 'achieved', '\d{2}(\.\d+)?\s*% (of|against) (target|SLO)'] }
+  SRE-AT-05-C05:      # Graceful degradation
+    doc_types: [architecture]
+    items:
+      - { name: degraded mode for 3 failure scenarios, any: ['degraded mode', 'graceful(ly)? degrad', 'degrades? to', 'fallback', 'read[- ]only mode', 'serve (cached|stale)'], min_count: 3 }
+      - { name: user impact scoped, any: ['(user|customer|member|patient) impact', 'users (will|see|experience|cannot)'] }
+      - { name: communicated, any: ['communicat', 'status page', 'notify (users|customers)', 'banner'] }
+  SRE-AT-07-C05:      # Runbook automation candidates
+    find: ['automation (candidate|opportunit|backlog)', '\bAE\b (intake|backlog)']
+    items:
+      - { name: 3 automation candidates, any: ['^\s*(?:[-*]|\d+[.)])\s+[^\n]*automat', '^\s*\|[^\n]*automat'], min_count: 3 }
+      - { name: submitted to the AE backlog, any: ['backlog', 'intake', 'ticket', '\b[A-Z]{2,}-\d+\b'] }
+  SRE-AT-08-C04:      # Knowledge transfer and cross-training
+    find: ['cross[- ]training', 'training log', 'succession', 'knowledge transfer']
+    items:
+      - { name: 2 trained engineers, any: ['^[^\n]*\b(trained|cross-trained|completed training|signed off)\b'], min_count: 2 }
+      - { name: runbook review sign-off, any: ['sign[- ]?off', 'signed'] }
+      - { name: succession plan, any: ['succession', 'backup engineer', 'deputy'] }
+  SRE-AT-08-C05:      # PSE/SRE/Engineering RACI clarity
+    find: ['\bRACI\b']
+    items:
+      - { name: Incident row, any: ['^[^\n]*\bincident\b[^\n]*\|'] }
+      - { name: Problem row, any: ['^[^\n]*\bproblem\b[^\n]*\|'] }
+      - { name: Change row, any: ['^[^\n]*\bchange\b[^\n]*\|'] }
+      - { name: no blank cells, any: ['\|'], none: ['\|[ \t]*\|', '\b(TBD|TBC)\b'] }
+      - { name: confirmed by PSE, SRE and engineering leads, any: ['confirmed by', 'approved by', 'signed? ?off'] }
+  SRE-AT-10-C01:      # Toil inventory by category
+    find: ['toil']
+    items:
+      - { name: categories, any: ['categor'] }
+      - { name: frequency, any: ['frequency', 'per (day|week|month)', '\b(daily|weekly|monthly)\b'] }
+      - { name: time estimates for top 5, any: ['\b\d+(\.\d+)?\s*(min|minutes|hours?|hrs?|h)\b'], min_count: 5 }
+      - { name: top 5 identified, any: ['top[- ]?(5|five)', '\brank'] }
+  SRE-AT-10-C03:      # Automation opportunity scoring
+    find: ['automation (opportunit|candidate|register)']
+    items:
+      - { name: effort, any: ['effort'] }
+      - { name: value, any: ['\bvalue\b', 'benefit', 'savings?'] }
+      - { name: feasibility, any: ['feasib'] }
+      - { name: owner, any: ['owner'] }
+      - { name: target date, any: ['target date', 'due', '\bQ[1-4]\b'] }
+      - { name: in the AE backlog, any: ['backlog', 'intake', '\b[A-Z]{2,}-\d+\b'] }
+  SRE-AT-13-C04:      # Integration SLA definition and measurement
+    find: ['integration (SLA|service level|catalog|inventory)', 'interface (SLA|agreement)', '\bSLA\b']
+    items:
+      - { name: availability target, any: ['availability[^\n]{0,40}\d{2}(\.\d+)?\s*%'] }
+      - { name: latency target, any: ['latency[^\n]{0,40}\d+\s*ms\b', 'p9[59][^\n]{0,40}\d+\s*ms\b'] }
+      - { name: measured and reported monthly, any: ['monthly', 'measured'] }
+  SRE-AT-14-C01:      # Automation safety controls
+    find: ['automation', 'auto-?remediation']
+    items:
+      - { name: test evidence, any: ['test(ed|ing)? (evidence|results)', 'tested in (staging|non-?prod|pre-?prod)'] }
+      - { name: execution monitoring that alerts on failure, any: ['alert[^\n]{0,40}fail', 'fail[^\n]{0,40}alert', 'monitor[^\n]{0,40}(execution|run)'] }
+      - { name: rollback procedure, any: ['roll ?back', 'revert', 'prior state'] }
+  SRE-AT-14-C02:      # Automation authorization and human oversight
+    find: ['automation', 'auto-?remediation']
+    items:
+      - { name: approved through change, any: ['change (record|request|approval)', '\bCHG\d+', '\bCAB\b', 'approved change'] }
+      - { name: boundary conditions, any: ['boundar', 'guardrail', 'human[- ](approval|in the loop|required)', 'autonomous'] }
+      - { name: escalation path, any: ['escalat'] }
+  SRE-AT-14-C03:      # Automation failure handling and recovery
+    find: ['automation (runbook|playbook)', '(bot|script|automation)[^\n]{0,40}runbook']
+    fresh_months: 12
+    items:
+      - { name: failure conditions, any: ['failure condition', 'on failure', 'if (the )?(automation|job|script) fails'] }
+      - { name: recovery steps, any: ['recovery steps', 'manual recovery', 'recover'] }
+      - { name: disable procedure, any: ['disable', 'kill switch', 'turn off', 'pause the'] }
+      - { name: post-recovery validation, any: ['validat', 'verif'] }
+  SRE-AT-15-C03:      # Regression detection criteria
+    find: ['regression', 'post-deployment', 'release validation', 'deployment (check|verification)']
+    items:
+      - { name: documented threshold, any: ['regression[^\n]{0,80}(\d+\s*%|p9[59])', 'p9[59][^\n]{0,60}\d+\s*%[^\n]{0,60}(regress|baseline)'] }
+      - { name: check recorded for the latest release, any: ['regression check', 'result:?\s*(pass|fail)', 'no regression', 'regression detected'] }
+  SRE-AT-15-C04:      # Rollback decision process and authority
+    find: ['rollback', 'roll back']
+    items:
+      - { name: objective rollback criteria, any: ['(roll ?back (criteria|trigger)|roll ?back if|trigger[s]? (a )?roll ?back)[^\n]{0,120}(\d|%|error rate|latency)'], none: ['if it looks bad'] }
+      - { name: named authority, any: ['authority', 'decision maker', 'can (decide|approve)', 'incident commander', 'on-?call (lead|engineer)'] }
+      - { name: procedure, any: ['roll ?back (procedure|steps)', 'helm rollback', 'redeploy the previous'] }
+  SRE-AT-16-C01:      # Toil identified, classified and baselined
+    find: ['toil', 'operational demand']
+    items:
+      - { name: 3 items with weekly effort, any: ['\b\d+(\.\d+)?\s*(h|hrs?|hours)\s*(/|per)\s*(week|wk|sprint)'], min_count: 3 }
+      - { name: automatable flag, any: ['automatable', 'repetitive', '\bmanual\b'] }
+      - { name: baseline date within 6 months, any: ['baseline'], fresh_months: 6 }
+  SRE-AT-16-C02:      # Toil reduction targets tracked
+    find: ['toil']
+    items:
+      - { name: reduction target of 20% or more, any: ['\b([2-9]\d|100)\s*%[^\n]{0,60}reduc', 'reduc[^\n]{0,60}\b([2-9]\d|100)\s*%'] }
+      - { name: target date, any: ['target date', '\bby (Q[1-4]|20\d{2}|[A-Z][a-z]+ 20\d{2})'] }
+      - { name: owner, any: ['owner'] }
+      - { name: progress tracked quarterly, any: ['progress', 'quarter', '\bQ[1-4]\b'] }
+  SRE-AT-16-C03:      # Automation candidates for top toil items
+    find: ['toil', 'automation candidate']
+    items:
+      - { name: automation effort, any: ['story points', 'effort'] }
+      - { name: expected toil reduction, any: ['reduction', 'hours saved', 'saves?\b'] }
+      - { name: priority ranking, any: ['priority', '\brank'] }
+      - { name: ROI rationale, any: ['\bROI\b', 'return on investment', 'payback'] }
+      - { name: owner, any: ['owner'] }
+  SRE-AT-16-C04:      # Capacity released by automation measured and reinvested
+    find: ['toil', 'capacity released', 'automation (impact|benefit)']
+    items:
+      - { name: before / after measurement, any: ['before[^\n]{0,80}after', 'baseline[^\n]{0,80}(current|now|after)'] }
+      - { name: capacity released, any: ['released', 'hours saved', 'freed'] }
+      - { name: reinvested, any: ['reinvest', 'redirected', 'reliability (work|improvement)', 'sprint'] }

@@ -10,7 +10,7 @@ from datetime import datetime
 from .catalog import load_rubric, load_templates
 from .catalog.models import Method, Result, Risk
 from .config import load_yaml
-from .crosswalk import rubric_criteria_map, rubric_ids_for
+from .crosswalk import is_self_described, rubric_criteria_map, rubric_ids_for
 from .detectors import ALL as DETECTORS
 from .detectors.base import Context, DetectorReport
 from .evidence.bundle import EvidenceBundle
@@ -68,7 +68,7 @@ def run_detectors(a: Assessment, bundle: EvidenceBundle, ctx: Context, progress:
     selected_ids = {c.id for tid in a.templates for c in templates[tid].criteria}
     reports = []
     progress.phase("Rule-based detectors", total=len(DETECTORS),
-                   msg=f"Running {len(DETECTORS)} rule-based detectors over {len(bundle.items)} evidence files")
+                   msg=f"Running {len(DETECTORS)} detectors over {len(bundle.items)} evidence files")
     for i, (name, fn) in enumerate(DETECTORS.items(), 1):
         progress.start_item(i, name)
         rep = fn(bundle, ctx)
@@ -93,7 +93,8 @@ def run_detectors(a: Assessment, bundle: EvidenceBundle, ctx: Context, progress:
     no_inherit = {cid for c in load_yaml("crosswalk").get("conflicts", []) for cid in c.get("criteria", [])}
     for rid, direct in a.rubric_direct.items():
         for cid in cmap.get(rid, []):
-            if cid not in by_id or cid in no_inherit or (a.results.get(cid) and a.results[cid].result is not None):
+            # V2 criteria feed the rubric through their own formula; never copy a rubric result onto them
+            if cid not in by_id or cid in no_inherit or is_self_described(cid) or (a.results.get(cid) and a.results[cid].result is not None):
                 continue
             c = by_id[cid]
             pure_rule = c.methods == [Method.DETERMINISTIC]
@@ -102,6 +103,15 @@ def run_detectors(a: Assessment, bundle: EvidenceBundle, ctx: Context, progress:
                 evidence_refs=list(direct.evidence_refs), source=Source.RULE,
                 needs_human_review=direct.needs_human_review or not pure_rule,
                 confidence=(direct.confidence or 1.0) * (1.0 if pure_rule else 0.7))
+
+    # Review flags (e.g. from text clustering) never change a result; they only send it to the assessor
+    for rep in reports:
+        for cid, note in rep.review.items():
+            r = a.results.get(cid)
+            if r is not None and r.result is not None and r.source != Source.HUMAN:
+                r.needs_human_review = True
+                if note not in r.rationale:
+                    r.rationale = f"{r.rationale}\nReview: {note}"
 
     # Link rubric findings to the selected template criteria they affect
     for f in a.findings:

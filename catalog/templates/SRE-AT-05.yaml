@@ -34,6 +34,15 @@ criteria:
   example_risk: High — missing timeouts cause cascading failures
   example_recommendation: Audit integration configuration; set timeouts with documented rationale per dependency type
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-05-C02
   number: 2
   name: Retry Logic with Exponential Backoff
@@ -51,6 +60,15 @@ criteria:
   example_risk: Medium — unbounded retries amplify cascading failures
   example_recommendation: Implement retry with backoff in all integration layers; configure max attempts
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-05-C03
   number: 3
   name: Circuit Breaker Implementation
@@ -70,6 +88,15 @@ criteria:
   example_risk: High — without circuit breakers, GDX pipeline failures propagate to all downstream apps
   example_recommendation: Implement circuit breaker for GDX, RCI, and shared platform dependencies
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-05-C04
   number: 4
   name: Redundancy & Failover
@@ -87,6 +114,15 @@ criteria:
   example_risk: High — single-instance deployments create unacceptable SPOF risk
   example_recommendation: Deploy minimum 2 instances behind load balancer; schedule failover test
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: SRE-AT-05-C05
   number: 5
   name: Graceful Degradation
@@ -104,5 +140,16 @@ criteria:
   example_risk: Medium — full-service failures caused by non-critical component failures are avoidable
   example_recommendation: Document degraded-mode behaviour; implement feature flags for non-critical paths
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 source_file: SRE-AT-05 — Application Resilience & Fault-Tolerance Assessment.docx
 references: []
+version: V1
+rubric_refs: []

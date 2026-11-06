@@ -34,6 +34,15 @@ criteria:
   example_risk: Medium — low FCR drives unnecessary L2 escalations and extends MTTR
   example_recommendation: Identify top-10 escalation categories; create KEDB entries for each; target FCR improvement
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: ITSM-AT-04-C02
   number: 2
   name: Escalation Quality & Timeliness
@@ -52,6 +61,15 @@ criteria:
   example_risk: High — escalation SLA not defined; ~20 handoffs with no SLA measured
   example_recommendation: Define escalation SLA by priority; train PSE on diagnostic note standard; measure weekly
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: ITSM-AT-04-C03
   number: 3
   name: Queue Management & Backlog Age
@@ -69,6 +87,15 @@ criteria:
   example_risk: Medium — unmanaged backlog allows P2 incidents to age without detection
   example_recommendation: Implement daily queue review cadence; auto-escalate any P2 > 4h with no update
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: ITSM-AT-04-C04
   number: 4
   name: Knowledge Base Accessibility
@@ -87,6 +114,15 @@ criteria:
   example_risk: Medium — knowledge in OneNote/email is inaccessible to PSE; drives unnecessary escalations
   example_recommendation: Index all FSI REO KB articles in ServiceNow under consistent category hierarchy
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 - id: ITSM-AT-04-C05
   number: 5
   name: Staffing Coverage & Key-Person Risk
@@ -105,5 +141,16 @@ criteria:
   example_risk: Critical — AE lead on leave with no backup; observability lead departed with no successor
   example_recommendation: Map PSE skill coverage per application family; cross-train CFAO queue agents per IO-19 immediately
   references: []
+  rubric_refs: []
+  rubric_enablers: []
+  csdm_layer: ''
+  data_source: ''
+  formula: ''
+  maturity_bands: ''
+  look_for: ''
+  risk_if_gap: ''
+  playbooks: []
 source_file: ITSM-AT-04 — Service Desk Capability & Tier-1 Resolution Assessment.docx
 references: []
+version: V1
+rubric_refs: []

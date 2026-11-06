@@ -43,7 +43,58 @@ maturity_caps: { Not Ready: 2, At Risk: 3 }
 # Recommendation due dates (days from assessment date) by finding severity, when the rating gives none.
 severity_due_days: { Critical: 14, High: 30, Medium: 60, Low: 90 }
 
-# Tier-dependent thresholds (rubric P2-07, P2-10; CMDB-AT-11-C03).
+# Tier-dependent thresholds used by the rubric rules (rubric P2-07, P2-10).
+# P2-10 keeps the V1 values for the rubric rule; the V2 CMDB criteria use TH-01 below, and because a rubric
+# criterion's result is the worst of its rule and its criteria, TH-01 decides P2-10 whenever CMDB-AT-04 is assessed.
 tier_thresholds:
   cmdb_completeness_pct: { 1: 95, 2: 85, 3: 75 }
   dr_test_max_age_months: { 1: 12, 2: 24, 3: 36 }
+
+# ---------------------------------------------------------------- CMDB / CSDM V2
+# Source: CMDB-STD-00 section 10 and the CMDB-CSDM Readiness Criteria Catalog (V2.0 Draft, pending OD-2/OD-3).
+# Percentages are minimums unless the name ends in _max. null = not gated for that tier.
+cmdb_v2:
+  thresholds:
+    TH-01: { name: "Required-attribute completeness", unit: pct, tiers: { 1: 95, 2: 90, 3: 85 } }
+    TH-02: { name: "Ownership fields populated with active users/groups", unit: pct, tiers: { 1: 100, 2: 100, 3: 100 } }
+    TH-03: { name: "Resolved incidents attributable to a Business Application (90 days)", unit: pct, tiers: { 1: 90, 2: 85, 3: 80 } }
+    TH-04: { name: "P1/P2 incidents with a specific CI at assignment", unit: pct, tiers: { 1: 100, 2: 100, 3: 95 } }
+    TH-05: { name: "Normal/Emergency changes with Affected CI", unit: pct, tiers: { 1: 100, 2: 100, 3: 100 } }
+    TH-06: { name: "Changes with Impacted Services calculated from CMDB", unit: pct, tiers: { 1: 95, 2: 90, 3: null } }
+    TH-07: { name: "Dependency map validated within", unit: months, tiers: { 1: 6, 2: 12, 3: null } }
+    TH-08: { name: "Production telemetry sources mapped to Application Service + environment", unit: pct, tiers: { 1: 100, 2: 90, 3: 75 } }
+    TH-09: { name: "Owner attestation interval", unit: months, tiers: { 1: 6, 2: 12, 3: 24 } }
+    TH-10: { name: "Stale discoverable CIs", unit: pct_max, tiers: { 1: 2, 2: 5, 3: 5 } }
+    TH-11: { name: "Duplicate CIs per class", unit: pct_max, tiers: { 1: 1, 2: 1, 3: 1 } }
+    TH-12: { name: "Orphan CIs", unit: pct_max, tiers: { 1: 2, 2: 2, 3: 5 } }
+    TH-13: { name: "Discovery coverage", unit: pct, tiers: { 1: 100, 2: 95, 3: 95 } }
+    TH-14: { name: "CMDB update after topology-changing change", unit: hours_max, tiers: { 1: 24, 2: 24, 3: 120 } }
+  # Standard maturity bands for percentage criteria: L0 < 25, L1 25-49, L2 50-79, L3 80 to threshold, L4 >= threshold.
+  level_bands: [ 25, 50, 80 ]
+  # CMDB Readiness Index (CMDB-AT-13 section 7A): CRI = sum(weight x mean criterion level / 4) x 100.
+  # Not Applicable is excluded; Insufficient Evidence counts as L0; criteria without a level are not yet assessed.
+  cri_dimensions:
+    - { name: "Registration & ownership", weight: 0.20, criteria: [ CMDB-AT-01-C01, CMDB-AT-01-C02, CMDB-AT-01-C03, CMDB-AT-04-C04 ] }
+    - { name: "Service model (CSDM)",     weight: 0.20, criteria: [ CMDB-AT-01-C04, CMDB-AT-01-C05, CMDB-AT-06-C02, CMDB-AT-10-C01 ] }
+    - { name: "Operational attribution",  weight: 0.20, criteria: [ CMDB-AT-01-C06, CMDB-AT-08-C01, CMDB-AT-08-C04 ] }
+    - { name: "Relationships & impact",   weight: 0.15, criteria: [ CMDB-AT-06-C01, CMDB-AT-06-C03, CMDB-AT-06-C04, CMDB-AT-06-C05, CMDB-AT-06-C06, CMDB-AT-08-C02, CMDB-AT-08-C03 ] }
+    - { name: "Telemetry identity",       weight: 0.15, criteria: [ CMDB-AT-12-C02, CMDB-AT-12-C03, CMDB-AT-12-C04, CMDB-AT-12-C05, CMDB-AT-07-C02, CMDB-AT-07-C03 ] }
+    - { name: "Assurance & currency",     weight: 0.10, criteria: [ CMDB-AT-02-C03, CMDB-AT-02-C04, CMDB-AT-11-C01, CMDB-AT-11-C06, CMDB-AT-03-C01 ] }
+  # Indicative maturity from the CRI (criteria catalog 'Gates & Maturity'): lower bound inclusive.
+  cri_levels:
+    - { level: 0, name: Unmanaged,  min: 0 }
+    - { level: 1, name: Registered, min: 20 }
+    - { level: 2, name: Modeled,    min: 45 }
+    - { level: 3, name: Connected,  min: 70 }
+    - { level: 4, name: Assured,    min: 90 }
+  # Reporting gates (CMDB-AT-13 section 7C). A gate passes when every listed criterion is Met (rubric IDs use the
+  # rubric outcome) and every 'requires' gate passed. Any condition not yet evaluated leaves the gate undetermined.
+  gates:
+    - { id: A, name: "Incident volume by application", unlocks: "Application-level incident concentration on the executive dashboard",
+        criteria: [ P1-01, CMDB-AT-01-C01, CMDB-AT-01-C04, CMDB-AT-01-C06 ] }
+    - { id: B, name: "Application MTTR", unlocks: "Authoritative application-level MTTR", requires: [ A ],
+        criteria: [ CMDB-AT-13-C01, ITSM-AT-02-C02 ] }
+    - { id: C, name: "SLI / SLO", unlocks: "SLO attainment and error budget by Application Service", requires: [ B ],
+        criteria: [ CMDB-AT-12-C02, CMDB-AT-12-C03, CMDB-AT-12-C07 ] }
+    - { id: D, name: "Automated change impact", unlocks: "Change risk and blast-radius automation",
+        criteria: [ CMDB-AT-06-C06, CMDB-AT-08-C02, CMDB-AT-08-C05 ] }
