@@ -1,7 +1,7 @@
 """Draft new synthetic scenarios with a Foundry model, render them, and check the bot against each answer key.
 
     python eval/synthetic/generate_scenarios.py                       # the four built-in briefs
-    python eval/synthetic/generate_scenarios.py --brief "Tier 2 cloud-only payments API, mostly healthy"
+    python eval/synthetic/generate_scenarios.py --brief "Tier 2 cloud-only prescription refill API, mostly healthy"
     python eval/synthetic/generate_scenarios.py --from-spec eval/scenarios/<slug>/spec.yaml   # re-render, no model call
 
 The model only writes the spec: names, profile and which defects to plant, chosen from the fixed list in
@@ -29,13 +29,21 @@ from foundry import FoundryError, chat_json, setting  # noqa: E402
 from scenario_kit import DEFECTS, PROFILE_FLAGS, Spec, render  # noqa: E402
 
 BRIEFS = [
-    "A healthy, well-run Tier 2 cloud-only customer notifications API on Kubernetes with CI/CD. It should come out Ready: plant no defects.",
-    "A Tier 1 hybrid core payments platform with good engineering but weak ITSM hygiene (problem and change records) and a CVE backlog.",
-    "A Tier 3 on-premises internal reporting app, not containerized, no CI/CD, with neglected documentation.",
-    "A Tier 2 cloud trading-data API that recently had a bad release; fine otherwise apart from one or two Kubernetes configuration issues.",
+    "A healthy, well-run Tier 2 cloud vaccine appointment scheduling service on Kubernetes with CI/CD and seasonal peaks. It should come "
+    "out Ready: plant no defects.",
+    "A Tier 1 hybrid pharmacy claims adjudication service (NCPDP claims to benefit managers) with good engineering but weak ITSM hygiene ("
+    "problem and change records) and a CVE backlog.",
+    "A Tier 3 on-premises internal drug recall lookup tool, not containerized, no CI/CD, with neglected documentation.",
+    "A Tier 2 cloud specialty-pharmacy shipment tracking API that recently had a bad release; fine otherwise apart from one or two "
+    "Kubernetes configuration issues.",
 ]
 
-SYSTEM = f"""You design synthetic applications for testing a Site Reliability Assessment tool at a financial services firm.
+SYSTEM = f"""You design synthetic applications for testing a Site Reliability Assessment tool at a US healthcare company
+that runs retail pharmacies, mail-order and specialty pharmacy, retail health clinics and pharmacy benefits.
+Applications should be the kind such a company runs (e-prescribing, claims, eligibility, dispensing, immunizations,
+clinic scheduling, patient messaging, supply chain), and the invented names and incident descriptions should read
+like that domain. Use real healthcare standards where they fit (NCPDP, X12, HL7, FHIR, DSCSA), but never real
+patient data.
 Given a brief, return one application spec as JSON. Rules:
 - Invent plausible names: application name, owner team, support group, Kubernetes service name (lowercase-dashes),
   database name, one upstream dependency (another internal application), four distinct routine incident short
@@ -183,7 +191,8 @@ def main():
     say(f"Done in {time.monotonic() - started:.0f}s: {ok} of {len(results)} scenario(s) match their answer key"
         + (f", {skipped} skipped" if skipped else "") + ".")
     for r in results:
-        say(f"  {'ok      ' if r['ok'] else 'MISMATCH'}  {r['scenario']:<32} {r['expected_rating']:<12} {', '.join(r['defects']) or 'no defects'}")
+        say(f"  {'ok      ' if r['ok'] else 'MISMATCH'}  {r['scenario']:<32} {r['expected_rating']:<12} "
+            f"{', '.join(r['defects']) or 'no defects'}")
     if args.json:
         say(json.dumps(results, indent=1))
     sys.exit(1 if skipped or ok < len(results) else 0)

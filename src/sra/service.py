@@ -13,6 +13,7 @@ from datetime import datetime
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+from . import config
 from .catalog import load_rubric, load_templates
 from .catalog.compiler import template_path
 from .catalog.models import Result, Risk
@@ -65,6 +66,69 @@ class AssessmentService:
                         audit=[{"actor": actor, "action": "update_profile", "before": before, "after": a.profile}])
         return a
 
+    def update_details(self, aid: str, patch: dict, actor: str) -> tuple[Assessment, bool]:
+        """Edit the application profile (name, CMDB id, tier, characteristics...), assessment date and assessor.
+
+        Returns (assessment, rerun_needed). Results are kept as they are; when the profile or date changed and the
+        assessment already has automated results, rerun_needed tells the UI they no longer reflect the details.
+        """
+        a = self.store.get(aid)
+        if a.status == "signed_off":
+            raise Conflict("this assessment is signed off; its details can no longer be changed")
+        unknown = set(patch) - {"profile", "assessment_date", "assessor"}
+        if unknown:
+            raise ValueError(f"cannot edit: {', '.join(sorted(unknown))}")
+        before = {"profile": dict(a.profile), "assessment_date": a.assessment_date.isoformat(), "assessor": a.assessor}
+        if "profile" in patch:
+            p = ApplicationProfile.model_validate({**a.profile, **(patch["profile"] or {})})
+            if not p.name.strip():
+                raise ValueError("the application name cannot be empty")
+            a.profile = p.model_dump(mode="json")
+            a.application = ApplicationRef(name=p.name, cmdb_id=p.cmdb_id)
+        if "assessment_date" in patch:
+            a.assessment_date = dt.date.fromisoformat(str(patch["assessment_date"]))
+        if "assessor" in patch:
+            a.assessor = str(patch["assessor"] or "").strip()
+        after = {"profile": a.profile, "assessment_date": a.assessment_date.isoformat(), "assessor": a.assessor}
+        changed = [k for k in after if after[k] != before[k]]
+        if not changed:
+            return a, False
+        automated = any(r.source != Source.HUMAN for r in a.results.values()) or bool(a.findings)
+        rerun = automated and bool({"profile", "assessment_date"} & set(changed))
+        self.store.save(a, events=[envelope("updated", aid, {"changed": changed}, actor)],
+                        audit=[{"actor": actor, "action": "update_details", "target": ", ".join(changed),
+                                "before": {k: before[k] for k in changed}, "after": {k: after[k] for k in changed}}])
+        return a, rerun
+
+    def delete(self, aid: str, actor: str) -> dict:
+        """Permanently delete the assessment and everything stored for it (see Store.delete).
+
+        SRE decisions on criteria are kept as training data unless SRA_KEEP_FEEDBACK=false. Each keeps the evidence
+        passages a model would have been shown for that criterion, since the evidence itself is deleted.
+        """
+        rows = None
+        if config.flag("SRA_KEEP_FEEDBACK", True):
+            rows = self.store.feedback_rows(aid)
+            if rows:
+                rows = self._with_excerpts(aid, rows)
+        return self.store.delete(aid, actor, keep_feedback=rows)
+
+    def _with_excerpts(self, aid: str, rows: list[dict]) -> list[dict]:
+        from .llm.evaluate import query_for
+        from .retrieval.chunks import cached_index, focus
+        a = self.store.get(aid)
+        by_id = {c.id: (t, c) for t, tpl in load_templates().items() for c in tpl.criteria}
+        idx = cached_index(self.store.bundle(aid, datetime.combine(a.assessment_date, dt.time(12))))
+        out = []
+        for r in rows:
+            t, c = by_id.get(r["criterion_id"], (None, None))
+            excerpts = []
+            if c is not None:
+                q = query_for(c)
+                excerpts = [{"evidence": ch.source, "id": ch.id, "text": focus(ch.text, q, 800)} for ch in idx.search(q, k=4)]
+            out.append({**r, "application": a.application.name, "template": t, "excerpts": excerpts})
+        return out
+
     def set_templates(self, aid: str, template_ids: list[str], actor: str) -> Assessment:
         known = load_templates()
         bad = [t for t in template_ids if t not in known]
@@ -96,6 +160,9 @@ class AssessmentService:
         a.results, a.rubric_direct, a.findings, a.detector_runs = dict(keep_results), {}, [], {}
         a.status = "evaluating"
         evaluator = None
+        if use_llm and not config.llm_enabled():
+            progress.info("The local LLM is turned off (LLM_ENABLED=false); running rules only")
+            use_llm = False
         if use_llm and self.evaluator_factory:
             progress.busy("Starting the local LLM client and loading the embedding model")
             evaluator = self.evaluator_factory()
@@ -172,13 +239,28 @@ class AssessmentService:
         if patch.get("evidence_refs"):
             new.evidence_refs = list(dict.fromkeys(new.evidence_refs + list(patch["evidence_refs"])))
         a.results[cid] = new
-        if before.get("source") in ("llm", "rule") and before.get("result") != (new.result.value if new.result else None):
-            self.store.feedback(aid, cid, before, new.model_dump(mode="json"))
+        self._record_decision(aid, cid, before, new)
         sc = rescore(a)
         self.store.save(a, sc, events=[envelope("criterion_overridden", aid, {"criterion": cid, "result": new.result}, actor)],
                         audit=[{"actor": actor, "action": "override_criterion", "target": cid, "before": before,
                                 "after": new.model_dump(mode="json")}])
         return {"result": new.model_dump(mode="json"), "scorecard": sc.model_dump(mode="json")}
+
+    def _record_decision(self, aid: str, cid: str, before: dict, new: CriterionResult) -> None:
+        """Every SRE decision is a training label: agreement with the automated result counts as much as a correction."""
+        new_result = new.result.value if new.result else None
+        if not new_result:
+            return
+        automated = before.get("source") in ("llm", "rule", "derived") and before.get("result")
+        if automated:
+            kind, ai = ("confirm" if before["result"] == new_result else "override"), before
+        elif before.get("source") == "human":
+            if before.get("result") == new_result:
+                return                    # wording edits to one's own decision are not a new label
+            kind, ai = "revise", None
+        else:
+            kind, ai = "fill", None
+        self.store.feedback(aid, cid, ai, new.model_dump(mode="json"), kind)
 
     def confirm_criterion(self, aid: str, cid: str, actor: str) -> dict:
         """Reviewer accepts the automated result as-is."""

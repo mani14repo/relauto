@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
 import threading
 import time
 from datetime import datetime, timezone
@@ -28,6 +29,7 @@ SAFE = re.compile(r"[^A-Za-z0-9._ -]+")
 class BlobStore(Protocol):
     def put(self, key: str, data: bytes) -> str: ...
     def get(self, uri: str) -> bytes: ...
+    def delete_prefix(self, prefix: str) -> int: ...
 
 
 class LocalBlobs:
@@ -48,6 +50,29 @@ class LocalBlobs:
             path = path[1:]
         return Path(path).read_bytes()
 
+    def delete_prefix(self, prefix: str) -> int:
+        """Delete every blob under `prefix` (an assessment id followed by '/'). Returns how many files went."""
+        d = self.root / prefix.rstrip("/")
+        if not d.is_dir():
+            return 0
+        n = sum(1 for p in d.rglob("*") if p.is_file())
+        _rmtree(d)
+        return n
+
+
+def _rmtree(path: Path) -> None:
+    """shutil.rmtree that tolerates Windows briefly holding a file open."""
+    for i in range(5):
+        try:
+            shutil.rmtree(path)
+            return
+        except FileNotFoundError:
+            return
+        except PermissionError:
+            if i == 4:
+                raise
+            time.sleep(0.1)
+
 
 class GcsBlobs:
     def __init__(self, bucket: str, prefix: str = "sra") -> None:
@@ -63,6 +88,12 @@ class GcsBlobs:
     def get(self, uri: str) -> bytes:
         name = uri.split("/", 3)[3]
         return self.bucket.blob(name).download_as_bytes()
+
+    def delete_prefix(self, prefix: str) -> int:
+        blobs = list(self.bucket.list_blobs(prefix=f"{self.prefix}/{prefix}"))
+        for b in blobs:
+            b.delete()
+        return len(blobs)
 
 
 def blobs_from_settings() -> BlobStore:
@@ -82,13 +113,20 @@ class Store(Protocol):
     def evidence(self, aid: str) -> list[dict]: ...
     def bundle(self, aid: str, as_of: datetime | None = None) -> EvidenceBundle: ...
     def audit_log(self, aid: str) -> list[dict]: ...
-    def feedback(self, aid: str, criterion_id: str, ai: dict | None, human: dict) -> None: ...
+    # SRE decisions on criteria, kept as training data: kind is confirm (agreed with the automated result), override
+    # (changed it), fill (decided a criterion nothing had evaluated) or revise (changed an earlier human decision).
+    def feedback(self, aid: str, criterion_id: str, ai: dict | None, human: dict, kind: str = "override") -> None: ...
+    def feedback_rows(self, aid: str) -> list[dict]: ...
     def set_job(self, aid: str, job: dict) -> None: ...
     def get_job(self, aid: str) -> dict | None: ...
     # Cancel requests live apart from the job record so the running job's progress updates cannot overwrite them.
     def request_cancel(self, aid: str) -> None: ...
     def cancel_requested(self, aid: str) -> bool: ...
     def clear_cancel(self, aid: str) -> None: ...
+    # Permanently removes the assessment, its evidence files, findings, job and audit trail. A minimal record
+    # (id, application, who, when) is kept so the deletion itself is traceable, and a "deleted" event is sent.
+    # keep_feedback: the feedback rows to keep (with evidence excerpts added by the caller), or None to delete them.
+    def delete(self, aid: str, actor: str, keep_feedback: list[dict] | None = None) -> dict: ...
 
 
 def _bundle_from(rows: list[dict], blobs: BlobStore, as_of: datetime | None) -> EvidenceBundle:
@@ -202,9 +240,40 @@ class FileStore:
         p = self._dir(aid) / "audit.jsonl"
         return [json.loads(line) for line in p.read_text(encoding="utf-8").splitlines()] if p.exists() else []
 
-    def feedback(self, aid, criterion_id, ai, human):
-        with open(self._dir(aid) / "feedback.jsonl", "a", encoding="utf-8") as f:
-            f.write(json.dumps({"criterion_id": criterion_id, "ai": ai, "human": human}, default=str) + "\n")
+    def _feedback_file(self, aid: str) -> Path:
+        self._dir(aid)                        # validates the id
+        d = self.root / "feedback"            # outside the assessment folder, so it can outlive a deletion
+        d.mkdir(parents=True, exist_ok=True)
+        return d / f"{aid}.jsonl"
+
+    def feedback(self, aid, criterion_id, ai, human, kind="override"):
+        row = {"criterion_id": criterion_id, "kind": kind, "ai": ai, "human": human, "at": datetime.now(timezone.utc).isoformat()}
+        with self._lock, open(self._feedback_file(aid), "a", encoding="utf-8") as f:
+            f.write(json.dumps(row, default=str) + "\n")
+
+    def feedback_rows(self, aid):
+        rows = []
+        for p in (self._dir(aid) / "feedback.jsonl", self._feedback_file(aid)):   # older versions kept it in the folder
+            if p.exists():
+                rows += [json.loads(line) for line in p.read_text(encoding="utf-8").splitlines() if line.strip()]
+        return rows
+
+    def delete(self, aid, actor, keep_feedback=None):
+        a = self.get(aid)                     # KeyError if it does not exist
+        with self._lock:
+            fb = self._feedback_file(aid)
+            if keep_feedback:
+                fb.write_text("".join(json.dumps(r, default=str) + "\n" for r in keep_feedback), encoding="utf-8")
+            else:
+                fb.unlink(missing_ok=True)
+            files = self.blobs.delete_prefix(f"{aid}/")
+            _rmtree(self._dir(aid))
+            row = {"id": aid, "application": a.application.name, "actor": actor, "evidence_files": files,
+                   "feedback_kept": len(keep_feedback or []), "at": datetime.now(timezone.utc).isoformat()}
+            with open(self.root / "deleted.jsonl", "a", encoding="utf-8") as f:
+                f.write(json.dumps(row) + "\n")
+        self.bus.publish(EVENTS_TOPIC, aid, envelope("deleted", aid, {"application": a.application.name}, actor))
+        return row
 
 
 class PgStore:
@@ -330,11 +399,40 @@ class PgStore:
                              (aid,)).fetchall()
         return [{"actor": r[0], "action": r[1], "target": r[2], "before": r[3], "after": r[4], "at": r[5].isoformat()} for r in rows]
 
-    def feedback(self, aid, criterion_id, ai, human):
+    def feedback(self, aid, criterion_id, ai, human, kind="override"):
         from psycopg.types.json import Jsonb
         with self.pool.connection() as c:
-            c.execute("INSERT INTO feedback (assessment_id, criterion_id, ai_result, human_result) VALUES (%s,%s,%s,%s)",
-                      (aid, criterion_id, Jsonb(ai), Jsonb(human)))
+            c.execute("INSERT INTO feedback (assessment_id, criterion_id, kind, ai_result, human_result) VALUES (%s,%s,%s,%s,%s)",
+                      (aid, criterion_id, kind, Jsonb(ai), Jsonb(human)))
+
+    def feedback_rows(self, aid):
+        with self.pool.connection() as c:
+            rows = c.execute("SELECT criterion_id, kind, ai_result, human_result, at FROM feedback WHERE assessment_id = %s "
+                             "ORDER BY id", (aid,)).fetchall()
+        return [{"criterion_id": r[0], "kind": r[1], "ai": r[2], "human": r[3], "at": r[4].isoformat()} for r in rows]
+
+    def delete(self, aid, actor, keep_feedback=None):
+        from psycopg.types.json import Jsonb
+        a = self.get(aid)                     # KeyError if it does not exist
+        with self.pool.connection() as c, c.transaction():
+            n = c.execute("SELECT count(*) FROM evidence WHERE assessment_id = %s", (aid,)).fetchone()[0]
+            # evidence, evidence_chunks and findings go with the assessment (ON DELETE CASCADE)
+            c.execute("DELETE FROM assessments WHERE id = %s", (aid,))
+            c.execute("DELETE FROM jobs WHERE assessment_id = %s", (aid,))
+            c.execute("DELETE FROM feedback WHERE assessment_id = %s", (aid,))
+            for r in keep_feedback or []:     # re-inserted with the evidence excerpts they were decided on
+                c.execute("""INSERT INTO feedback (assessment_id, criterion_id, kind, ai_result, human_result, at, application, excerpts)
+                             VALUES (%s,%s,%s,%s,%s,%s,%s,%s)""",
+                          (aid, r["criterion_id"], r.get("kind", "override"), Jsonb(r.get("ai")), Jsonb(r["human"]),
+                           r.get("at") or datetime.now(timezone.utc).isoformat(), r.get("application", ""), Jsonb(r.get("excerpts"))))
+            c.execute("DELETE FROM audit_log WHERE assessment_id = %s", (aid,))
+            c.execute("INSERT INTO audit_log (assessment_id, actor, action, target, after) VALUES (%s,%s,'deleted',%s,%s)",
+                      (aid, actor, a.application.name, Jsonb({"evidence_files": n})))
+            c.execute("INSERT INTO outbox (topic, key, payload) VALUES (%s, %s, %s)",
+                      (EVENTS_TOPIC, aid, Jsonb(envelope("deleted", aid, {"application": a.application.name}, actor))))
+        files = self.blobs.delete_prefix(f"{aid}/")   # after the commit: a failure here leaves orphan files, not a half-deleted record
+        return {"id": aid, "application": a.application.name, "actor": actor, "evidence_files": files,
+                "feedback_kept": len(keep_feedback or [])}
 
 
 def store_from_settings() -> Store:

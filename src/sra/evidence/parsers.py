@@ -51,30 +51,239 @@ def review_date(text: str) -> datetime | None:
     return max(dates) if dates else None
 
 
-def docx_to_text(data: bytes) -> tuple[str, datetime | None]:
+R_ID = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}"
+A_BLIP = "{http://schemas.openxmlformats.org/drawingml/2006/main}blip"
+V_IMAGEDATA = "{urn:schemas-microsoft-com:vml}imagedata"
+O_OLE = "{urn:schemas-microsoft-com:office:office}OLEObject"
+VECTOR_EXT = (".emf", ".wmf", ".svg")   # drawings OCR cannot read without a renderer
+
+
+class ImageReader:
+    """OCRs the images inside one document, within limits so a picture-heavy file can't tie up the server:
+    at most SRA_OCR_MAX_IMAGES images (default 20) and SRA_OCR_MAX_SECONDS of OCR (default 60; a dense diagram
+    with ~150 labels takes ~30 s on CPU), icons and logos skipped by size, duplicates read once.
+    SRA_OCR=false turns image reading off (images are then only noted)."""
+
+    MIN_W, MIN_H, MIN_BYTES = 120, 60, 2048
+
+    def __init__(self):
+        from ..config import flag, setting
+        self.enabled = flag("SRA_OCR", True)
+        self.left = int(setting("SRA_OCR_MAX_IMAGES", "20") or 20)
+        self.budget = float(setting("SRA_OCR_MAX_SECONDS", "60") or 60)
+        self.spent = 0.0
+        self.out_of_time = False
+        self.seen: set[str] = set()
+        self.stats = {"images_read": 0, "images_small": 0, "images_over_limit": 0, "images_unreadable": 0}
+
+    def section(self, name: str, data: bytes) -> str | None:
+        """The text block for one embedded image, or None when it is skipped (small or a duplicate)."""
+        import hashlib
+        h = hashlib.sha256(data).hexdigest()
+        if h in self.seen:
+            return None
+        self.seen.add(h)
+        if name.lower().endswith(VECTOR_EXT):
+            self.stats["images_unreadable"] += 1
+            return f"[Image {name}: vector drawing (EMF/WMF/SVG), its text could not be read]"
+        img = _decode(data)
+        if img is None:
+            self.stats["images_unreadable"] += 1
+            return f"[Image {name}: format could not be read]"
+        if len(data) < self.MIN_BYTES or img.width < self.MIN_W or img.height < self.MIN_H:
+            self.stats["images_small"] += 1
+            return None
+        if self.spent >= self.budget:
+            self.out_of_time = True
+        if not self.enabled or self.left <= 0 or self.out_of_time:
+            self.stats["images_over_limit"] += 1
+            return f"[Image {name}: not read{'' if self.enabled else ' (OCR is off)'}]"
+        import time
+        self.left -= 1
+        self.stats["images_read"] += 1
+        buf = io.BytesIO()
+        img.save(buf, "PNG")
+        t = time.monotonic()
+        text = image_to_text(buf.getvalue())
+        self.spent += time.monotonic() - t
+        return f"[Image {name}]\n{text}\n[End of image]" if text.strip() else f"[Image {name}: no text found]"
+
+    def meta(self) -> dict:
+        n = self.stats
+        out = {k: v for k, v in n.items() if v}
+        notes = []
+        if n["images_over_limit"]:
+            why = ("OCR is off (SRA_OCR)" if not self.enabled
+                   else "the per-document OCR time limit was reached (SRA_OCR_MAX_SECONDS)" if self.out_of_time
+                   else "over the per-document limit (SRA_OCR_MAX_IMAGES)")
+            notes.append(f"{n['images_over_limit']} image(s) not read: {why}")
+        if n["images_unreadable"]:
+            notes.append(f"{n['images_unreadable']} image(s) in a format OCR cannot read (e.g. EMF/WMF drawings)")
+        if notes:
+            out["image_notes"] = notes
+        return out
+
+
+def _decode(data: bytes):
+    """A Pillow RGB image, or None. Handles PNG/JPEG/GIF/TIFF/BMP/WebP, CMYK and palette images."""
+    try:
+        from PIL import Image
+        img = Image.open(io.BytesIO(data))
+        img.load()
+        return img.convert("RGB")
+    except Exception:
+        return None
+
+
+def _rels(z: zipfile.ZipFile, part: str = "word/document.xml") -> dict[str, tuple[str, bool]]:
+    """Relationship id -> (zip path or URL, is external) for one document part."""
+    from lxml import etree
+    folder, base = part.rsplit("/", 1)
+    rel_path = f"{folder}/_rels/{base}.rels"
+    if rel_path not in z.namelist():
+        return {}
+    out = {}
+    for r in etree.fromstring(z.read(rel_path)):
+        target, external = r.get("Target", ""), r.get("TargetMode") == "External"
+        if not external:
+            path = target[1:] if target.startswith("/") else f"{folder}/{target}"
+            parts: list[str] = []
+            for seg in path.split("/"):
+                if seg == "..":
+                    if parts:
+                        parts.pop()
+                elif seg and seg != ".":
+                    parts.append(seg)
+            target = "/".join(parts)
+        out[r.get("Id")] = (target, external)
+    return out
+
+
+def docx_to_text(data: bytes) -> tuple[str, datetime | None, dict]:
+    """Text of a .docx in reading order, with the text of embedded pictures (OCR) placed where they appear.
+    Returns (text, last modified, meta with image counts and notes)."""
+    images = ImageReader()
+    objects = 0
     with zipfile.ZipFile(io.BytesIO(data)) as z:
+        names = set(z.namelist())
         blocks = body_blocks(z.read("word/document.xml"))
+        rels = _rels(z)
         modified = None
-        if "docProps/core.xml" in z.namelist():
+        if "docProps/core.xml" in names:
             m = re.search(rb"<dcterms:modified[^>]*>([^<]+)<", z.read("docProps/core.xml"))
             modified = parse_datetime(m.group(1).decode()) if m else None
-    lines = []
-    for b in blocks:
-        if isinstance(b, Para):
-            if b.text:
-                lines.append(b.text)
-        elif isinstance(b, Table):
-            lines.extend(" | ".join(r) for r in b.rows)
-    return "\n".join(lines), modified
+        lines = []
+        for b in blocks:
+            if isinstance(b, Para):
+                if b.text:
+                    lines.append(b.text)
+            elif isinstance(b, Table):
+                lines.extend(" | ".join(r) for r in b.rows)
+            if b.el is None:
+                continue
+            for el in b.el.iter(A_BLIP, V_IMAGEDATA, O_OLE):
+                if el.tag == O_OLE:
+                    objects += 1
+                    prog = el.get("ProgID") or "object"
+                    hint = " (upload the .vsdx or .drawio file to have the diagram checked)" if "visio" in prog.lower() else ""
+                    lines.append(f"[Embedded {prog}: its content is not read{hint}]")
+                    continue
+                target, external = rels.get(el.get(R_ID + "embed") or el.get(R_ID + "id"), ("", True))
+                if external or target not in names:
+                    continue
+                sec = images.section(target.rsplit("/", 1)[-1], z.read(target))
+                if sec:
+                    lines.append(sec)
+    meta = images.meta()
+    if objects:
+        meta["embedded_objects"] = objects
+    return "\n".join(lines), modified, meta
 
 
-def pdf_to_text(data: bytes) -> str:
-    try:
-        from pypdf import PdfReader  # optional dependency
-    except ImportError:
-        return ""
+def pdf_to_text(data: bytes) -> tuple[str, dict]:
+    """Text of a PDF page by page, with the text of each page's images (OCR) after that page's text. A scanned
+    PDF (pages that are only images) is therefore read entirely by OCR, within the same image limit."""
+    from pypdf import PdfReader
     reader = PdfReader(io.BytesIO(data))
-    return "\n".join(page.extract_text() or "" for page in reader.pages)
+    images = ImageReader()
+    out = []
+    for n, page in enumerate(reader.pages, 1):
+        out.append(page.extract_text() or "")
+        try:
+            page_images = list(page.images)
+        except Exception:                      # unusual image encodings; the page text is still kept
+            page_images = []
+            images.stats["images_unreadable"] += 1
+        for img in page_images:
+            sec = images.section(f"page {n} {img.name}", img.data)
+            if sec:
+                out.append(sec)
+    return "\n".join(t for t in out if t), images.meta()
+
+
+_OCR = None
+
+
+def image_to_text(data: bytes, min_confidence: float = 0.5) -> str:
+    """Text in an image (screenshot, photo of a whiteboard, scanned page) with RapidOCR, an ONNX model that runs
+    on CPU and ships its weights in the package (nothing is downloaded at run time). Lines are returned top to
+    bottom; low-confidence fragments are dropped."""
+    import hashlib
+    key = hashlib.sha256(data + f"|{min_confidence}|{OCR_VERSION}".encode()).hexdigest()
+    cached = _ocr_cache_get(key)
+    if cached is not None:
+        return cached
+    global _OCR
+    if _OCR is None:
+        from rapidocr_onnxruntime import RapidOCR
+        _OCR = RapidOCR()
+    result, _ = _OCR(data)
+    lines = sorted((r for r in result or [] if r[2] >= min_confidence), key=lambda r: (r[0][0][1], r[0][0][0]))
+    text = "\n".join(r[1] for r in lines)
+    _ocr_cache_put(key, text)
+    return text
+
+
+# Evidence is re-parsed whenever a bundle is built (each run, the evidence list, chat), so OCR text is cached by
+# image hash: in memory, and on disk under SRA_DATA_DIR/ocr_cache so it survives restarts. Bump OCR_VERSION when
+# the OCR model or post-processing changes.
+OCR_VERSION = "1"
+_MEM: dict[str, str] = {}
+_MEM_MAX = 512
+
+
+def _ocr_cache_dir():
+    from ..config import DATA_DIR
+    return DATA_DIR / "ocr_cache"
+
+
+def _ocr_cache_get(key: str) -> str | None:
+    if key in _MEM:
+        return _MEM[key]
+    try:
+        text = (_ocr_cache_dir() / f"{key}.txt").read_text(encoding="utf-8")
+    except OSError:
+        return None
+    _mem_put(key, text)
+    return text
+
+
+def _ocr_cache_put(key: str, text: str) -> None:
+    _mem_put(key, text)
+    try:
+        d = _ocr_cache_dir()
+        d.mkdir(parents=True, exist_ok=True)
+        tmp = d / f"{key}.tmp"
+        tmp.write_text(text, encoding="utf-8")
+        tmp.replace(d / f"{key}.txt")
+    except OSError:
+        pass                                   # read-only disk: the memory cache still helps
+
+
+def _mem_put(key: str, text: str) -> None:
+    if len(_MEM) >= _MEM_MAX:
+        _MEM.pop(next(iter(_MEM)))
+    _MEM[key] = text
 
 
 # ------------------------------------------------------------------ scanners

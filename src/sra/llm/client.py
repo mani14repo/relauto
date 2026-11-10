@@ -3,7 +3,7 @@
 Settings (env / .env):
     LLM_PROVIDER   ollama | openai_compat            (default ollama)
     LLM_BASE_URL   http://localhost:11434 (ollama) | http://vllm:8000/v1; several servers comma-separated
-    LLM_CONCURRENCY  calls in flight per server      (default 1; match OLLAMA_NUM_PARALLEL on the server)
+    LLM_CONCURRENCY  calls in flight per server      (default: OLLAMA_NUM_PARALLEL if this process sees it, else 1)
     LLM_MODEL      qwen3.5:4b                        (laptop default; cluster candidate gemma4:26b - choose by eval)
     LLM_THINK      false | true                      (default false: reasoning tokens are too slow on CPU)
     LLM_TIMEOUT    seconds per call                  (default 300 - CPU inference is slow)
@@ -304,12 +304,26 @@ def base_urls() -> list[str]:
     return [u.strip() for u in str(setting("LLM_BASE_URL", default)).split(",") if u.strip()] or [default]
 
 
+def concurrency() -> str:
+    """LLM_CONCURRENCY if set; otherwise, for Ollama, OLLAMA_NUM_PARALLEL when this process can see it (e.g. a Windows
+    user variable shared with a local Ollama); otherwise 1. Ollama never reads this app's .env, so setting only
+    OLLAMA_NUM_PARALLEL in .env changes the app, not the server."""
+    own = str(setting("LLM_CONCURRENCY", "") or "").strip()
+    if own:
+        return own
+    if setting("LLM_PROVIDER", "ollama") == "ollama":
+        server = str(setting("OLLAMA_NUM_PARALLEL", "") or "").strip()
+        if server.isdigit():
+            return server
+    return "1"
+
+
 def clients_from_settings() -> list[ChatClient]:
     """One client per call that may be in flight: LLM_CONCURRENCY per server, interleaved across servers.
 
     Each client is used by one call at a time, so its `last_usage` and `cancel_check` are never shared.
     """
-    per_server = max(1, int(setting("LLM_CONCURRENCY", "1")))
+    per_server = max(1, int(concurrency()))
     urls = base_urls()
     return [from_settings(url) for _ in range(per_server) for url in urls]
 

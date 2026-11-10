@@ -148,9 +148,25 @@ def test_pool_from_settings(monkeypatch):
     pool = clients_from_settings()
     assert [c.base_url for c in pool] == ["http://a:11434", "http://b:11434", "http://a:11434", "http://b:11434"]
     assert len({id(c) for c in pool}) == 4                      # never shared between calls in flight
-    monkeypatch.delenv("LLM_CONCURRENCY")
+    monkeypatch.setenv("LLM_CONCURRENCY", "")                  # set explicitly: a developer's .env must not leak in
+    monkeypatch.setenv("OLLAMA_NUM_PARALLEL", "")
     monkeypatch.setenv("LLM_BASE_URL", "http://a:11434")
     assert len(clients_from_settings()) == 1
+
+
+@pytest.mark.parametrize("own, server, provider, want", [
+    ("", "3", "ollama", 3),            # only the Ollama variable is set: the app follows it
+    ("2", "3", "ollama", 2),           # the app's own setting wins
+    ("", "", "ollama", 1),             # neither: one at a time
+    ("", "3", "openai_compat", 1),     # OLLAMA_NUM_PARALLEL means nothing to a vLLM server
+    ("", "two", "ollama", 1),          # not a number: ignored
+])
+def test_concurrency_falls_back_to_ollama_num_parallel(monkeypatch, own, server, provider, want):
+    monkeypatch.setenv("LLM_BASE_URL", "http://a:11434")
+    monkeypatch.setenv("LLM_PROVIDER", provider)
+    monkeypatch.setenv("LLM_CONCURRENCY", own)
+    monkeypatch.setenv("OLLAMA_NUM_PARALLEL", server)
+    assert len(clients_from_settings()) == want
 
 
 def test_parallel_eta_uses_throughput():

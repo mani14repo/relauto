@@ -1,5 +1,6 @@
-"""ServiceNow exports (CSV or Table API JSON) for incident, change_request, problem, kb_knowledge,
-em_alert, cmdb_ci and cmdb_rel_ci. Ported and generalized from RunbookIntelligence incidents/source.py.
+"""ServiceNow exports (CSV, XLSX or Table API JSON): incident, change_request, problem, kb_knowledge, em_alert,
+cmdb_ci and cmdb_rel_ci, plus the service-model, discovery, audit, SLA and catalog tables in KNOWN_TABLES.
+Ported and generalized from RunbookIntelligence incidents/source.py.
 
 Rows are kept as flat dicts of strings (display values), redacted, with known date fields parsed
 into `_<field>` datetime keys. Free-text journal fields are reduced to engineer-written notes.
@@ -33,10 +34,23 @@ def _text(value: Any) -> str:
     return "" if value is None else str(value)
 
 
+# Tables recognised from the file name. Longest first, so cmdb_ci_service_auto.csv is not read as cmdb_ci; any other
+# cmdb_ci_* class export (servers, VMs, namespaces...) is read as cmdb_ci and told apart by sys_class_name.
+KNOWN_TABLES = sorted((
+    "cmdb_rel_ci", "cmdb_ci", "change_request", "kb_knowledge", "em_alert", "problem", "incident", "u_slo_definition",
+    "u_business_application",
+    # service model, discovery and CMDB governance (sra.detectors.data_rules)
+    "cmdb_ci_service_auto", "svc_ci_assoc", "service_offering", "reconcile_duplicate_task", "discovery_status",
+    "discovery_schedule", "discovery_device_history", "discovery_credentials", "cmdb_identifier", "sys_audit",
+    "task_cmdb_ci_service", "task_ci", "alm_hardware", "cmdb_sam_sw_install", "cmdb_software_product_model",
+    # ITSM
+    "contract_sla", "task_sla", "sc_cat_item",
+), key=len, reverse=True)
+
+
 def guess_table(name: str, rows: list[dict]) -> str:
     low = name.lower()
-    for t in ("cmdb_rel_ci", "cmdb_ci", "change_request", "kb_knowledge", "em_alert", "problem", "incident",
-              "u_slo_definition", "u_business_application"):
+    for t in KNOWN_TABLES:
         if t in low:
             return t
     if rows:

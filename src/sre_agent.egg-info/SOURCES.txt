@@ -26,6 +26,7 @@ src/sra/detectors/base.py
 src/sra/detectors/checklists.py
 src/sra/detectors/config_checks.py
 src/sra/detectors/criteria_rules.py
+src/sra/detectors/data_rules.py
 src/sra/detectors/incident_anomalies.py
 src/sra/detectors/incident_clusters.py
 src/sra/detectors/rubric_rules.py
@@ -37,6 +38,7 @@ src/sra/evidence/bundle.py
 src/sra/evidence/model.py
 src/sra/evidence/parsers.py
 src/sra/evidence/redact.py
+src/sra/evidence/registers.py
 src/sra/evidence/servicenow.py
 src/sra/llm/__init__.py
 src/sra/llm/client.py
@@ -50,6 +52,7 @@ src/sra/report/docx_fill.py
 src/sra/report/summary.py
 src/sra/retrieval/__init__.py
 src/sra/retrieval/chunks.py
+src/sra/retrieval/nli.py
 src/sra/scoring/__init__.py
 src/sra/scoring/cmdb.py
 src/sra/scoring/engine.py
@@ -69,11 +72,15 @@ tests/test_checklists.py
 tests/test_cmdb_v2.py
 tests/test_config.py
 tests/test_criteria_rules.py
+tests/test_data_rules.py
 tests/test_detectors.py
+tests/test_edit_delete.py
 tests/test_incident_clusters.py
 tests/test_llm.py
 tests/test_llm_client.py
 tests/test_llm_efficiency.py
+tests/test_llm_off_and_feedback.py
+tests/test_llm_parallel.py
 tests/test_report.py
 tests/test_scenario_kit.py
 tests/test_scoring.py

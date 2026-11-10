@@ -148,10 +148,81 @@ def test_every_configured_pattern_compiles():
         for p in spec.get("find", []):
             re.compile(p)
         for it in spec["items"]:
+            # an unquoted name with commas would be split into stray keys by YAML
+            assert set(it) <= {"name", "any", "none", "min_count", "means", "fresh_months"}, (cid, it)
             for p in it.get("any", []) + it.get("none", []):
                 re.compile(p)
 
 
 @pytest.mark.parametrize("value", [False, "off"])
-def test_semantic_off_in_either_yaml_form(value):
-    assert cl.semantic_enabled({"semantic": value}) is False
+def test_suggestions_off_in_either_yaml_form(value):
+    s = cl.Suggester({"suggest": value}, {})
+    assert s.scorer is None and "turned off" in s.reason
+
+
+class FakeScorer:
+    """Entails the requirement only for lines containing `phrase`."""
+    repo = "fake/nli"
+
+    def __init__(self, phrase):
+        self.phrase, self.calls = phrase, 0
+
+    def entailment(self, premises, hypothesis):
+        import numpy as np
+        self.calls += 1
+        return np.array([0.97 if self.phrase in p else 0.05 for p in premises])
+
+
+def suggesting(monkeypatch, phrase):
+    monkeypatch.setenv("SRA_SUGGEST", "auto")            # tests/conftest.py turns suggestions off by default
+    fake = FakeScorer(phrase)
+    from sra.retrieval import nli
+    monkeypatch.setattr(nli, "get_scorer", lambda repo, f: (fake, ""))
+    return fake
+
+
+ROLLBACK = ("# Orders rollback procedure\nRoll back if error rate exceeds 2% for 5 minutes.\n"
+            "Only the release manager may revert a release, without asking anyone.\nRun helm rollback orders.\n")
+
+
+def test_suggestion_points_at_a_line_but_never_makes_the_item_present(monkeypatch):
+    fake = suggesting(monkeypatch, "may revert a release")
+    rep = cl.run(bundle(**{"orders_rollback__md": ROLLBACK}), ctx())
+    r = rep.results["SRE-AT-15-C04"]
+    assert r.result == GAP and r.needs_human_review                       # still missing for the decision
+    assert "named authority (not found by keywords; possibly covered by 'Only the release manager may revert a release" in r.rationale
+    assert "model suggestion 0.97, please confirm" in r.rationale and "1 line suggestion(s) from fake/nli" in rep.status
+    assert fake.calls >= 1
+
+
+def test_no_suggestion_below_the_threshold_or_without_a_requirement(monkeypatch):
+    suggesting(monkeypatch, "nothing in this document")
+    r = cl.run(bundle(**{"orders_rollback__md": ROLLBACK}), ctx()).results["SRE-AT-15-C04"]
+    assert "possibly covered" not in r.rationale
+    s = cl.Suggester({}, {"SRE-AT-15-C04": {}})
+    s.scorer = FakeScorer("anything")
+    assert s.suggest("SRE-AT-15-C04", "named authority", []) is None     # no requirement written for it
+
+
+def test_without_the_model_checklists_run_on_keywords(monkeypatch):
+    monkeypatch.setenv("SRA_SUGGEST", "auto")
+    from sra.retrieval import nli
+    monkeypatch.setattr(nli, "get_scorer", lambda repo, f: (None, "not available locally"))
+    rep = cl.run(bundle(**{"orders_rollback__md": ROLLBACK}), ctx())
+    assert rep.results["SRE-AT-15-C04"].result == GAP and "no line suggestions (not available locally)" in rep.status
+
+
+def test_every_requirement_names_a_real_checklist_item():
+    items = {cid: {i["name"] for i in spec["items"]} for cid, spec in load_yaml("checklists")["criteria"].items()}
+    for cid, reqs in load_yaml("checklist_requirements").items():
+        assert cid in items and set(reqs) <= items[cid], cid
+
+
+def test_real_model_if_present():
+    from sra.retrieval.nli import get_scorer
+    scorer, why = get_scorer("cross-encoder/nli-deberta-v3-xsmall", "onnx/model_quint8_avx2.onnx")
+    if scorer is None:
+        pytest.skip(why)
+    p = scorer.entailment(["The on-call engineer may revert a release without asking anyone.", "Lunch is at noon."],
+                          "This describes who has the authority to decide a rollback.")
+    assert p[0] > 0.5 > p[1]

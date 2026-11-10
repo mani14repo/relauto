@@ -25,7 +25,11 @@ kafka:
 gcs:
   bucket: sra-evidence-PROJECT_ID             # uploaded evidence + generated reports
 
+# Checklist line suggestions use a small NLI model (cross-encoder/nli-deberta-v3-xsmall, ~96 MB ONNX). The pods run
+# with HF_HUB_OFFLINE=1, so its files must be baked into the image's Hugging Face cache (or mounted with HF_HOME);
+# without them suggestions are simply off. Mirror through JFrog/GCS like the other model weights.
 llm:
+  enabled: true                              # false: rules/checklists only, no chat; also set ollama.enabled=false to skip the server
   provider: ollama
   model: gemma4:26b                           # MoE, ~4B active params: CPU-friendly; confirm with eval/run_eval.py
   think: false                                # reasoning tokens are too slow on CPU

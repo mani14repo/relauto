@@ -75,6 +75,9 @@ class CriterionResult(BaseModel):
     validation: str = ""                  # Variant B "Validation" row
     measured_value: str = ""              # Variant C "Measured value" (e.g. "87% of 214 incidents")
     maturity_level: int | None = Field(None, ge=0, le=4)   # Variant C criterion maturity L0-L4
+    # A rule Gap whose only reason is that keywords did not match (document checklists). When the run uses the LLM,
+    # the model is asked too, because the wording may differ from the patterns; without the LLM it stays a Gap.
+    second_opinion: bool = False
 
 
 class ApplicationRef(BaseModel):

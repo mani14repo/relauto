@@ -12,5 +12,17 @@ psycopg-pool==3.3.3
 aiokafka==0.15.0
 google-cloud-storage==2.18.2
 # Local ONNX embeddings for hybrid retrieval (BAAI/bge-small-en-v1.5, weights mirrored to JFrog/GCS)
-fastembed==0.4.2
-pypdf==5.1.0
+fastembed==0.9.1
+openpyxl==3.1.5
+numpy==2.5.4
+# PDF text, and OCR for images and scanned PDFs (RapidOCR ships its ONNX weights inside the wheel)
+pypdf==7.0.0
+# rapidocr-onnxruntime==1.4.4 is installed separately with --no-deps (see Dockerfile): it asks for opencv-python,
+# which needs libGL (absent from distroless). These are its real dependencies, with the headless OpenCV:
+opencv-python-headless==5.0.0.93
+shapely==2.2.0
+pyclipper==1.4.0
+six==1.17.0
+tqdm==4.70.1
+onnxruntime==1.31.1
+Pillow==13.0.0

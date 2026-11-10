@@ -36,6 +36,36 @@ from .prompts import CHAT_SYSTEM, PROMPT_VERSION, SCHEMA, SYSTEM, criterion_prom
 from .verify import verify
 
 log = logging.getLogger(__name__)
+
+
+def _wants_second_opinion(cur: CriterionResult) -> bool:
+    """A checklist Gap caused only by keywords not matching: worth asking the model, which reads the wording."""
+    return cur.second_opinion and cur.source == Source.RULE and cur.result == Result.GAP
+
+
+def settle(prior: CriterionResult | None, new: CriterionResult, outcome: str) -> tuple[CriterionResult, str]:
+    """Combine the model's answer with the result it was asked to double-check. Returns (result, outcome).
+
+    Only for checklist Gaps from keyword misses: a verified Met or Gap from the model replaces the checklist's Gap,
+    keeps its notes and evidence, and is always flagged for review (the two disagree, or the model wrote the
+    recommendation). Any other answer (no evidence, rejected, error, Insufficient, N/A) keeps the checklist's Gap.
+    Everything else passes through unchanged.
+    """
+    if prior is None or not _wants_second_opinion(prior):
+        return new, outcome
+    if outcome in ("verified", "reused") and new.result in (Result.MET, Result.GAP):
+        r = new.model_copy(deep=True)
+        verdict = "found the items the keywords missed" if new.result == Result.MET else "agrees it is a Gap"
+        r.rationale = f"{new.rationale}\nAI second opinion on a keyword checklist Gap; the model {verdict}. Checklist: {prior.rationale}"
+        r.evidence_refs = list(dict.fromkeys(new.evidence_refs + prior.evidence_refs))
+        r.needs_human_review = True
+        return r, outcome
+    kept = prior.model_copy(deep=True)
+    kept.second_opinion = False
+    why = {"no_evidence": "found no matching evidence", "rejected": "gave an answer that failed verification",
+           "error": "call failed"}.get(outcome, f"answered {new.result.value if new.result else 'nothing'}")
+    kept.rationale = f"{prior.rationale}\nAI second opinion: the model {why}; the checklist's Gap stands."
+    return kept, "kept"
 CHARS_PER_TOKEN = 3.5          # conservative estimate for English prompts; real counts are logged per call
 
 
@@ -129,7 +159,7 @@ class Evaluator:
                 if only and c.id not in only:
                     continue
                 cur = a.results.get(c.id)
-                if cur is not None and cur.result is not None and not only:
+                if cur is not None and cur.result is not None and not only and not _wants_second_opinion(cur):
                     continue
                 if cur is not None and cur.source == Source.HUMAN:
                     continue
@@ -137,8 +167,11 @@ class Evaluator:
         model = getattr(self.client, "model", "model")
         servers = sorted({getattr(cl, "base_url", "") for cl in self.pool} - {""})
         where = ", ".join(servers)
+        seconds = sum(1 for _, c in pending if a.results.get(c.id) and _wants_second_opinion(a.results[c.id]))
         progress.phase("AI-assisted criteria", total=len(pending),
-                       msg=f"{len(pending)} criteria need the local model; checking {model}" + (f" at {where}" if where else ""))
+                       msg=f"{len(pending)} criteria need the local model"
+                       + (f" ({seconds} of them checklist Gaps where only keywords were missing, for a second opinion)" if seconds else "")
+                       + f"; checking {model}" + (f" at {where}" if where else ""))
         if not pending:
             a.detector_runs["llm"] = f"ran: {model} (nothing left to evaluate)"
             progress.info("Every criterion was settled by the rules; no model calls needed")
@@ -180,6 +213,8 @@ class Evaluator:
             return f"{c.id}: no matching evidence, marked Insufficient Evidence", "info"
         if outcome == "reused":
             return f"{c.id}: {r.result.value} (reused: same evidence, model and prompt as the last run)", "info"
+        if outcome == "kept":
+            return f"{c.id}: kept the checklist's Gap (the model gave no usable answer after {secs:.0f}s)", "info"
         return f"{c.id}: {r.result.value} ({secs:.0f}s{self._usage_note(usage)}, confidence {r.confidence:.0%})", "info"
 
     def _run_sequential(self, a, pending, idx, client, progress: Progress) -> None:
@@ -187,6 +222,7 @@ class Evaluator:
             progress.start_item(i, f"{c.id} {c.name}")
             t0 = time.monotonic()
             r, outcome, usage = self._evaluate(a, t, c, idx, client)
+            r, outcome = settle(a.results.get(c.id), r, outcome)
             a.results[c.id] = r
             msg, level = self._outcome(c, r, outcome, time.monotonic() - t0, usage)
             progress.finish_item(i, msg, level)
@@ -230,6 +266,7 @@ class Evaluator:
                 progress.check()
                 for f in finished:
                     c, r, outcome, usage, secs = f.result()      # re-raises JobCancelled or an unexpected error
+                    r, outcome = settle(a.results.get(c.id), r, outcome)
                     a.results[c.id] = r
                     done_n += 1
                     msg, level = self._outcome(c, r, outcome, secs, usage)

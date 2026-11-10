@@ -110,6 +110,11 @@ CREATE TABLE IF NOT EXISTS feedback (
     human_result   jsonb NOT NULL,
     at             timestamptz NOT NULL DEFAULT now()
 );
+-- kind: confirm | override | fill | revise. application and excerpts are filled in when the assessment is deleted,
+-- so the decision stays usable as training data without the assessment.
+ALTER TABLE feedback ADD COLUMN IF NOT EXISTS kind text NOT NULL DEFAULT 'override';
+ALTER TABLE feedback ADD COLUMN IF NOT EXISTS application text NOT NULL DEFAULT '';
+ALTER TABLE feedback ADD COLUMN IF NOT EXISTS excerpts jsonb;
 
 -- Progress of the latest automated run per assessment (written by the API or the worker, read by the UI).
 CREATE TABLE IF NOT EXISTS jobs (

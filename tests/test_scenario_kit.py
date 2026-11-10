@@ -35,18 +35,45 @@ def test_baseline_without_kubernetes_or_cicd_is_ready(tmp_path):
     _assert_matches(_run(tmp_path, flags={"has_sla": True}))
 
 
+def _flags_for(*defects):
+    return {**FULL, **{n: True for d in defects for n in DEFECTS[d].needs}}
+
+
 @pytest.mark.parametrize("defect", sorted(DEFECTS))
 def test_each_defect_matches_its_answer_key(tmp_path, defect):
-    _assert_matches(_run(tmp_path, [defect], tier=1 if defect == "cmdb_missing_support_group" else 2, name=defect))
+    _assert_matches(_run(tmp_path, [defect], tier=1 if defect == "cmdb_missing_support_group" else 2,
+                         flags=_flags_for(defect), name=defect))
 
 
 def test_all_defects_together(tmp_path):
     second = {b for _, b in EXCLUSIVE}
-    _assert_matches(_run(tmp_path, [d for d in DEFECTS if d not in second], tier=1))
+    chosen = [d for d in DEFECTS if d not in second]
+    _assert_matches(_run(tmp_path, chosen, tier=1, flags=_flags_for(*chosen)))
+
+
+def test_healthy_operational_data_has_no_gaps(tmp_path):
+    """Every rule on the generated ServiceNow tables and registers is Met when no defect is planted."""
+    from datetime import datetime
+
+    from scenario_kit import PROFILE_FLAGS
+    from sra.cli import _bundle, _load_profile
+    from sra.detectors import data_rules
+    from sra.pipeline import context_for
+    spec = Spec.load({"slug": "ops", "name": "Payments Hub", "flags": {f: True for f in PROFILE_FLAGS}})
+    sc = render(spec, tmp_path / "ops")
+    as_of = datetime.fromisoformat(spec.as_of)
+    b = _bundle(sc, as_of)
+    assert not b.errors and not [it.name for it in b.items.values() if it.table == "unknown"]
+    rep = data_rules.run(b, context_for(_load_profile(sc, None), as_of))
+    assert len(rep.results) >= 50
+    assert {cid: r.rationale for cid, r in rep.results.items() if r.result.value != "Met"} == {}
 
 
 def test_invalid_specs_are_rejected():
     assert Spec.load({"name": "X", "defects": ["single_replica", "made_up"]}).validate() == [
         "unknown defect: made_up", "defect single_replica needs containerized: true"]
+    assert Spec.load({"name": "X", "trigger": "deployment", "hosting": "on_prem",
+                      "defects": ["toil_rising", "stale_cloud_cis"], "flags": {"sre_toil_work": True}}).validate() == [
+        "defect toil_rising needs trigger: periodic", "defect stale_cloud_cis needs hosting: cloud or hybrid"]
     assert Spec.load({"name": "X", "defects": ["dependencies_unmapped", "dependencies_stale"]}).validate() == [
         "choose one of dependencies_unmapped / dependencies_stale"]

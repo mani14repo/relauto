@@ -1,0 +1,141 @@
+# Registers: spreadsheets teams keep outside ServiceNow (CSV or XLSX), read by sra.evidence.registers.
+#
+# A file is recognised as a register when its name matches one of `files` (case-insensitive regex), or when it is
+# uploaded with the hint "register:<type>". Its header row is mapped onto the canonical column names below: a header
+# matches when it equals one of the aliases after lower-casing and treating _ - / as spaces. Unmapped columns are
+# kept as they are. Columns listed under `dates` are also parsed into `_<column>` datetimes for the rules.
+#
+# DRAFT: the aliases are guesses at common layouts. When a real register uses other headings, add them here; the
+# rules in sra.detectors.data_rules only see the canonical names.
+
+common:      # aliases shared by every register type
+  id: [id, ref, reference, number, key]
+  title: [title, name, description, summary, item]
+  owner: [owner, accountable owner, assigned to, assignee, responsible, risk owner, action owner, task owner, finding owner,
+          item owner, named owner, io owner, exception owner, automation owner]
+  status: [status, state]
+  application: [application, business application, app, applications affected, service]
+  severity: [severity, priority, criticality]
+  due_date: [due date, due, target date, committed date, deadline]
+  completed_date: [completed date, completed, closed date, closed, date completed, done date, resolved date]
+  opened_date: [opened date, opened, raised, created, date raised, identified date]
+
+types:
+  risk:
+    files: ['risk[ _-]*register', '^risks?[ _.-]']
+    columns:
+      likelihood: [likelihood, probability]
+      impact: [impact]
+      rating: [rating, risk rating, inherent risk, risk level, score]
+      mitigation: [mitigation, mitigation plan, treatment, action plan]
+      target_date: [target date, mitigation date, due date]
+      accepted_by: [accepted by, risk accepted by, acceptance approver, approved by]
+      acceptance_expiry: [acceptance expiry, acceptance expires, expiry, expiry date, review by]
+    dates: [target_date, acceptance_expiry, due_date, completed_date, opened_date]
+  exception:
+    files: ['exception', 'deviation', 'waiver']
+    columns:
+      approved_by: [approved by, approver, approval]
+      expiry_date: [expiry, expiry date, expires, valid until, end date]
+      compensating_control: [compensating control, compensating controls, mitigating control]
+    dates: [expiry_date, opened_date]
+  improvement:
+    files: ['improvement', 'opportunit', '\bIO[ _-]?register']
+    columns:
+      score: [score, priority score, value score]
+      planned_date: [planned date, planned delivery, scheduled date, committed date, target date]
+      override_reason: [override, override reason, prioritization override, priority override]
+      baseline_metric: [baseline, baseline metric, before, before metric]
+      result_metric: [result, result metric, after, after metric, realized value]
+    dates: [planned_date, completed_date, due_date]
+  vendor:
+    files: ['vendor[ _-]*(inventory|register|list)', 'supplier[ _-]*(inventory|register|list)', 'third[ _-]*party']
+    columns:
+      vendor: [vendor, supplier, vendor name, third party]
+      services: [services, services provided, service provided]
+      applications: [applications, dependent applications, applications supported, supported applications, apps]
+      critical: [critical, critical vendor, tier]
+      concentration_assessed: [concentration risk, concentration assessed, concentration analysis]
+      mitigation: [mitigation, mitigation plan, exit plan]
+  contract:
+    files: ['contract[ _-]*(register|inventory|list|tracker)', '^contracts?\.(csv|xlsx)$']   # not contract_sla (a ServiceNow table)
+    columns:
+      vendor: [vendor, supplier]
+      critical: [critical, critical vendor]
+      contract_end: [contract end, end date, expiry, expiry date, term end]
+      sla: [sla, sla defined, service levels]
+      penalty: [penalty, penalty clause, service credits]
+      review_date: [review date, last review, last reviewed]
+    dates: [contract_end, review_date]
+  debt:
+    files: ['debt']
+    dates: [opened_date, completed_date, due_date]
+  corrective_action:
+    files: ['corrective[ _-]*action', 'action[ _-]*register']
+    columns:
+      escalated: [escalated, escalated to reo, escalation]
+    dates: [due_date, completed_date, opened_date]
+  postmortem_action:
+    files: ['post[ _-]*mortem[ _-]*action', 'pir[ _-]*action', 'postmortem']
+    columns:
+      escalated: [escalated, escalated to sre lead, escalation]
+    dates: [due_date, completed_date, opened_date]
+  cmdb_remediation:
+    files: ['cmdb[ _-]*remediation', 'data[ _-]*quality[ _-]*(tasks|findings|remediation)']
+    dates: [due_date, completed_date, opened_date]
+  audit_finding:
+    files: ['audit[ _-]*finding']
+    dates: [due_date, completed_date, opened_date]
+  sla_breach:
+    files: ['sla[ _-]*breach', 'breach[ _-]*register']
+    columns:
+      cause_category: [cause, root cause, cause category, root cause category, category]
+      improvement_action: [improvement action, action, corrective action, tracked action]
+      breach_date: [breach date, date, breached on]
+    dates: [breach_date]
+  knowledge_migration:
+    files: ['migration[ _-]*tracker', 'onenote', 'knowledge[ _-]*migration']
+    columns:
+      procedure: [procedure, page, document, onenote page]
+      identified_date: [identified, identified date, found]
+      migrated_date: [migrated, migrated date, migrated on, published]
+      kb_number: [kb, kb article, kb number, article]
+    dates: [identified_date, migrated_date]
+  roster:
+    files: ['roster', 'shift[ _-]*(coverage|schedule)', 'on[ _-]*call[ _-]*schedule']
+    columns:
+      queue: [queue, assignment group, group]
+      agent: [agent, engineer, name, person]
+      critical: [critical, critical queue]
+      shift: [shift, coverage, rota]
+      trained: [trained, training complete, certified]
+  access_review:
+    files: ['access[ _-]*review', 'privilege[ _-]*review', 'entitlement[ _-]*review']
+    columns:
+      review_date: [review date, reviewed on, date, completed]
+      least_privilege: [least privilege, least privilege confirmed]
+      shared_accounts: [shared accounts, shared account count, generic accounts]
+      scope: [scope, system, environment]
+    dates: [review_date]
+  automation:
+    files: ['automation[ _-]*(registry|register|inventory)']
+    columns:
+      last_activity: [last activity, last active, last acknowledged, last review, last reviewed]
+      before_hours: [before, before hours, toil before, baseline hours]
+      after_hours: [after, after hours, toil after]
+      deployed_date: [deployed, deployed date, go live, live date]
+    dates: [last_activity, deployed_date]
+  toil:
+    files: ['toil[ _-]*(measurement|trend|percentage|history)', 'toil[ _-]*pct']
+    columns:
+      quarter: [quarter, period]
+      toil_pct: [toil pct, toil percent, toil percentage, toil %, toil]
+      measured_date: [measured, measured date, date]
+    dates: [measured_date]
+  deployment:
+    files: ['deploy(ment)?s?[ _-]*(log|history|record)', '^deployments?\.']
+    columns:
+      deployed_at: [deployed at, deployed, deployment time, date]
+      commit_at: [commit at, committed at, commit time, first commit]
+      environment: [environment, env, target]
+    dates: [deployed_at, commit_at]

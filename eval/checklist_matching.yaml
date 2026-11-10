@@ -1,0 +1,114 @@
+# Test set for matching checklist items by meaning (eval/check_matchers.py).
+# Written before any model was scored on it. For each checklist item:
+#   means      what the item requires, in plain words (the text a matcher compares against document lines)
+#   satisfies  lines that meet the item but are worded differently from the checklist's keyword patterns
+#   near_miss  lines about the same topic that do NOT meet it (missing, planned, negated, or a different detail)
+# Every line of the eval scenario documents is also used as unrelated background.
+items:
+  - id: SRE-AT-14-C02/boundaries
+    means: limits on what the automation may do on its own, and when a person must approve
+    satisfies:
+      - The bot only restarts pods; anything beyond a restart waits for the on-call engineer to approve.
+      - Actions outside the allowed scope are never taken without sign-off from an SRE.
+    near_miss:
+      - The automation restarts pods whenever the health check fails.
+      - Limits on what the bot may do still need to be agreed with the SRE team.
+
+  - id: SRE-AT-14-C03/disable
+    means: how to switch the automation off
+    satisfies:
+      - To stop the job, set enabled=false in the scheduler and confirm no runs are queued.
+      - Operators can halt the remediation bot by flipping the feature flag in the admin console.
+    near_miss:
+      - The automation runs every five minutes from the scheduler.
+      - There is currently no way to stop the bot without a redeploy.
+
+  - id: SRE-AT-14-C02/escalation
+    means: who the automation escalates to when it meets a situation it cannot handle
+    satisfies:
+      - If the script hits an unknown state it pages the platform on-call and stops.
+      - Unexpected results are handed to the SRE lead via PagerDuty.
+    near_miss:
+      - The script logs every action it takes to Splunk.
+      - Unknown states are ignored and the script carries on.
+
+  - id: ITSM-AT-11-C03/segmentation
+    means: incidents raised by monitoring reported separately from incidents raised by people
+    satisfies:
+      - Alert-generated tickets and user-reported tickets are shown in separate columns.
+      - We split restoration time between auto-detected and caller-reported incidents.
+    near_miss:
+      - Mean time to restore was 3.2 hours this month.
+      - Most incidents this quarter came from the payments integration.
+
+  - id: SRE-AT-15-C03/check-recorded
+    means: the result of the regression check after the latest release
+    satisfies:
+      - "Release 4.2: latency and error rate compared with the pre-release baseline, no degradation found."
+      - After deploying 3.7 the P95 comparison against last week passed.
+    near_miss:
+      - Release 4.2 was deployed on Tuesday evening.
+      - We plan to start comparing latency before and after each release next quarter.
+
+  - id: SRE-AT-15-C04/authority
+    means: who has the authority to decide a rollback
+    satisfies:
+      - The on-call engineer may revert a release without asking anyone.
+      - Only the release manager decides whether to go back to the previous version.
+    near_miss:
+      - A rollback takes about ten minutes using the pipeline.
+      - Who can approve reverting a release is still to be agreed.
+
+  - id: SRE-AT-05-C05/user-impact
+    means: the impact on users when the service is degraded
+    satisfies:
+      - While the cache is down, customers see prices up to five minutes old.
+      - Members cannot submit new claims during the failover, but can still view existing ones.
+    near_miss:
+      - The cache is replicated across two zones.
+      - Failover to the standby region takes about four minutes.
+
+  - id: ITSM-AT-12-C01/owner-sign-off
+    means: the business owner approved the recovery objectives
+    satisfies:
+      - Recovery targets were accepted by the VP of Pharmacy Operations on 3 March.
+      - The product owner for Claims signed the continuity plan last quarter.
+    near_miss:
+      - Recovery targets are four hours and fifteen minutes.
+      - The continuity plan is awaiting review by the business.
+
+  - id: SRE-AT-08-C05/raci-confirmed
+    means: the responsibility matrix was confirmed by the PSE, SRE and engineering leads
+    satisfies:
+      - All three team leads reviewed and agreed this matrix at the June operations meeting.
+      - Agreed by Priya (PSE lead), Marcus (SRE lead) and Dana (Engineering lead).
+    near_miss:
+      - The matrix covers incident, problem and change activities.
+      - The matrix will be shared with the team leads for comment.
+
+  - id: ITSM-AT-10-C03/response-commitment
+    means: how quickly the vendor must respond to a priority 1 issue
+    satisfies:
+      - For a severity 1 outage the supplier answers within 15 minutes, any time of day.
+      - Critical tickets get a call back from the provider inside half an hour.
+    near_miss:
+      - The supplier hosts our SMS gateway in two data centres.
+      - We have raised four tickets with the supplier this year.
+
+  - id: SRE-AT-16-C02/reduction-target
+    means: a target for reducing toil by a percentage
+    satisfies:
+      - We aim to cut manual operational work by a third before the end of Q2.
+      - The goal is 25% fewer hours on repetitive tasks within six months.
+    near_miss:
+      - Manual operational work takes about 12 hours a week.
+      - Reducing repetitive tasks is something the team cares about.
+
+  - id: CMDB-AT-09-C03/upgrade-path
+    means: how the end-of-life component will be upgraded or replaced
+    satisfies:
+      - Jenkins will be retired and the pipelines moved to GitHub Actions by October.
+      - The service moves from Java 8 to Java 21 in the March release.
+    near_miss:
+      - Jenkins reaches end of support in October.
+      - The Java 8 runtime is used by three services.

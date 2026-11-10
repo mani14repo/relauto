@@ -53,7 +53,9 @@ def evaluate(scenario: Path, use_llm: bool, model: str | None) -> dict:
     elapsed = time.perf_counter() - t0
 
     seeded = exp["seeded_findings"]
-    hit = [s for s in seeded if any(f.detector.startswith(s[0]) and s[1].lower() in f"{f.title} {f.detail}".lower() for f in a.findings)]
+    # (detector prefix, text): a finding from that detector ("" = any) whose title, detail or linked criteria mention the text
+    hit = [s for s in seeded if any(f.detector.startswith(s[0]) and s[1].lower() in f"{f.title} {f.detail} {' '.join(f.criterion_ids)}".lower()
+                                    for f in a.findings)]
     out = {
         "scenario": scenario.name, "model": model or (os.environ.get("LLM_MODEL") if use_llm else None),
         "selection_recall": round(len(set(exp["templates_include"]) & set(selected)) / len(exp["templates_include"]), 3),

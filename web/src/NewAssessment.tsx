@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "./api";
 import { ErrorBox } from "./ui";
 
@@ -13,28 +13,56 @@ const FLAGS: [string, string][] = [
   ["has_reliability_automation", "Reliability automation in prod"], ["sre_toil_work", "SRE/AE operational toil"],
   ["eol_components", "Known EOL components"], ["service_catalog_scope", "Service catalog scope"],
 ];
+const BLANK = { name: "", cmdb_id: "", aliases: "", tier: 2, priority_class: "P2", trigger: "periodic", hosting: "cloud", ci_tool: "" };
 
-export default function NewAssessment() {
-  const [p, setP] = useState<Record<string, any>>({ name: "", cmdb_id: "", aliases: "", tier: 2, priority_class: "P2", trigger: "periodic", hosting: "cloud", ci_tool: "" });
+/** The form state for a profile: aliases as one comma-separated string, empty strings for unset values. */
+function toForm(profile: Record<string, any>): Record<string, any> {
+  return { ...BLANK, ...profile, aliases: (profile.aliases ?? []).join(", "), tier: profile.tier ?? "", ci_tool: profile.ci_tool ?? "" };
+}
+
+function toProfile(p: Record<string, any>): Record<string, unknown> {
+  return { ...p, aliases: String(p.aliases || "").split(",").map((s) => s.trim()).filter(Boolean),
+    tier: p.tier ? Number(p.tier) : null, ci_tool: p.ci_tool || null };
+}
+
+/** "Fill from profile.yaml": reads the file on the server and replaces the form's profile fields with it. */
+function ProfileImport({ onLoad }: { onLoad: (profile: Record<string, any>) => void }) {
+  const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const set = (k: string, v: unknown) => setP((x) => ({ ...x, [k]: v }));
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setBusy(true); setError(null);
+  async function pick(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    e.target.value = "";  // picking the same file again re-reads it
+    if (!f) return;
+    setBusy(true); setError(null); setMsg(null);
     try {
-      const profile = { ...p, aliases: String(p.aliases || "").split(",").map((s) => s.trim()).filter(Boolean),
-        tier: p.tier ? Number(p.tier) : null, ci_tool: p.ci_tool || null };
-      const r = await api.create(profile);
-      window.location.hash = `#/a/${r.assessment.id}`;
+      const r = await api.parseProfile(f);
+      onLoad(r.profile);
+      setMsg(`Filled from ${r.filename}. Check the values before continuing.` +
+        (r.ignored.length ? ` Ignored unknown fields: ${r.ignored.join(", ")}.` : "") +
+        (r.profile.name ? "" : " The file has no name; enter one."));
     } catch (err) { setError(String(err)); } finally { setBusy(false); }
   }
 
   return (
-    <form onSubmit={submit}>
-      <h1 style={{ marginBottom: 14 }}>New assessment</h1>
+    <div className="card">
+      <div className="row" style={{ gap: 12, flexWrap: "wrap" }}>
+        <label className="btn">
+          {busy ? "Reading…" : "Fill from profile.yaml…"}
+          <input type="file" accept=".yaml,.yml,.json" onChange={pick} disabled={busy} style={{ display: "none" }} />
+        </label>
+        <span className="muted small">Optional. Replaces the fields below with the file's values; anything the file leaves out goes back to its default.</span>
+      </div>
       <ErrorBox error={error} />
+      {msg && <p className="notice" role="status" style={{ marginTop: 10, marginBottom: 0 }}>{msg}</p>}
+    </div>
+  );
+}
+
+function ProfileFields({ p, set }: { p: Record<string, any>; set: (k: string, v: unknown) => void }) {
+  return (
+    <>
       <div className="card">
         <h2>Application</h2>
         <div className="grid">
@@ -60,14 +88,101 @@ export default function NewAssessment() {
       </div>
       <div className="card">
         <h2>Characteristics</h2>
-        <p className="muted small">These drive which of the 39 assessment templates apply. Counts and some flags are also derived from the evidence you upload.</p>
+        <p className="muted small">These drive which of the 41 assessment templates apply. Counts and some flags are also derived from the evidence you upload.</p>
         <div className="grid">
           {FLAGS.map(([k, l]) => (
             <label key={k} className="check"><input type="checkbox" checked={!!p[k]} onChange={(e) => set(k, e.target.checked)} />{l}</label>
           ))}
         </div>
       </div>
+    </>
+  );
+}
+
+export default function NewAssessment() {
+  const [p, setP] = useState<Record<string, any>>(BLANK);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const set = (k: string, v: unknown) => setP((x) => ({ ...x, [k]: v }));
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true); setError(null);
+    try {
+      const r = await api.create(toProfile(p));
+      window.location.hash = `#/a/${r.assessment.id}`;
+    } catch (err) { setError(String(err)); } finally { setBusy(false); }
+  }
+
+  return (
+    <form onSubmit={submit}>
+      <h1 style={{ marginBottom: 14 }}>New assessment</h1>
+      <ErrorBox error={error} />
+      <ProfileImport onLoad={(x) => setP(toForm(x))} />
+      <ProfileFields p={p} set={set} />
       <button className="primary" disabled={busy || !p.name}>{busy ? "Creating…" : "Create and propose templates"}</button>
+    </form>
+  );
+}
+
+export function EditAssessment({ id }: { id: string }) {
+  const [p, setP] = useState<Record<string, any> | null>(null);
+  const [date, setDate] = useState("");
+  const [assessor, setAssessor] = useState("");
+  const [locked, setLocked] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const set = (k: string, v: unknown) => setP((x) => ({ ...x, [k]: v }));
+  const back = `#/a/${id}`;
+
+  useEffect(() => {
+    api.get(id).then(({ assessment: a, job }) => {
+      setP(toForm(a.profile as Record<string, any>));
+      setDate(a.assessment_date);
+      setAssessor(a.assessor);
+      if (a.status === "signed_off") setLocked("This assessment is signed off; its details can no longer be changed.");
+      else if ((job?.state === "queued" || job?.state === "running") && !job?.stale) setLocked("An automated pass is running. Cancel it or wait for it to finish before editing.");
+    }).catch((e) => setError(String(e)));
+  }, [id]);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!p) return;
+    setBusy(true); setError(null);
+    try {
+      const r = await api.edit(id, { profile: toProfile(p), assessment_date: date, assessor });
+      if (r.rerun_needed) {
+        try { window.sessionStorage.setItem(`notice.${id}`, "Details changed. Check the Templates tab, then run the automated pass again so the results reflect them."); } catch { /* ignore */ }
+      }
+      window.location.hash = back;
+    } catch (err) { setError(String(err)); } finally { setBusy(false); }
+  }
+
+  if (!p) return <><ErrorBox error={error} /><p className="muted">Loading…</p></>;
+  return (
+    <form onSubmit={submit}>
+      <div className="row" style={{ marginBottom: 14 }}>
+        <h1>Edit assessment</h1>
+        <span className="muted mono">{id}</span>
+      </div>
+      <ErrorBox error={error} />
+      {locked && <p className="notice" role="status">{locked}</p>}
+      <fieldset disabled={!!locked || busy} style={{ border: "none", padding: 0, margin: 0 }}>
+        <div className="card">
+          <h2>Assessment</h2>
+          <div className="grid">
+            <label className="field">Assessment date<input type="date" required value={date} onChange={(e) => setDate(e.target.value)} /></label>
+            <label className="field">Assessor<input value={assessor} onChange={(e) => setAssessor(e.target.value)} /></label>
+          </div>
+          <p className="muted small">The date sets the window the rules look back over (e.g. incidents in the last 90 days).</p>
+        </div>
+        <ProfileImport onLoad={(x) => setP(toForm(x))} />
+        <ProfileFields p={p} set={set} />
+        <div className="row" style={{ gap: 8 }}>
+          <button className="primary" disabled={!p.name || !date}>{busy ? "Saving…" : "Save changes"}</button>
+          <a className="btn" href={back}>Cancel</a>
+        </div>
+      </fieldset>
     </form>
   );
 }

@@ -3,7 +3,7 @@
 All are deterministic; incident_clusters uses unsupervised machine learning (text vectors + clustering) and only
 raises advisory findings and review flags.
 """
-from . import checklists, config_checks, criteria_rules, incident_anomalies, incident_clusters, rubric_rules, vulnerabilities
+from . import checklists, config_checks, criteria_rules, data_rules, incident_anomalies, incident_clusters, rubric_rules, vulnerabilities
 from .base import Context, DetectorReport  # noqa: F401
 
 ALL = {
@@ -14,4 +14,5 @@ ALL = {
     "config_checks": config_checks.run,
     "criteria_rules": criteria_rules.run,
     "checklists": checklists.run,
+    "data_rules": data_rules.run,
 }

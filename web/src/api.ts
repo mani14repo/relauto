@@ -130,11 +130,19 @@ export const api = {
   list: () => req<any[]>("GET", "/api/assessments"),
   templates: () => req<any[]>("GET", "/api/catalog/templates"),
   template: (id: string) => req<Template>("GET", `/api/catalog/templates/${id}`),
+  parseProfile: (file: File) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return req<{ profile: Record<string, unknown>; ignored: string[]; filename: string }>("POST", "/api/profile/parse", fd, true);
+  },
   create: (profile: Record<string, unknown>) => req<{ assessment: Assessment; candidates: Candidate[] }>("POST", "/api/assessments", { profile }),
   get: (id: string) => req<{ assessment: Assessment; scorecard: ScoreCard | null; job: Job }>("GET", `/api/assessments/${id}`),
   candidates: (id: string) => req<{ profile: any; candidates: Candidate[] }>("GET", `/api/assessments/${id}/candidates`),
   setTemplates: (id: string, templates: string[]) => req<Assessment>("PUT", `/api/assessments/${id}/templates`, { templates }),
   patchProfile: (id: string, patch: Record<string, unknown>) => req<Assessment>("PATCH", `/api/assessments/${id}/profile`, patch),
+  edit: (id: string, patch: { profile?: Record<string, unknown>; assessment_date?: string; assessor?: string }) =>
+    req<{ assessment: Assessment; rerun_needed: boolean }>("PATCH", `/api/assessments/${id}`, patch),
+  remove: (id: string) => req<{ id: string; application: string; evidence_files: number }>("DELETE", `/api/assessments/${id}`),
   upload: (id: string, files: FileList | File[], hint?: string) => {
     const fd = new FormData();
     Array.from(files).forEach((f) => fd.append("files", f, (f as any).webkitRelativePath || f.name));
@@ -152,6 +160,6 @@ export const api = {
   gate: (id: string, final = false) => req<{ ok: boolean; blockers: string[]; warnings: string[] }>("GET", `/api/assessments/${id}/gate?final=${final}`),
   signoff: (id: string, role: string, name: string, decision: string) => req<Assessment>("POST", `/api/assessments/${id}/signoffs`, { role, name, decision }),
   audit: (id: string) => req<any[]>("GET", `/api/assessments/${id}/audit`),
-  llmHealth: () => req<{ model: string; reachable: boolean }>("GET", "/api/llm/health"),
+  llmHealth: () => req<{ enabled: boolean; model: string | null; reachable: boolean }>("GET", "/api/llm/health"),
   reportUrl: (id: string) => `/api/assessments/${id}/report`,
 };

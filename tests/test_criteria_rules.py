@@ -97,12 +97,27 @@ def test_workload_labels_and_otel_keys():
     assert res["CMDB-AT-07-C03"].result == GAP and res["CMDB-AT-12-C04"].result == GAP
 
 
-def test_outage_priority_follows_tier():
-    rows = [inc(i, short_description="orders site DOWN", priority="3 - Moderate") for i in range(3)]
-    assert run(bundle(incident__json=rows), ctx(tier=1))["CMDB-AT-10-C04"].result == GAP
-    rows = [inc(i, short_description="orders site DOWN", priority="2 - High") for i in range(3)]
-    assert run(bundle(incident__json=rows), ctx(tier=1))["CMDB-AT-10-C04"].result == MET
-    assert "CMDB-AT-10-C04" not in run(bundle(incident__json=[inc(1)]))   # no outages: nothing to judge
+def C04(rows, tier):
+    return run(bundle(incident__json=rows), ctx(tier=tier)).get("CMDB-AT-10-C04")
+
+
+@pytest.mark.parametrize("tier,outage,degradation", [(1, 1, 2), (2, 2, 3), (3, 3, 4)])
+def test_priority_follows_cmdb_std_10_table(tier, outage, degradation):
+    """CMDB-STD-10 R06: Tier 1 outage P1 / degradation P2; Tier 2 P2/P3; Tier 3 P3/P4."""
+    down = lambda p: [inc(i, short_description="orders site DOWN", priority=f"{p} - x") for i in range(3)]  # noqa: E731
+    slow = lambda p: [inc(i, short_description="orders checkout slow", priority=f"{p} - x") for i in range(3)]  # noqa: E731
+    assert C04(down(outage), tier).result == MET and C04(down(outage + 1), tier).result == GAP
+    assert C04(slow(degradation), tier).result == MET
+    if degradation < 4:
+        assert C04(slow(degradation + 1), tier).result == GAP
+
+
+def test_brief_or_partial_unavailability_is_a_degradation():
+    brief = [inc(i, short_description="Appointment slots briefly unavailable during a seasonal booking surge") for i in range(2)]
+    r = C04(brief, 2)                                    # Tier 2 degradation at P3 is what the standard asks for
+    assert r.result == MET and "2 degradation" in r.rationale and r.needs_human_review
+    assert C04(brief, 1).result == GAP                   # Tier 1 degradation must be P2
+    assert C04([inc(1, short_description="password reset request")], 2) is None   # neither: nothing to judge
 
 
 def test_change_ci_and_alert_binding():
@@ -111,6 +126,50 @@ def test_change_ci_and_alert_binding():
     al = [{"number": f"A{i}", "cmdb_ci": "Orders" if i else "", "description": "x", "sys_created_on": day(1)} for i in range(10)]
     res = run(bundle(change_request__csv=ch, em_alert__csv=al))
     assert res["CMDB-AT-08-C01"].result == GAP and res["CMDB-AT-12-C05"].result == MET   # 3/4 vs 9/10
+
+
+def test_alerts_bound_to_a_tool_or_unrelated_ci_do_not_count():
+    rel = [{"parent": "Orders", "child": "orders-db-01", "type": "Depends on::Used by"}]
+    al = ([{"number": f"A{i}", "cmdb_ci": "orders-db-01", "sys_created_on": day(1)} for i in range(5)]
+          + [{"number": f"B{i}", "cmdb_ci": "Splunk", "sys_created_on": day(1)} for i in range(4)]
+          + [{"number": "C1", "cmdb_ci": "shared-host-99", "sys_created_on": day(1)}])
+    r = run(bundle(em_alert__csv=al, cmdb_rel_ci__csv=rel))["CMDB-AT-12-C05"]
+    assert r.result == GAP and "5 of 10" in r.rationale and "Splunk ×4" in r.rationale
+    # P1/P2 alerts must all be bound when the export links alerts to incidents
+    ok = [{"number": f"A{i}", "cmdb_ci": "Orders", "incident": "INC0000001" if i == 0 else "", "sys_created_on": day(1)} for i in range(19)]
+    bad = ok + [{"number": "Z", "cmdb_ci": "Splunk", "incident": "INC0000002", "sys_created_on": day(1)}]
+    incs = [inc(1, priority="1 - Critical"), inc(2, priority="2 - High")]
+    r = run(bundle(em_alert__csv=bad, incident__json=incs))["CMDB-AT-12-C05"]
+    assert r.result == GAP and "1 of 2 bound" in r.rationale                       # 95% overall, but a P2 alert on Splunk
+    assert run(bundle(em_alert__csv=ok, incident__json=incs))["CMDB-AT-12-C05"].result == MET
+
+
+def test_placement_uses_the_four_attributes_and_alternative_names():
+    ci = {"name": "Orders", "sys_class_name": "cmdb_ci_business_app", "busines_criticality": "2 - somewhat critical",
+          "u_region": "us-east", "u_portfolio": "Retail", "life_cycle_stage": "Operational"}
+    r = run(bundle(cmdb_ci__csv=[ci]))["CMDB-AT-01-C03"]
+    assert r.result == MET and "life_cycle_stage" in r.rationale and "busines_criticality" in r.rationale
+    assert run(bundle(cmdb_ci__csv=[{**ci, "life_cycle_stage": ""}]))["CMDB-AT-01-C03"].result == GAP
+
+
+def test_workload_metadata_groups_accept_label_or_otel_key():
+    labels = {"app.kubernetes.io/name": "orders", "fsi-reo/env": "PROD", "fsi-reo/app-service": "SVC1",
+              "fsi-reo/business-app": "APM1", "fsi-reo/support-group": "Orders Support"}
+    assert run(bundle(**{"orders_dash_api__yaml": [deploy(labels)]}))["CMDB-AT-12-C04"].result == MET
+    no_owner = {k: v for k, v in labels.items() if k != "fsi-reo/support-group"}
+    r = run(bundle(**{"orders_dash_api__yaml": [deploy(no_owner, "service.name=orders")]}))["CMDB-AT-12-C04"]
+    assert r.result == GAP and "owner ×1" in r.rationale
+
+
+def test_significant_p2s_need_a_post_mortem_within_10_days():
+    rep = [inc(i, priority="2 - High", short_description="Orders batch job failed", problem_id="") for i in range(3)]
+    r = run(bundle(incident__json=rep))["SRE-AT-09-C01"]
+    assert r.result == GAP and "0 of 3 significant P2" in r.rationale
+    pr = [{"number": "PRB1", "short_description": "Orders batch", "opened_at": day(10), "cmdb_ci": "Orders"}]
+    linked = [{**r_, "problem_id": "PRB1"} for r_ in rep]
+    assert run(bundle(incident__json=linked, problem__csv=pr))["SRE-AT-09-C01"].result == MET
+    two = rep[:2]                                         # 2 recurrences are not "significant"
+    assert "SRE-AT-09-C01" not in run(bundle(incident__json=two))
 
 
 # ---------------------------------------------------------------- ITSM
@@ -193,3 +252,16 @@ def test_completeness_feeds_both_v2_criteria(cid):
           "operational_status": "Operational", "business_criticality": "2", "environment": "Production", "u_region": "us"}
     rep = rubric_rules.run(bundle(cmdb_ci__csv=[ci]), ctx())
     assert rep.results[cid].result == MET and rep.results[cid].criterion_id == cid
+
+
+def test_p2_10_measures_the_app_and_its_direct_children_with_the_rubric_fields():
+    from sra.detectors import rubric_rules
+    app = {"name": "Orders", "sys_class_name": "cmdb_ci_business_app", "operational_status": "Operational",
+           "support_group": "Orders Support", "owned_by": "pat", "environment": "Production", "busines_criticality": "2"}
+    kid = {**app, "name": "orders-db-01", "sys_class_name": "cmdb_ci_db_instance", "owned_by": "", "support_group": "", "environment": ""}
+    rel = [{"parent": "Orders", "child": "orders-db-01", "type": "Depends on::Used by"}]
+    c = ctx(tier=2)
+    alone = rubric_rules.run(bundle(cmdb_ci__csv=[app]), c).rubric["P2-10"]
+    assert alone.result == MET and "u_application_id" in alone.rationale          # [CONFIRM] column reported as absent
+    both = rubric_rules.run(bundle(cmdb_ci__csv=[app, kid], cmdb_rel_ci__csv=rel), c).rubric["P2-10"]
+    assert both.result == GAP and "1 direct child CI(s) included" in both.rationale  # 11 of 14 = 78.6% < 85% for Tier 2

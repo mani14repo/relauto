@@ -1,0 +1,146 @@
+# Plain-language requirement for each checklist item, used only to SUGGEST a document line when the keyword
+# patterns in config/checklists.yaml miss an item (sra.detectors.checklists, settings.suggest). A suggestion never
+# makes an item present: the item stays missing, the criterion stays a Gap flagged for review, and the reviewer sees
+# "possibly covered by '<line>'". Phrased to complete "This describes <requirement>." (the template the NLI model
+# was measured with in eval/check_matchers.py). Items that are counts, table structure or dates are left out: one
+# sentence cannot satisfy them. DRAFT, written from the template text; SREs should review the wording.
+CMDB-AT-04-C04:
+  CMDB process owner: who the named CMDB process owner is
+  platform owner: who the named CMDB platform owner is
+  data stewards: the named data stewards for the portfolio's applications
+  class managers: the named managers for the CMDB configuration item classes
+  RACI approved by REO: the REO approving the CMDB responsibility matrix
+CMDB-AT-04-C06:
+  trend per sub-portfolio: how CMDB data quality is trending for each sub-portfolio
+  improvement actions completed: the CMDB improvement actions that were completed
+  decisions recorded: decisions taken at the CMDB governance review
+CMDB-AT-09-C03:
+  target date: the date by which the end-of-life component will be remediated
+  upgrade path: how the end-of-life component will be upgraded or replaced
+  test: how the upgrade will be tested before it reaches production
+  rollback: how to go back if the upgrade of the end-of-life component fails
+  owner: who owns the remediation of the end-of-life component
+CMDB-AT-10-C02:
+  financial impact: the financial impact of the service being unavailable
+  member / client impact: the impact on members, clients or patients if the service is unavailable
+  regulatory impact: the regulatory or compliance impact of the service being unavailable
+  reputational impact: the reputational impact of the service being unavailable
+CMDB-AT-13-C05:
+  top blocking gaps: the most important CMDB gaps blocking readiness
+  owners: who owns fixing each CMDB gap
+  decisions recorded: decisions taken about the CMDB readiness scorecard
+ITSM-AT-06-C03:
+  OLA defined: an operational level agreement between support teams
+  handoff points named: the points where work is handed from one support team to another
+  P1/P2 response under 30 minutes: a response time of 30 minutes or less for priority 1 and 2 handoffs
+ITSM-AT-08-C05:
+  improvement register reviewed: the improvement register being reviewed at the meeting
+  decisions documented: decisions made at the governance meeting
+  distributed: the meeting outcomes being sent to the people who need them
+ITSM-AT-10-C03:
+  named escalation contact: the named person to escalate to at the vendor
+  roles: the roles of the vendor contacts
+  response commitment per priority: how quickly the vendor must respond to a priority 1 issue
+  escalation tested within 6 months: a test of the vendor escalation path
+ITSM-AT-10-C04:
+  availability: the vendor's measured availability
+  response time: the vendor's measured response times
+  incident count: how many incidents the vendor caused or handled
+  remediation for underperformance: what happens when the vendor misses its targets
+ITSM-AT-11-C01:
+  MTTR: how mean time to restore is defined and calculated
+  incident volume by priority: how incident volume by priority is measured
+  problem recurrence rate: how the rate of recurring problems is measured
+  change success / failure rate: how the change success or failure rate is measured
+  SLO attainment: how attainment of service level objectives is measured
+  calculation method: how a reported metric is calculated
+  data source: where the data for a reported metric comes from
+  owner: who owns a reported metric
+  approved: the metric definitions being approved
+ITSM-AT-11-C03:
+  mean: the average time to restore service
+  P90: the 90th percentile time to restore service
+  human vs automated segmentation: incidents raised by monitoring reported separately from incidents raised by people
+  trend over 3 months: how restoration time has changed over the last three months
+ITSM-AT-11-C04:
+  named report owner: who owns the operational report
+  certified before distribution: the report being checked and certified before it is sent out
+  reviewer name and date: who reviewed the report and when
+  distribution list: who receives the report
+ITSM-AT-12-C01:
+  RTO value: a recovery time objective with a specific time
+  RPO value: a recovery point objective with a specific time
+  business owner sign-off: the business owner approved the recovery objectives
+  DR test confirms the objectives: a disaster recovery test showing the recovery objectives can be met
+ITSM-AT-12-C03:
+  BIA-derived objectives: recovery objectives that come from the business impact analysis
+  RTO / RPO: the recovery time or recovery point objective
+  business owner approval: the business owner approving the disaster recovery procedure
+  CMDB dependency map: the CMDB dependency map being used to assess the impact of a disaster
+SRE-AT-02-C04:
+  RTO target: a recovery time objective
+  RPO target: a recovery point objective
+SRE-AT-04-C04:
+  attainment reported: how well the service met its service level objective
+SRE-AT-05-C05:
+  user impact scoped: the impact on users when the service is degraded
+  communicated: how users are told that the service is degraded
+SRE-AT-07-C05:
+  submitted to the AE backlog: automation candidates being submitted to the automation engineering backlog
+SRE-AT-08-C04:
+  runbook review sign-off: engineers signing off a review of the runbook
+  succession plan: who takes over if a key engineer is not available
+SRE-AT-08-C05:
+  'confirmed by PSE, SRE and engineering leads': the responsibility matrix was confirmed by the PSE, SRE and engineering leads
+SRE-AT-10-C01:
+  categories: the categories of manual operational work
+  frequency: how often a manual operational task is done
+  top 5 identified: the largest sources of manual operational work
+SRE-AT-10-C03:
+  effort: the effort needed to automate a task
+  value: the value of automating a task
+  feasibility: how feasible it is to automate a task
+  owner: who owns automating a task
+  target date: when a task should be automated by
+  in the AE backlog: automation work being in the automation engineering backlog
+SRE-AT-13-C04:
+  availability target: an availability target for an integration
+  latency target: a latency target for an integration
+  measured and reported monthly: integration performance being measured and reported every month
+SRE-AT-14-C01:
+  test evidence: evidence that the automation was tested before production
+  execution monitoring that alerts on failure: an alert raised when the automation fails
+  rollback procedure: how to undo what the automation did
+SRE-AT-14-C02:
+  approved through change: the automation being approved through change management
+  boundary conditions: limits on what the automation may do on its own, and when a person must approve
+  escalation path: who the automation escalates to when it meets a situation it cannot handle
+SRE-AT-14-C03:
+  failure conditions: what counts as the automation failing
+  recovery steps: how to recover manually after the automation fails
+  disable procedure: how to switch the automation off
+  post-recovery validation: how to check the service is healthy after recovering from an automation failure
+SRE-AT-15-C03:
+  documented threshold: the threshold at which a release counts as a performance regression
+  check recorded for the latest release: the result of the regression check after the latest release
+SRE-AT-15-C04:
+  objective rollback criteria: the measurable conditions that trigger a rollback
+  named authority: who has the authority to decide a rollback
+  procedure: the steps to roll back a release
+SRE-AT-16-C01:
+  automatable flag: whether a manual task can be automated
+SRE-AT-16-C02:
+  reduction target of 20% or more: a target for reducing toil by a percentage
+  target date: when the toil reduction target should be reached
+  owner: who owns the toil reduction target
+  progress tracked quarterly: progress against the toil reduction target each quarter
+SRE-AT-16-C03:
+  automation effort: the effort needed to automate a toil item
+  expected toil reduction: how much toil automating an item would remove
+  priority ranking: the priority order of the automation candidates
+  ROI rationale: the return on investment of automating a toil item
+  owner: who owns automating a toil item
+SRE-AT-16-C04:
+  before / after measurement: toil measured before and after automation
+  capacity released: engineering time freed by automation
+  reinvested: freed engineering time being spent on reliability improvements

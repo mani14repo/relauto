@@ -12,7 +12,6 @@ Each criterion in config/checklists.yaml lists the documents to look in and the 
         - name: weekly effort per item
           any: ['\\d+\\s*h(ours|rs)?\\s*(/|per)\\s*week']   # regexes, case-insensitive
           min_count: 3                   # pattern must occur at least N times
-          means: hours of effort per week for each toil item   # optional: matched by meaning (embeddings)
           none: ['if it looks bad']      # optional: the item fails if any of these appear
           fresh_months: 12               # optional: only documents reviewed within N months count for this item
 
@@ -24,7 +23,13 @@ How a result is decided:
   * every item found (and fresh/monthly conditions met): Met;
   * otherwise Gap, naming the missing items. Gaps are always flagged for human review: wording the patterns do not
     expect can hide an item that is really there.
-Items found only by meaning (embeddings) are reported as such and the result is flagged for review.
+
+Suggestions (settings.suggest): when the keywords miss an item that has a plain-language requirement in
+config/checklist_requirements.yaml, a small NLI model (sra.retrieval.nli) looks for a document line that entails it.
+The best line above the threshold is added to the missing item as "possibly covered by '...' (model suggestion)".
+A suggestion never makes an item present: the result stays a Gap for the reviewer to confirm or overrule. On the
+test set the model found 11 of 24 reworded lines that keywords missed, but also matched some unrelated lines,
+which is why it may only suggest. Without the model in the local cache, suggestions are simply off.
 """
 from __future__ import annotations
 
@@ -32,7 +37,7 @@ import re
 from datetime import datetime
 
 from ..catalog.models import Result
-from ..config import load_yaml
+from ..config import load_yaml, setting
 from ..evidence.bundle import EvidenceBundle
 from ..evidence.model import DocType
 from .base import Context, DetectorReport, ref, result, truthy
@@ -85,48 +90,13 @@ def records(b: EvidenceBundle, ctx: Context, spec: dict) -> list[Source]:
 
 
 # ------------------------------------------------------------------------------------------------ matching
-def _embedder():
-    from ..retrieval.chunks import shared_embedder
-    e = shared_embedder()
-    if e is None:
-        raise RuntimeError("fastembed or the bge-small model is not available")
-    return e
-
-
-def semantic_enabled(cfg: dict) -> bool:
-    mode = cfg.get("semantic", "auto")
-    mode = {False: "off", True: "on"}.get(mode, mode)       # YAML reads bare off/on as booleans
-    if mode == "off":
-        return False
-    try:
-        _embedder()
-        return True
-    except Exception:  # noqa: BLE001 - fastembed missing or model not available
-        if mode == "on":
-            raise
-        return False
-
-
 def _lines(text: str) -> list[str]:
     parts = re.split(r"(?<=[.!?])\s+|\n+", text)
     return [p.strip() for p in parts if 12 <= len(p.strip()) <= 400]
 
 
-def _by_meaning(means: str, sources: list[Source], threshold: float) -> tuple[float, str]:
-    import numpy as np
-    lines = [ln for s in sources for ln in _lines(s.text)][:2000]
-    if not lines:
-        return 0.0, ""
-    e = _embedder()
-    q = np.asarray(e.embed([means])[0])
-    m = np.asarray(e.embed(lines))
-    sims = m @ q / (np.linalg.norm(m, axis=1) * np.linalg.norm(q) + 1e-9)
-    i = int(sims.argmax())
-    return float(sims[i]), lines[i]
-
-
-def check_item(item: dict, sources: list[Source], ctx: Context, semantic: bool, threshold: float) -> tuple[bool, str]:
-    """(found, how). `how` is a short note: the matched text, or why it failed."""
+def check_item(item: dict, sources: list[Source], ctx: Context) -> tuple[bool, str]:
+    """(found, how). `how` is a short note: the matched text, or why it failed ("not found" when nothing matched)."""
     if item.get("fresh_months"):
         sources = [s for s in sources if s.when and s.when >= ctx.months_ago(item["fresh_months"])]
         if not sources:
@@ -142,11 +112,43 @@ def check_item(item: dict, sources: list[Source], ctx: Context, semantic: bool, 
         return True, f"'{hits[0].group(0).strip()[:60]}'" + (f" ×{len(hits)}" if need > 1 else "")
     if hits:
         return False, f"{len(hits)} of {need} needed"
-    if semantic and item.get("means") and need == 1:
-        score, line = _by_meaning(item["means"], sources, threshold)
-        if score >= threshold:
-            return True, f"by meaning ({score:.2f}): '{line[:60]}'"
     return False, "not found"
+
+
+class Suggester:
+    """Finds the document line most likely to cover a missing item (NLI entailment), for the reviewer to confirm."""
+
+    def __init__(self, settings: dict, requirements: dict):
+        mode = {False: "off", True: "auto"}.get(settings.get("suggest", "auto"), settings.get("suggest", "auto"))
+        if str(setting("SRA_SUGGEST", "") or "").strip().lower() in ("0", "false", "off", "no"):
+            mode = "off"
+        self.requirements = requirements or {}
+        self.template = settings.get("suggest_template", "This describes {}.")
+        self.threshold = float(settings.get("suggest_threshold", 0.9))
+        self.max_lines = int(settings.get("suggest_max_lines", 400))
+        self.scorer, self.reason, self.count = None, "turned off (settings.suggest)", 0
+        if mode != "off":
+            from ..retrieval.nli import get_scorer
+            self.scorer, self.reason = get_scorer(settings.get("suggest_model", "cross-encoder/nli-deberta-v3-xsmall"),
+                                                  settings.get("suggest_file", "onnx/model_quint8_avx2.onnx"))
+        self._lines: dict[tuple, list[str]] = {}
+
+    def suggest(self, cid: str, item: str, sources: list[Source]) -> tuple[float, str] | None:
+        req = (self.requirements.get(cid) or {}).get(item)
+        if self.scorer is None or not req:
+            return None
+        key = tuple(s.ref for s in sources)
+        if key not in self._lines:
+            self._lines[key] = list(dict.fromkeys(ln for s in sources for ln in _lines(s.text)))[: self.max_lines]
+        lines = self._lines[key]
+        if not lines:
+            return None
+        scores = self.scorer.entailment(lines, self.template.format(req))
+        i = int(scores.argmax())
+        if scores[i] < self.threshold:
+            return None
+        self.count += 1
+        return float(scores[i]), lines[i]
 
 
 def months_covered(sources: list[Source], ctx: Context, n: int) -> list[str]:
@@ -165,39 +167,48 @@ def months_covered(sources: list[Source], ctx: Context, n: int) -> list[str]:
 
 
 # ------------------------------------------------------------------------------------------------ evaluation
-def evaluate(cid: str, spec: dict, b: EvidenceBundle, ctx: Context, semantic: bool, threshold: float):
+def evaluate(cid: str, spec: dict, b: EvidenceBundle, ctx: Context, suggester: Suggester | None = None):
     if spec.get("source"):
-        return _per_record(cid, spec, records(b, ctx, spec), ctx, semantic, threshold)
+        return _per_record(cid, spec, records(b, ctx, spec), ctx)
     docs = documents(b, spec)
     if not docs:
         return None
-    found, missing, by_meaning = [], [], False
+    found, missing = [], []
+    wording_only = True                  # every missing item is a plain keyword miss (no count, "TBD" or date problem)
     for item in spec.get("items", []):
-        ok, how = check_item(item, docs, ctx, semantic, threshold)
+        ok, how = check_item(item, docs, ctx)
+        if not ok and how != "not found":
+            wording_only = False
+        if not ok and how == "not found" and suggester is not None:
+            hit = suggester.suggest(cid, item["name"], docs)
+            if hit:
+                how = f"not found by keywords; possibly covered by '{hit[1][:120]}' (model suggestion {hit[0]:.2f}, please confirm)"
         (found if ok else missing).append(f"{item['name']} ({how})")
-        by_meaning |= ok and how.startswith("by meaning")
     if spec.get("fresh_months"):
         newest = max((d.when for d in docs if d.when), default=None)
         if not newest or newest < ctx.months_ago(spec["fresh_months"]):
+            wording_only = False
             missing.append(f"reviewed within {spec['fresh_months']} months (newest: {newest.date() if newest else 'no date found'})")
     if spec.get("monthly"):
         got = months_covered(docs, ctx, spec["monthly"])
         if len(got) < spec["monthly"]:
+            wording_only = False
             missing.append(f"evidence for each of the last {spec['monthly']} months (found: {', '.join(got) or 'none'})")
     res = GAP if missing else MET
     why = (f"Checked {len(docs)} document(s): {', '.join(d.name for d in docs[:4])}{' …' if len(docs) > 4 else ''}. "
            + (f"Found: {'; '.join(found)}. " if found else "") + (f"Missing: {'; '.join(missing)}." if missing else "All checklist items present."))
-    r = result(cid, res, why, [d.ref for d in docs], review=bool(missing) or by_meaning or spec.get("review_met", False),
+    r = result(cid, res, why, [d.ref for d in docs], review=bool(missing) or spec.get("review_met", False),
                confidence=round(len(found) / max(1, len(found) + len(missing)), 2))
+    r.second_opinion = bool(missing) and wording_only
     return r, len(found), len(found) + len(missing)
 
 
-def _per_record(cid, spec, recs: list[Source], ctx, semantic, threshold):
+def _per_record(cid, spec, recs: list[Source], ctx):
     if not recs:
         return None
     items, good, bad = spec.get("items", []), [], []
     for s in recs:
-        miss = [it["name"] for it in items if not check_item(it, [s], ctx, semantic, threshold)[0]]
+        miss = [it["name"] for it in items if not check_item(it, [s], ctx)[0]]
         (bad if miss else good).append((s, miss))
     pct = round(100 * len(good) / len(recs), 1)
     need = spec.get("min_pct", 100)
@@ -322,10 +333,9 @@ def run(b: EvidenceBundle, ctx: Context) -> DetectorReport:
     rep = DetectorReport(NAME)
     cfg = load_yaml("checklists")
     settings = cfg.get("settings", {})
-    semantic = semantic_enabled(settings)
-    threshold = float(settings.get("semantic_threshold", 0.8))
+    suggester = Suggester(settings, load_yaml("checklist_requirements"))
     for cid, spec in (cfg.get("criteria") or {}).items():
-        out = evaluate(cid, spec, b, ctx, semantic, threshold)
+        out = evaluate(cid, spec, b, ctx, suggester)
         if out is None:
             continue
         r, got, total = out
@@ -336,6 +346,7 @@ def run(b: EvidenceBundle, ctx: Context) -> DetectorReport:
         rep.results[cid] = r
     for fn in SPECIAL:
         fn(b, ctx, rep, settings)
-    rep.status = (f"ran: {len(rep.results)} criteria checked against documents and records; matching by "
-                  + ("keywords and meaning (embeddings)" if semantic else "keywords only"))
+    rep.status = (f"ran: {len(rep.results)} criteria checked against documents and records by keywords; "
+                  + (f"{suggester.count} line suggestion(s) from {suggester.scorer.repo}" if suggester.scorer
+                     else f"no line suggestions ({suggester.reason})"))
     return rep

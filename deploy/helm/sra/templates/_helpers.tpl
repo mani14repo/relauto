@@ -25,6 +25,8 @@ app.kubernetes.io/version: {{ .Values.image.tag | quote }}
 {{- end }}
 - name: SRA_GCS_BUCKET
   value: {{ .Values.gcs.bucket | quote }}
+- name: LLM_ENABLED
+  value: {{ ternary "true" "false" (ne .Values.llm.enabled false) | quote }}
 - name: LLM_PROVIDER
   value: {{ .Values.llm.provider | quote }}
 - name: LLM_BASE_URL

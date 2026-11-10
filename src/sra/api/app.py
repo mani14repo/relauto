@@ -100,9 +100,11 @@ def create_app(store=None, run_jobs_inline: bool = False) -> FastAPI:
 
     @app.get("/api/llm/health")
     def llm_health():
+        if not config.llm_enabled():
+            return {"enabled": False, "model": None, "reachable": False}
         from ..llm.client import from_settings
         c = from_settings()
-        return {"model": c.model, "reachable": c.health()}
+        return {"enabled": True, "model": c.model, "reachable": c.health()}
 
     @app.get("/api/catalog/templates")
     def catalog_templates():
@@ -131,6 +133,15 @@ def create_app(store=None, run_jobs_inline: bool = False) -> FastAPI:
         return [{"template_id": c.template_id, "title": c.title, "selected": c.selected, "always": c.always,
                  "score": None if c.always else c.score, "reasons": c.reasons} for c in cands]
 
+    @app.post("/api/profile/parse")
+    async def parse_profile(file: UploadFile = File(...)):
+        """Read an uploaded profile.yaml so the UI can prefill the form; nothing is stored."""
+        body = await file.read(256 * 1024 + 1)
+        if len(body) > 256 * 1024:
+            raise HTTPException(413, "a profile file should be a few KB; this one is over 256 KB")
+        profile, ignored = ApplicationProfile.from_file(body)
+        return {"profile": profile, "ignored": ignored, "filename": file.filename}
+
     @app.post("/api/assessments", status_code=201)
     def create(body: CreateBody, who: str = Depends(actor)):
         a, cands = svc.create(body.profile, body.assessor or who, who)
@@ -144,6 +155,27 @@ def create_app(store=None, run_jobs_inline: bool = False) -> FastAPI:
     def get_assessment(aid: str):
         a = get_or_404(aid)
         return {"assessment": a.model_dump(mode="json"), "scorecard": store.scorecard(aid), "job": job_view(aid)}
+
+    def _refuse_while_running(aid: str, what: str) -> None:
+        cur = job_view(aid)
+        if cur["state"] in ("queued", "running") and not cur["stale"]:
+            raise HTTPException(409, f"An automated pass is running; cancel it or wait for it to finish before you {what}")
+
+    @app.patch("/api/assessments/{aid}")
+    def edit(aid: str, patch: dict = Body(...), who: str = Depends(actor)):
+        """Edit details: {"profile": {...partial ApplicationProfile...}, "assessment_date": "YYYY-MM-DD", "assessor": "..."}."""
+        get_or_404(aid)
+        _refuse_while_running(aid, "edit it")   # the run saves the whole assessment when it ends and would undo the edit
+        a, rerun = svc.update_details(aid, patch, who)
+        return {"assessment": a.model_dump(mode="json"), "rerun_needed": rerun}
+
+    @app.delete("/api/assessments/{aid}")
+    def delete(aid: str, who: str = Depends(actor)):
+        """Permanently delete the assessment, its evidence files, findings, job, audit trail and feedback."""
+        get_or_404(aid)
+        _refuse_while_running(aid, "delete it")
+        log.info("assessment %s deleted by %s", aid, who)
+        return svc.delete(aid, who)
 
     @app.patch("/api/assessments/{aid}/profile")
     def patch_profile(aid: str, patch: dict = Body(...), who: str = Depends(actor)):
@@ -189,6 +221,7 @@ def create_app(store=None, run_jobs_inline: bool = False) -> FastAPI:
         cur = job_view(aid)
         if cur["state"] in ("queued", "running") and not cur["stale"]:
             raise HTTPException(409, "An automated pass is already running for this assessment")
+        llm = llm and config.llm_enabled()   # with the LLM turned off every run is rules only
         job = {"job": "run", "assessment_id": aid, "llm": llm, "actor": who, "id": uuid.uuid4().hex[:12]}
         store.clear_cancel(aid)           # a cancel aimed at an earlier run must not stop this one
         now = datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -245,6 +278,8 @@ def create_app(store=None, run_jobs_inline: bool = False) -> FastAPI:
     @app.post("/api/assessments/{aid}/criteria/{cid}/chat")
     def chat(aid: str, cid: str, question: str = Body(..., embed=True)):
         a = get_or_404(aid)
+        if not config.llm_enabled():
+            raise HTTPException(409, "Criterion chat needs the local LLM, which is turned off (LLM_ENABLED=false)")
         from ..llm.client import LLMError
         try:
             return {"answer": _evaluator_factory().chat(a, store.bundle(aid), cid, question)}

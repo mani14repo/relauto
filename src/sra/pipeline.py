@@ -41,6 +41,8 @@ def _merge(existing: CriterionResult | None, new: CriterionResult) -> CriterionR
         if new.rationale not in existing.rationale:
             existing.rationale = f"{existing.rationale}\n{new.rationale}"
         existing.needs_human_review = existing.needs_human_review or new.needs_human_review
+        # a second opinion is only asked when every rule's Gap is a keyword miss; a data-based Gap stands
+        existing.second_opinion = existing.second_opinion and new.second_opinion
     return existing
 
 

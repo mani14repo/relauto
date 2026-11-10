@@ -34,6 +34,17 @@ def setting(name: str, default: str | None = None) -> str | None:
     return os.environ.get(name, default)
 
 
+def flag(name: str, default: bool) -> bool:
+    """A true/false setting; empty means the default."""
+    raw = str(setting(name, "") or "").strip().lower()
+    return default if not raw else raw not in ("0", "false", "no", "off")
+
+
+def llm_enabled() -> bool:
+    """LLM_ENABLED=false turns every generative-model feature off: AI-assisted criteria and criterion chat."""
+    return flag("LLM_ENABLED", True)
+
+
 def path_setting(name: str, default: Path) -> Path:
     """A directory setting; empty means the default, relative paths are relative to the repo root."""
     raw = setting(name) or ""

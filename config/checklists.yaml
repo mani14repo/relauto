@@ -3,11 +3,20 @@
 # DRAFT, for SRE review. Patterns are case-insensitive regular expressions (single-quoted: backslashes are literal).
 # See the module docstring for every key. Missing documents leave the criterion for the assessor.
 settings:
-  # off: keywords only. auto/on: items with a `means` text may also match a document line by meaning (embeddings).
-  # Off because bge-small cannot tell the difference here: paraphrases scored 0.56-0.78 against unrelated lines
-  # up to 0.71 (e.g. "Owner: Risk Platform Operations"), which would turn missing items into false Mets.
-  semantic: off
-  semantic_threshold: 0.8   # cosine similarity between an item's `means` and a document line
+  # Items are decided by keywords only. When keywords miss an item that has a requirement in
+  # config/checklist_requirements.yaml, an NLI model may SUGGEST the line that covers it; the item stays missing.
+  # Measured with eval/check_matchers.py on eval/checklist_matching.yaml (12 items, 24 reworded lines):
+  #   embeddings (bge-small): paraphrases 0.56-0.78 vs unrelated lines up to 0.71 -> no usable threshold
+  #   search reranker (Xenova/ms-marco-MiniLM-L-6-v2): 2 of 24 at zero false matches, the same as keywords
+  #   NLI (cross-encoder/nli-deberta-v3-xsmall, 8-bit ONNX), "This describes <requirement>." at 0.9: 11 of 24
+  #     (keywords: 2), 1 of 24 near misses accepted (a "still to be agreed" line), unrelated lines matched for
+  #     2 of 12 items -> good enough to point a reviewer at a line, not to mark an item Met. Item names alone: 3 of 24.
+  suggest: auto             # auto: on when the model is in the local Hugging Face cache (never downloaded); off
+  suggest_model: cross-encoder/nli-deberta-v3-xsmall
+  suggest_file: onnx/model_quint8_avx2.onnx
+  suggest_template: 'This describes {}.'
+  suggest_threshold: 0.9    # probability of entailment
+  suggest_max_lines: 400    # lines read per document set (about 16 ms per line on a laptop CPU)
   rto_rpo_max_hours:        # CMDB-AT-10-C03 tier limits, hours; CONFIRM against CMDB-STD-00 / continuity policy
     1: { RTO: 4, RPO: 1 }
     2: { RTO: 24, RPO: 4 }
@@ -185,7 +194,7 @@ criteria:
       - { name: Problem row, any: ['^[^\n]*\bproblem\b[^\n]*\|'] }
       - { name: Change row, any: ['^[^\n]*\bchange\b[^\n]*\|'] }
       - { name: no blank cells, any: ['\|'], none: ['\|[ \t]*\|', '\b(TBD|TBC)\b'] }
-      - { name: confirmed by PSE, SRE and engineering leads, any: ['confirmed by', 'approved by', 'signed? ?off'] }
+      - { name: 'confirmed by PSE, SRE and engineering leads', any: ['confirmed by', 'approved by', 'signed? ?off'] }
   SRE-AT-10-C01:      # Toil inventory by category
     find: ['toil']
     items:

@@ -47,6 +47,36 @@ class ApplicationProfile(BaseModel):
     p1_p2_incidents_90d: int = 0
     recurring_patterns: int = 0
 
+    @classmethod
+    def from_file(cls, data: bytes) -> tuple[dict, list[str]]:
+        """Read a profile.yaml (or JSON) file. Returns (profile as JSON-ready dict, keys that were ignored).
+
+        The name may be missing (the SRE fills it in); every other value must be valid, or a ValueError names it.
+        """
+        import yaml
+        from pydantic import ValidationError
+        try:
+            raw = yaml.safe_load(data.decode("utf-8-sig"))
+        except (UnicodeDecodeError, yaml.YAMLError) as e:
+            raise ValueError(f"not a readable YAML or JSON file: {str(e).splitlines()[0]}") from None
+        if isinstance(raw, dict) and isinstance(raw.get("profile"), dict):
+            raw = raw["profile"]
+        if not isinstance(raw, dict):
+            raise ValueError("the file must contain the profile fields as a mapping, like eval/scenarios/<app>/profile.yaml")
+        known = {k: v for k, v in raw.items() if k in cls.model_fields}
+        ignored = sorted(str(k) for k in raw if k not in cls.model_fields)
+        if isinstance(known.get("aliases"), str):
+            known["aliases"] = [s.strip() for s in known["aliases"].split(",") if s.strip()]
+        known = {k: v for k, v in known.items() if v is not None or k in ("tier", "priority_class", "hosting", "ci_tool")}
+        try:
+            p = cls.model_validate({**known, "name": known.get("name") or "-"})
+        except ValidationError as e:
+            bad = "; ".join(f"{'.'.join(map(str, x['loc']))}: {x['msg']}" for x in e.errors())
+            raise ValueError(f"profile has invalid values: {bad}") from None
+        out = p.model_dump(mode="json")
+        out["name"] = str(known.get("name") or "")
+        return out, ignored
+
     def enrich_from_evidence(self, bundle, as_of) -> "ApplicationProfile":
         """Fill counts and flags the evidence can prove (never clears what the SRE set)."""
         from datetime import timedelta

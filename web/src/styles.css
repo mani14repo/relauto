@@ -77,6 +77,9 @@ main { max-width: 1280px; margin: 0 auto; padding: 20px 16px 60px; }
 
 button, .btn { font: inherit; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text); padding: 6px 12px; cursor: pointer; }
 button.primary, .btn.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+a.btn { text-decoration: none; display: inline-block; }
+button.danger, .btn.danger { color: var(--gap); border-color: var(--gap); }
+button.danger:hover:not(:disabled) { background: var(--gap-bg); }
 button:disabled { opacity: .5; cursor: default; }
 button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
 input, select, textarea { font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; }
@@ -132,3 +135,17 @@ button.link { background: none; border: none; padding: 0; color: var(--accent-2)
 .spinner { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--border); border-top-color: var(--accent-2); animation: spin 0.9s linear infinite; flex: none; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 3s; } .job-bar > span { transition: none; } }
+
+/* Delete from the assessments list: the trash button shows on row hover or keyboard focus. */
+td.row-actions, th.row-actions { width: 28px; padding-left: 0; padding-right: 0; text-align: center; }
+button.icon { border: none; background: none; padding: 4px; color: var(--muted); line-height: 0; border-radius: 4px; }
+button.icon:hover:not(:disabled), button.icon:focus-visible { color: var(--gap); background: var(--gap-bg); }
+tr .row-actions button.icon { opacity: 0; }
+tr:hover .row-actions button.icon, tr:focus-within .row-actions button.icon { opacity: 1; }
+@media (hover: none) { tr .row-actions button.icon { opacity: 1; } }
+
+dialog.confirm { border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); padding: 18px 20px; max-width: min(440px, calc(100vw - 32px)); }
+dialog.confirm::backdrop { background: rgba(0, 0, 0, 0.45); }
+dialog.confirm h2 { margin: 0 0 8px; }
+dialog.confirm p { margin: 0 0 16px; color: var(--muted); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

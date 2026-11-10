@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, getUser, type Assessment, type CmdbReadiness, type Candidate, type CriterionResult, type Finding, type ScoreCard, type Template } from "./api";
 import JobPanel, { isActive, type Job } from "./JobPanel";
-import { Bar, ErrorBox, RATING_COLOR, ResultBadge, Severity } from "./ui";
+import { Bar, ConfirmDialog, deleteMessage, ErrorBox, RATING_COLOR, ResultBadge, Severity } from "./ui";
 
 type Tab = "templates" | "evidence" | "criteria" | "findings" | "score" | "report";
 const TABS: [Tab, string][] = [
@@ -16,6 +16,21 @@ export default function AssessmentView({ id }: { id: string }) {
   const [tab, setTab] = useState<Tab>(() => (sessionGet(`tab.${id}`) as Tab) || "templates");
   const [templates, setTemplates] = useState<Record<string, Template>>({});
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(() => sessionGet(`notice.${id}`));
+  const [deleting, setDeleting] = useState(false);
+  const [llmOn, setLlmOn] = useState(true);
+  useEffect(() => { api.llmHealth().then((h) => setLlmOn(h.enabled !== false)).catch(() => { /* keep the default */ }); }, []);
+
+  const dismissNotice = () => { setNotice(null); try { window.sessionStorage.removeItem(`notice.${id}`); } catch { /* ignore */ } };
+
+  const [confirming, setConfirming] = useState(false);
+  async function remove() {
+    setDeleting(true);
+    try {
+      await api.remove(id);
+      window.location.hash = "#/";
+    } catch (e) { setError(String(e)); setDeleting(false); setConfirming(false); }
+  }
 
   const load = useCallback(async () => {
     try {
@@ -62,9 +77,24 @@ export default function AssessmentView({ id }: { id: string }) {
         <span style={{ flex: 1 }} />
         {sc && <span style={{ color: RATING_COLOR[sc.rating], fontWeight: 700 }}>{sc.rating}</span>}
         {sc?.maturity_level && <span className="pill">L{sc.maturity_level} {sc.maturity_name}</span>}
+        {a.status === "signed_off" || running
+          ? <button disabled title={running ? "Cancel the run or wait for it to finish before editing" : "Signed off: details can no longer be changed"}>Edit</button>
+          : <a className="btn" href={`#/a/${id}/edit`}>Edit</a>}
+        <button className="danger" disabled={!!running || deleting} onClick={() => setConfirming(true)}
+          title={running ? "Cancel the run or wait for it to finish before deleting" : "Delete this assessment permanently"}>
+          {deleting ? "Deleting…" : "Delete"}
+        </button>
       </div>
       <p className="muted small">Assessed {a.assessment_date} by {a.assessor || "—"} · {a.templates.length} templates · {a.findings.length} findings</p>
       <ErrorBox error={error} />
+      {confirming && <ConfirmDialog title="Delete this assessment?" body={deleteMessage(a.application.name)} confirmLabel="Delete"
+        busy={deleting} onConfirm={remove} onCancel={() => setConfirming(false)} />}
+      {notice && (
+        <p className="notice row" role="status" style={{ gap: 8 }}>
+          <span style={{ flex: 1 }}>{notice}</span>
+          <button className="link" onClick={dismissNotice}>Dismiss</button>
+        </p>
+      )}
       <JobPanel id={id} job={job} onCancel={async () => {
         try { setJob(await api.cancel(id)); } catch (e) { setError(String(e)); }
       }} />
@@ -72,9 +102,9 @@ export default function AssessmentView({ id }: { id: string }) {
         {TABS.map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? "on" : ""} onClick={() => setTab(k)}>{l}</button>)}
       </div>
       {tab === "templates" && <TemplatesTab a={a} onSaved={load} setError={setError} />}
-      {tab === "evidence" && <EvidenceTab a={a} running={!!running} setError={setError}
+      {tab === "evidence" && <EvidenceTab a={a} running={!!running} llmOn={llmOn} setError={setError}
         onRun={async (llm) => { try { setJob(await api.run(id, llm)); } catch (e) { setError(String(e)); } }} />}
-      {tab === "criteria" && <CriteriaTab a={a} templates={templates} onChange={(r) => { setSc(r.scorecard); load(); }} setError={setError} />}
+      {tab === "criteria" && <CriteriaTab a={a} templates={templates} llmOn={llmOn} onChange={(r) => { setSc(r.scorecard); load(); }} setError={setError} />}
       {tab === "findings" && <FindingsTab a={a} onChange={load} setError={setError} />}
       {tab === "score" && <ScoreTab sc={sc} templates={templates} />}
       {tab === "report" && <ReportTab a={a} onChange={load} setError={setError} />}
@@ -126,7 +156,7 @@ function TemplatesTab({ a, onSaved, setError }: { a: Assessment; onSaved: () => 
 const HINTS = ["", "runbook", "architecture", "dr_test", "dr_plan", "load_test", "slo", "error_budget", "capacity", "postmortem",
   "observability", "security", "incident", "change_request", "problem", "kb_knowledge", "em_alert", "cmdb_ci", "cmdb_rel_ci", "scan"];
 
-function EvidenceTab({ a, running, onRun, setError }: { a: Assessment; running: boolean; onRun: (llm: boolean) => void; setError: (e: string | null) => void }) {
+function EvidenceTab({ a, running, llmOn, onRun, setError }: { a: Assessment; running: boolean; llmOn: boolean; onRun: (llm: boolean) => void; setError: (e: string | null) => void }) {
   const [ev, setEv] = useState<{ files: any[]; errors: string[]; summary: Record<string, number> } | null>(null);
   const [hint, setHint] = useState("");
   const [over, setOver] = useState(false);
@@ -144,9 +174,9 @@ function EvidenceTab({ a, running, onRun, setError }: { a: Assessment; running: 
     <>
       <div className="card">
         <h2>Upload evidence</h2>
-        <p className="muted small">ServiceNow exports (CSV or Table API JSON: incident, change_request, problem, kb_knowledge, em_alert, cmdb_ci, cmdb_rel_ci),
-          documents (runbooks, architecture, DR/load tests, SLOs), scanner output (Trivy, Grype, CycloneDX, SARIF), Kubernetes manifests and CI configuration.
-          Secrets are redacted on ingest.</p>
+        <p className="muted small">ServiceNow exports (CSV, XLSX or Table API JSON: incident, change_request, problem, kb_knowledge, em_alert, cmdb_ci, cmdb_rel_ci),
+          documents (runbooks, architecture, DR/load tests, SLOs as PDF, DOCX, MD or TXT), screenshots and scans (JPG, PNG, TIFF, WebP: text is read
+          with OCR), scanner output (Trivy, Grype, CycloneDX, SARIF), Kubernetes manifests and CI configuration. Secrets are redacted on ingest.</p>
         <div className="row" style={{ marginBottom: 10 }}>
           <label className="field">Type hint (optional)
             <select value={hint} onChange={(e) => setHint(e.target.value)}>{HINTS.map((h) => <option key={h} value={h}>{h || "auto-detect"}</option>)}</select>
@@ -160,8 +190,10 @@ function EvidenceTab({ a, running, onRun, setError }: { a: Assessment; running: 
       </div>
       <div className="card">
         <div className="row"><h2 style={{ margin: 0 }}>Evidence ({ev?.files.length ?? 0})</h2><span style={{ flex: 1 }} />
-          <label className="check"><input type="checkbox" checked={llm} onChange={(e) => setLlm(e.target.checked)} />Use local LLM for AI-assisted criteria</label>
-          <button className="primary" disabled={running || !ev?.files.length} onClick={() => onRun(llm)}>{running ? "Running…" : "Run automated assessment"}</button>
+          {llmOn
+            ? <label className="check"><input type="checkbox" checked={llm} onChange={(e) => setLlm(e.target.checked)} />Use local LLM for AI-assisted criteria</label>
+            : <span className="muted small" title="LLM_ENABLED=false">Rules and checklists only (local LLM is off)</span>}
+          <button className="primary" disabled={running || !ev?.files.length} onClick={() => onRun(llmOn && llm)}>{running ? "Running…" : "Run automated assessment"}</button>
         </div>
         {ev?.errors.map((e) => <div key={e} className="notice small" style={{ marginTop: 8 }}>{e}</div>)}
         <table style={{ marginTop: 10 }}>
@@ -183,7 +215,7 @@ function EvidenceTab({ a, running, onRun, setError }: { a: Assessment; running: 
 }
 
 /* ------------------------------------------------------------------ criteria */
-function CriteriaTab({ a, templates, onChange, setError }: { a: Assessment; templates: Record<string, Template>; onChange: (r: any) => void; setError: (e: string | null) => void }) {
+function CriteriaTab({ a, templates, llmOn, onChange, setError }: { a: Assessment; templates: Record<string, Template>; llmOn: boolean; onChange: (r: any) => void; setError: (e: string | null) => void }) {
   const [filter, setFilter] = useState<"all" | "review" | "gap" | "pending">("all");
   const all = a.templates.flatMap((t) => (templates[t]?.criteria ?? []).map((c) => ({ t, c })));
   const shown = all.filter(({ c }) => {
@@ -195,13 +227,21 @@ function CriteriaTab({ a, templates, onChange, setError }: { a: Assessment; temp
   });
   const [cur, setCur] = useState<string | null>(null);
   const selected = all.find((x) => x.c.id === (cur ?? shown[0]?.c.id));
+  const pending = all.filter(({ c }) => !a.results[c.id]?.result).length;
+  const ran = Object.keys(a.detector_runs ?? {}).length > 0;
   return (
     <div className="split">
       <div className="card crit-list" style={{ maxHeight: "75vh", overflow: "auto" }}>
+        {ran && pending > 0 && filter !== "pending" && (
+          <p className="notice small" style={{ marginTop: 0 }}>
+            {pending} criteria have no automated result{llmOn ? "" : " (the local LLM is off)"} and need your decision.{" "}
+            <button className="link" onClick={() => { setFilter("pending"); setCur(null); }}>Show them</button>
+          </p>
+        )}
         <label className="field">Show
           <select value={filter} onChange={(e) => setFilter(e.target.value as any)}>
             <option value="all">All criteria ({all.length})</option><option value="review">Needs my review</option>
-            <option value="gap">Gaps & insufficient</option><option value="pending">Not evaluated</option>
+            <option value="gap">Gaps & insufficient</option><option value="pending">Not evaluated ({pending})</option>
           </select>
         </label>
         {a.templates.map((t) => {
@@ -222,13 +262,13 @@ function CriteriaTab({ a, templates, onChange, setError }: { a: Assessment; temp
           );
         })}
       </div>
-      {selected ? <CriterionPanel key={selected.c.id} a={a} cid={selected.c.id} c={selected.c} r={a.results[selected.c.id]} onChange={onChange} setError={setError} />
+      {selected ? <CriterionPanel key={selected.c.id} a={a} cid={selected.c.id} c={selected.c} r={a.results[selected.c.id]} llmOn={llmOn} onChange={onChange} setError={setError} />
         : <div className="card muted">No criteria match this filter.</div>}
     </div>
   );
 }
 
-function CriterionPanel({ a, cid, c, r, onChange, setError }: { a: Assessment; cid: string; c: any; r?: CriterionResult; onChange: (r: any) => void; setError: (e: string | null) => void }) {
+function CriterionPanel({ a, cid, c, r, llmOn, onChange, setError }: { a: Assessment; cid: string; c: any; r?: CriterionResult; llmOn: boolean; onChange: (r: any) => void; setError: (e: string | null) => void }) {
   const [form, setForm] = useState({ result: r?.result ?? "", risk: r?.risk ?? "", rationale: r?.rationale ?? "", recommendation: r?.recommendation ?? "",
     na_justification: r?.na_justification ?? "", na_approved: r?.na_approved ?? false,
     measured_value: r?.measured_value ?? "", maturity_level: r?.maturity_level ?? ("" as number | "") });
@@ -306,6 +346,7 @@ function CriterionPanel({ a, cid, c, r, onChange, setError }: { a: Assessment; c
         <span className="muted small">Signed in as {getUser() || "anonymous"}</span>
       </div>
 
+      {llmOn && <>
       <h3 style={{ marginTop: 16 }}>Ask about this criterion</h3>
       <div className="row">
         <input style={{ flex: 1 }} value={q} onChange={(e) => setQ(e.target.value)} placeholder="e.g. Which runbook covers the settlement job?" />
@@ -315,6 +356,7 @@ function CriterionPanel({ a, cid, c, r, onChange, setError }: { a: Assessment; c
         }}>Ask</button>
       </div>
       {answer && <pre className="answer small">{answer}</pre>}
+      </>}
     </div>
   );
 }

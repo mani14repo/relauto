@@ -45,7 +45,8 @@ def main():
          "operational_status": "Operational", "business_criticality": "2", "environment": "Production", "u_region": "A", "version": ""},
     ])
     write_csv("cmdb_rel_ci.csv", [
-        {"sys_id": "REL001", "parent": APP, "child": "Billing API", "type": "Depends on::Used by", "sys_updated_on": fmt(AS_OF - timedelta(days=500))},
+        {"sys_id": "REL001", "parent": APP, "child": "Billing API", "type": "Depends on::Used by",
+         "sys_updated_on": fmt(AS_OF - timedelta(days=500))},
     ])
 
     # Incidents: baseline noise, a recurring abend with no problem (P2-02), a change-induced spike, pointer close notes
@@ -63,16 +64,16 @@ def main():
             "comments_and_work_notes": f"{fmt(opened)} - Jane Doe (Work notes)\nRestarted the job. password=hunter2\n",
         })
 
-    for w in range(12):                                  # steady 2/week background
+    for w in range(12):  # steady 2/week background
         for _ in range(2):
             t = AS_OF - timedelta(weeks=w, days=rnd.randint(0, 6), hours=rnd.randint(0, 20))
             inc(t, "URL https://orders.example/health tested DOWN", "Application", "Availability",
                 "Restarted the orders-api pod and verified health endpoint returned 200 OK.", hours=rnd.uniform(0.5, 3))
-    for i in range(6):                                   # recurring abend, no problem record
+    for i in range(6):  # recurring abend, no problem record
         t = AS_OF - timedelta(days=10 + i * 12)
         inc(t, "TWS job OR_SETTLE1J abended RC=12", "Batch", "Scheduler", "Rerun as per the OneNote instructions.", hours=5)
     change_end = AS_OF - timedelta(days=15)
-    for i in range(9):                                   # change-induced spike in one week
+    for i in range(9):  # change-induced spike in one week
         inc(change_end + timedelta(hours=1 + i * 2), "Orders API 500 errors after release", "Application", "Error",
             "Rolled back release 4.2 and the error rate returned to baseline after cache warm-up.", prio="2 - High", hours=3)
     inc(AS_OF - timedelta(days=40), "Orders DB connection pool exhausted", "Database", "Performance",
@@ -133,11 +134,11 @@ spec:
               value: http://billing-api
 """, encoding="utf-8")
     (EVID / "application.properties").write_text("db.url=jdbc:postgresql://orders-db/orders\ndb.password=SuperSecret123\n",
-                                                encoding="utf-8")
+                                                 encoding="utf-8")
 
     # CI: Jenkins without security gates
     (EVID / "Jenkinsfile").write_text("pipeline {\n  agent any\n  stages {\n    stage('Build') { steps { sh 'mvn package' } }\n"
-                                     "    stage('Deploy') { steps { sh './deploy.sh' } }\n  }\n}\n", encoding="utf-8")
+                                      "    stage('Deploy') { steps { sh './deploy.sh' } }\n  }\n}\n", encoding="utf-8")
 
     # Scanner output (Trivy)
     trivy = {"SchemaVersion": 2, "ArtifactName": "registry.example/orders-api:4.4", "Results": [{
@@ -154,7 +155,8 @@ spec:
     with open(EVID / "trivy-orders-api.json", "w", encoding="utf-8") as f:
         json.dump(trivy, f, indent=1)
 
-    profile = {"name": APP, "cmdb_id": "", "aliases": ["Orders Support"], "tier": 1, "priority_class": "P1", "trigger": "major_change", "hosting": "hybrid",
+    profile = {"name": APP, "cmdb_id": "", "aliases": ["Orders Support"], "tier": 1, "priority_class": "P1", "trigger": "major_change",
+               "hosting": "hybrid",
                "containerized": True, "has_cicd": True, "ci_tool": "jenkins", "external_integrations": True,
                "cross_team_dependencies": True, "batch_or_peak_load": True, "incidents_90d": len(incidents),
                "p1_p2_incidents_90d": 10, "recurring_patterns": 1, "has_sla": True, "uses_pse_queue": True}
@@ -168,7 +170,7 @@ spec:
         "p2_gaps_include": ["P2-01", "P2-02", "P2-04", "P2-05", "P2-07", "P2-08", "P2-09", "P2-10"],
         "templates_include": ["SRE-AT-01", "SRE-AT-05", "SRE-AT-06", "SRE-AT-07", "SRE-AT-09", "SRE-AT-11", "SRE-AT-12",
                               "SRE-AT-13", "ITSM-AT-01", "ITSM-AT-03", "CMDB-AT-06"],
-        "seeded_findings": [   # (detector prefix, substring of title) - every one must be detected
+        "seeded_findings": [  # (detector prefix, substring of title) - every one must be detected
             ["vulnerabilities:trivy", "CVE-2026-0001"],
             ["vulnerabilities:trivy", "CVE-2026-0002"],
             ["vulnerabilities:trivy", "CVE-2026-0003"],

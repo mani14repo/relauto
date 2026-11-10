@@ -65,6 +65,13 @@ def _changes(b, ctx) -> list[dict]:
             >= ctx.days_ago(days)]
 
 
+def _groups(spec) -> dict[str, list[str]]:
+    """Config as {label: [alternative names]}; a plain list means each name is its own label."""
+    if isinstance(spec, dict):
+        return {str(k): (v if isinstance(v, list) else [v]) for k, v in spec.items()}
+    return {str(k): [k] for k in spec or []}
+
+
 def _has_col(rows: list[dict], col: str) -> bool:
     return any(col in r for r in rows)
 
@@ -99,16 +106,17 @@ def cmdb_placement(b, ctx, rep):
     """CMDB-AT-01-C03: BAs with every placement attribute valid; Region = None count."""
     from .rubric_rules import _app_ci
     bas = _app_ci(b, ctx)
-    want = _cfg(ctx).get("placement_fields", [])
-    present = [f for f in want if _has_col(bas, f)]
+    want = _groups(_cfg(ctx).get("placement_fields", {}))
+    cols = {label: next((c for c in alts if _has_col(bas, c)), None) for label, alts in want.items()}
+    present = [c for c in cols.values() if c]
     if not bas or not present:
         return
     valid = lambda v: truthy(v) and str(v).strip().lower() != "none"  # noqa: E731
     ok = [ci for ci in bas if all(valid(ci.get(f)) for f in present)]
-    region = next((f for f in present if "region" in f), None)
+    region = cols.get("region")
     none_region = sum(1 for ci in bas if region and str(ci.get(region, "")).strip().lower() in ("", "none"))
     pct = _pct(len(ok), len(bas))
-    missing = [f for f in want if f not in present]
+    missing = [label for label, c in cols.items() if not c]
     rep.results["CMDB-AT-01-C03"] = _v2(
         "CMDB-AT-01-C03", pct == 100 and none_region == 0,
         f"{len(ok)} of {len(bas)} Business Application record(s) have valid {', '.join(present)}; Region = None: {none_region}"
@@ -147,16 +155,20 @@ def cmdb_labels(b, ctx, rep):
     c = _cfg(ctx)
     for cid, keys, target in (("CMDB-AT-07-C03", c.get("required_labels", []), 95.0),
                               ("CMDB-AT-12-C04", c.get("workload_metadata_keys", []), 100.0 if ctx.tier == 1 else 95.0)):
-        if not keys:
+        groups = _groups(keys)
+        if not groups:
             continue
-        ok, bad = [], []
+        ok, bad, short = [], [], Counter()
         for eid, o in wl:
             have = set(_labels(o)) | _otel_keys(o)
-            (ok if all(k in have for k in keys) else bad).append(f"{eid}:{o['kind']}/{o.get('metadata', {}).get('name')}")
+            lacking = [label for label, alts in groups.items() if not any(k in have for k in alts)]
+            short.update(lacking)
+            (bad if lacking else ok).append(f"{eid}:{o['kind']}/{o.get('metadata', {}).get('name')}")
         pct = _pct(len(ok), len(wl))
         rep.results[cid] = _v2(cid, pct >= target,
-                               f"{len(ok)} of {len(wl)} workload(s) carry all of {', '.join(keys)} (target {target:g}%)"
-                               + (f"; missing on {', '.join(bad[:3])}" if bad else "")
+                               f"{len(ok)} of {len(wl)} workload(s) carry all of {', '.join(groups)} (target {target:g}%)"
+                               + (f"; missing on {', '.join(bad[:3])} ({', '.join(f'{k} ×{n}' for k, n in short.most_common())})"
+                                  if bad else "")
                                + ". Admission/policy enforcement for new deployments needs confirming.",
                                ok + bad, pct, target, f"{pct}% of workloads ({len(ok)} of {len(wl)})", review=True)
 
@@ -174,32 +186,94 @@ def cmdb_change_ci(b, ctx, rep):
         [ref(r) for r in ch[:8]], pct, target, f"{pct}% ({len(ok)} of {len(ch)} changes)", review=True)
 
 
+def incident_impact(r: dict, ctx) -> str | None:
+    """'outage', 'degradation' or None (neither), from the short description (CMDB-AT-10-C04).
+
+    The template leaves impact classification to a person ("Deterministic + Human for impact classification"), so
+    this is a first pass for review: outage words ("down", "unavailable", …) mean an outage unless a limiting word
+    ("briefly", "partially", "some users", …) makes it a degradation; degradation words ("slow", "latency",
+    "errors", …) mean a degradation.
+    """
+    c = _cfg(ctx)
+    text = f"{r.get('short_description', '')} {r.get('subcategory', '')}"
+    limited = any(re.search(rf"\b{w}\b", text, re.I) for w in c.get("outage_limiting_words") or [])
+    if OUTAGE.search(text):
+        return "degradation" if limited else "outage"
+    if any(re.search(rf"\b{w}\b", text, re.I) for w in c.get("degradation_words") or []):
+        return "degradation"
+    return None
+
+
 def cmdb_tier_priority(b, ctx, rep):
-    """CMDB-AT-10-C04: outages logged at a priority the service tier allows."""
-    worst = (_cfg(ctx).get("outage_max_priority") or {}).get(ctx.tier or 2)
-    outages = [r for r in _incidents(b, ctx) if _prio(r) and OUTAGE.search(f"{r.get('short_description', '')} {r.get('subcategory', '')}")]
-    if not outages or worst is None:
+    """CMDB-AT-10-C04: outage/degradation incidents logged at the priority CMDB-STD-10 R06 sets for the tier
+    (Tier 1: outage P1, degradation P2; Tier 2: P2/P3; Tier 3: P3/P4); ≥ 95% aligned."""
+    tier = ctx.tier or 2
+    want = (_cfg(ctx).get("incident_priority_by_tier") or {}).get(tier)
+    if not want:
         return
-    ok = [r for r in outages if _prio(r) <= worst]
-    pct = _pct(len(ok), len(outages))
-    low = [r for r in outages if r not in ok]
+    rows = [(r, kind) for r in _incidents(b, ctx) if _prio(r) for kind in [incident_impact(r, ctx)] if kind]
+    if not rows:
+        return
+    ok = [r for r, kind in rows if _prio(r) <= want[kind]]
+    low = [(r, kind) for r, kind in rows if _prio(r) > want[kind]]
+    pct = _pct(len(ok), len(rows))
+    n_out = sum(1 for _, k in rows if k == "outage")
     rep.results["CMDB-AT-10-C04"] = _v2(
-        "CMDB-AT-10-C04", pct >= 95, f"{len(ok)} of {len(outages)} outage incidents logged at P{worst} or higher for a "
-        f"Tier {ctx.tier or 2} service (target 95%)" + (f"; lower: {', '.join(f'{r.get('number')} P{_prio(r)}' for r in low[:5])}" if low else ""),
-        [ref(r) for r in (low or outages)[:8]], pct, 95, f"{pct}% aligned ({len(ok)} of {len(outages)} outages)", review=True)
+        "CMDB-AT-10-C04", pct >= 95,
+        f"{len(ok)} of {len(rows)} outage/degradation incidents ({n_out} outage, {len(rows) - n_out} degradation) logged at "
+        f"the priority CMDB-STD-10 R06 sets for Tier {tier} (outage P{want['outage']}, degradation P{want['degradation']}; "
+        f"target 95%)" + (f"; too low: {', '.join(f'{r.get('number')} {k} P{_prio(r)}' for r, k in low[:5])}" if low else "")
+        + ". Outage vs degradation was read from the descriptions; confirm the impact classification.",
+        [ref(r) for r, _ in (low or rows)[:8]], pct, 95, f"{pct}% aligned ({len(ok)} of {len(rows)})", review=True)
+
+
+def _service_ci_names(b, ctx) -> set[str] | None:
+    """Names of the application's service and hosting CIs: the app records plus everything related to them in
+    cmdb_rel_ci (both directions). None when there is no relationship export to check against."""
+    from .rubric_rules import _app_ci
+    rels = b.table("cmdb_rel_ci")
+    if not rels:
+        return None
+    names = {str(r.get("name", "")).strip().lower() for r in _app_ci(b, ctx)} - {""}
+    for r in rels:
+        p, c = str(r.get("parent", "")).strip(), str(r.get("child", "")).strip()
+        if ctx.matches({"name": p}, ("name",)) or p.lower() in names:
+            names.add(c.lower())
+        if ctx.matches({"name": c}, ("name",)) or c.lower() in names:
+            names.add(p.lower())
+    return names
 
 
 def cmdb_alert_binding(b, ctx, rep):
-    """CMDB-AT-12-C05: alerts bound to a CI (≥ 90%)."""
+    """CMDB-AT-12-C05 (CMDB-STD-12 R08): alerts bound to the Production Application Service or one of its hosting
+    CIs, not a monitoring tool or generic CI; ≥ 90%, and 100% for alerts that open P1/P2 incidents."""
     alerts = b.table("em_alert")
     if not alerts or not _has_col(alerts, "cmdb_ci"):
         return
-    ok = [r for r in alerts if truthy(r.get("cmdb_ci"))]
+    tools = [t.lower() for t in _cfg(ctx).get("monitoring_tool_cis") or []]
+    mine = _service_ci_names(b, ctx)
+
+    def bound(r) -> bool:
+        ci = str(r.get("cmdb_ci") or "").strip()
+        if not ci or any(re.search(rf"\b{re.escape(t)}\b", ci, re.I) for t in tools):
+            return False
+        return ctx.matches({"name": ci}, ("name",)) or mine is None or ci.lower() in mine
+
+    ok = [r for r in alerts if bound(r)]
     pct = _pct(len(ok), len(alerts))
-    generic = Counter(r.get("cmdb_ci") for r in ok).most_common(1)
+    # P1/P2: alerts that opened an incident, when the export links them
+    prio = {str(r.get("number")): _prio(r) for r in b.table("incident")}
+    hi = [r for r in alerts if prio.get(str(r.get("incident") or "").strip()) in (1, 2)]
+    hi_ok = [r for r in hi if r in ok]
+    met = pct >= 90 and len(hi_ok) == len(hi)
+    worst = Counter(str(r.get("cmdb_ci") or "(blank)") for r in alerts if r not in ok).most_common(2)
     rep.results["CMDB-AT-12-C05"] = _v2(
-        "CMDB-AT-12-C05", pct >= 90, f"{len(ok)} of {len(alerts)} alerts bound to a CI ({pct}%; target 90%, 100% for alerts "
-        f"that open P1/P2 incidents). Most common CI: {generic[0][0] if generic else '—'} (check it is the service, not a tool or shared host).",
+        "CMDB-AT-12-C05", met,
+        f"{len(ok)} of {len(alerts)} alerts bound to the service or a hosting CI ({pct}%; target 90%)"
+        + (f"; alerts that opened P1/P2 incidents: {len(hi_ok)} of {len(hi)} bound (target 100%)" if hi
+           else "; no alert-to-incident link in the export, so the 100% rule for P1/P2 alerts is not checked")
+        + (f". Not bound: {', '.join(f'{n} ×{k}' for n, k in worst)}" if worst else "")
+        + ("" if mine is not None else ". No cmdb_rel_ci export, so hosting CIs could not be verified"),
         b.table_ids("em_alert"), pct, 90, f"{pct}% bound ({len(ok)} of {len(alerts)})", review=True)
 
 
@@ -432,24 +506,45 @@ def sre_autoscaling(b, ctx, rep):
 
 
 def sre_postmortems(b, ctx, rep):
-    """SRE-AT-09-C01: every P1 incident has a post-mortem (Problem); within 5 business days when dates are exported."""
-    p1 = [r for r in _incidents(b, ctx) if _prio(r) == 1]
-    if not p1:
+    """SRE-AT-09-C01: a post-mortem (Problem) for every P1 within 5 business days, and for every significant P2
+    within 10 days. Significant P2 = 3+ recurrences (same description in the window); P2s with > 1h downtime need the
+    assessor, since downtime is not in the incident export."""
+    inc = _incidents(b, ctx)
+    p1 = [r for r in inc if _prio(r) == 1]
+    p2 = [r for r in inc if _prio(r) == 2]
+    key = lambda r: re.sub(r"\W+", " ", str(r.get("short_description", "")).lower()).strip()  # noqa: E731
+    counts = Counter(key(r) for r in p2)
+    sig = [r for r in p2 if key(r) and counts[key(r)] >= ctx.cfg["rubric_rules"]["recurrence_min_incidents"]]
+    if not p1 and not sig:
         return
     probs = {str(r.get("number")): r for r in b.table("problem")}
-    linked = [r for r in p1 if truthy(r.get("problem_id"))]
-    late = []
-    for r in linked:
-        p = probs.get(str(r["problem_id"]))
-        end = r.get("_resolved_at") or r["_opened_at"]
-        if p and p.get("_opened_at") and (p["_opened_at"] - end).days * 5 / 7 > 5:
-            late.append(r)
-    ok = len(linked) == len(p1) and not late
+
+    def check(rows, limit_days, business):
+        linked = [r for r in rows if truthy(r.get("problem_id"))]
+        late = []
+        for r in linked:
+            p = probs.get(str(r["problem_id"]))
+            end = r.get("_resolved_at") or r["_opened_at"]
+            if p and p.get("_opened_at"):
+                gap = (p["_opened_at"] - end).days * (5 / 7 if business else 1)
+                if gap > limit_days:
+                    late.append(r)
+        return linked, late
+
+    l1, late1 = check(p1, 5, True)
+    l2, late2 = check(sig, 10, False)
+    ok = len(l1) == len(p1) and not late1 and len(l2) == len(sig) and not late2
+    parts = []
+    if p1:
+        parts.append(f"{len(l1)} of {len(p1)} P1 incident(s) linked to a Problem / post-mortem"
+                     + (f" ({len(late1)} opened more than 5 business days after resolution)" if late1 else ""))
+    if sig:
+        parts.append(f"{len(l2)} of {len(sig)} significant P2 incident(s) (3+ recurrences) linked"
+                     + (f" ({len(late2)} later than 10 days)" if late2 else ""))
     rep.results["SRE-AT-09-C01"] = result(
         "SRE-AT-09-C01", MET if ok else GAP,
-        f"{len(linked)} of {len(p1)} P1 incident(s) linked to a Problem / post-mortem"
-        + (f"; {len(late)} opened more than 5 business days after resolution" if late else "")
-        + ". Significant P2s (10 days) need the assessor's selection.", [ref(r) for r in p1[:8]], review=True)
+        "; ".join(parts) + ". P2s with more than 1 hour of downtime need the assessor's selection.",
+        [ref(r) for r in (p1 + sig)[:8]], review=True)
 
 
 def sre_pipeline(b, ctx, rep):

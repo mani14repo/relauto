@@ -2,12 +2,12 @@
 
 Every criterion the rules did not settle before group 1 was built, sorted by what could replace the local LLM for it. Of the 215 criteria, 53 were settled by the rules in at least one scenario; the other 162 are listed here. Found by running all 41 templates over the 10 eval scenarios plus two scenario-kit cases (all defects, healthy), then sorting each criterion by reading its acceptance criteria, formula and required evidence. The sort is a judgement from the template text; an SRE should check it, especially groups 3–5.
 
-**Status:** group 1 is built (25 criteria: `sra.detectors.criteria_rules`, and CMDB-AT-11-C04 in `rubric_rules`). Each rule sets a result only when its data is in the evidence; otherwise the criterion still goes to the LLM or the assessor. Group 3 is built too (37 of 38: `sra.detectors.checklists`, checklists in `config/checklists.yaml`; CMDB-AT-06-C01 is not, as it needs an approved chain definition whose format is not known). Nine criteria first placed in group 1 were moved once their rules were looked at in detail (noted below).
+**Status:** group 1 is built (25 criteria: `sra.detectors.criteria_rules`, and CMDB-AT-11-C04 in `rubric_rules`). Each rule sets a result only when its data is in the evidence; otherwise the criterion still goes to the LLM or the assessor. Group 3 is built too (37 of 38: `sra.detectors.checklists`, checklists in `config/checklists.yaml`; CMDB-AT-06-C01 is not, as it needs an approved chain definition whose format is not known). Group 2 is built for 52 of 82 criteria (`sra.detectors.data_rules`): the standard ServiceNow service-model, discovery, audit, SLA and catalog tables, and team registers read as CSV or XLSX (`config/registers.yaml`). The other 30 need tool-specific inventories (APM, cloud billing, telemetry mapping, DBA/middleware inventories) or approval records whose format is not known. Nine criteria first placed in group 1 were moved once their rules were looked at in detail (noted below).
 
 | Group | Criteria | What replaces the LLM | Needs |
 |---|---|---|---|
 | 1. Rule on data already ingested | 25 (built) | A deterministic rule (formula, count, date check) | 8 work fully only once an extra field is in the existing export |
-| 2. Rule on a new export | 82 | A deterministic rule, once the data is exported | New ServiceNow tables, registers or tool exports, plus a parser for each |
+| 2. Rule on a new export | 82 (52 built) | A deterministic rule, once the data is exported | New ServiceNow tables, registers or tool exports, plus a parser for each |
 | 3. Document checklist | 38 (37 built) | Checklist of required elements, matched in uploaded documents; extraction of dates and values (RTO/RPO, owners) | The documents; keyword patterns; matching by meaning was tried and turned off (see config/checklists.yaml) |
 | 4. Trained classifier | 6 | A classifier on (criterion, evidence) → Met/Gap, trained on SRE decisions; human review until then | A few hundred labelled decisions |
 | 5. Human only | 11 | Assessor decides; the app prepares the evidence | — |
@@ -15,7 +15,7 @@ Every criterion the rules did not settle before group 1 was built, sorted by wha
 **Groups 1–2 (107, 66%) need no AI at all.** The templates already call most of them deterministic and give the formula; the LLM only got them because no rule had been written, or because the data isn't exported. Group 3 (38) is where most of the LLM's real reading work is. Groups 4–5 (17) are judgement calls.
 
 Two caveats:
-- **Group 2 depends on data access.** If the extra exports can't be had, those criteria fall to the assessor, which is also what happens today when the LLM finds no evidence.
+- **Group 2 depends on data access.** The rules run only when the exports or registers are uploaded; field names and register column headings are guesses (CONFIRM in `config/detectors.yaml` under `data_rules.fields`, and `config/registers.yaml`) and were tested on synthetic data only. Without the data those criteria fall to the assessor, which is also what happens when the LLM finds no evidence.
 - **Group 3 uses keyword patterns.** Documents worded in ways the patterns do not expect come out as Gaps, so every checklist Gap is flagged for review. Matching by meaning with bge-small was measured and turned off: it scored unrelated lines as high as real paraphrases.
 
 **Moved out of group 1:** CMDB-AT-06-C01 (needs the approved chain definition document) → 3; CMDB-AT-09-C02, CMDB-AT-10-C06, ITSM-AT-03-C04, SRE-AT-10-C02 (need data not in today's exports) → 2; CMDB-AT-08-C04 (the assessor confirms which incidents a change caused) and CMDB-AT-13-C02/C03/C04 (the app produces these itself; they are programme-level checks) → 5.
@@ -24,7 +24,7 @@ Two caveats:
 
 | Criterion | Name | Template says | How | Built |
 |---|---|---|---|---|
-| CMDB-AT-01-C03 | Portfolio placement attributes | deterministic | cmdb_ci business app: region, tier, portfolio fields valid — **needs field:** u_portfolio, u_sub_portfolio | yes |
+| CMDB-AT-01-C03 | Portfolio placement attributes | deterministic | cmdb_ci business app: u_region, u_portfolio, busines_criticality and life cycle valid (CMDB-STD-02 R06–R07) — **needs field:** u_portfolio, life_cycle_stage (names pending OD-1) | yes |
 | CMDB-AT-02-C04 | Stale CI control | deterministic | cmdb_ci.last_discovered > 30 days — **needs field:** last_discovered | yes |
 | CMDB-AT-07-C03 | Required labels/tags present | deterministic | required labels in the Kubernetes manifests already ingested | yes |
 | CMDB-AT-08-C01 | Affected CI populated | deterministic | change_request.cmdb_ci populated | yes |
@@ -52,90 +52,90 @@ Two caveats:
 
 ## 2. Rule on a new ServiceNow or tool export (82)
 
-| Criterion | Name | Template says | How |
-|---|---|---|---|
-| CMDB-AT-01-C04 | Application Service per environment, correctly named and linked | deterministic | cmdb_ci_service_auto per environment; naming regex; rel to BA |
-| CMDB-AT-01-C05 | Service Offering linkage (business and technical) | deterministic+ai | service_offering links for Tier 1/2 Application Services |
-| CMDB-AT-01-C07 | Production telemetry identity registered | deterministic | telemetry source map vs CMDB-AT-12 inventory |
-| CMDB-AT-02-C01 | Discovery scope coverage | deterministic | discovery_status: sources with a run in 7 days |
-| CMDB-AT-02-C02 | IRE identification and data-source precedence | deterministic+human | cmdb_identifier coverage; sys_audit overwrites (sample confirmed by a person) |
-| CMDB-AT-02-C03 | Duplicate CI control | deterministic | reconcile_duplicate_task: rate and age per class |
-| CMDB-AT-02-C05 | Post-discovery enrichment | deterministic | support_group, used_for, svc_ci_assoc on discovered CIs |
-| CMDB-AT-02-C06 | Discovery health and credential hygiene | deterministic | discovery_device_history error rate; credential rotation dates |
-| CMDB-AT-03-C02 | Life cycle transition governance | deterministic | sys_audit state transitions with a change_request |
-| CMDB-AT-03-C03 | Hosting CI linked to Application Service | deterministic | svc_ci_assoc: hosting CIs linked to an Application Service |
-| CMDB-AT-03-C04 | Asset-to-CI linkage (hardware) | deterministic | alm_hardware to cmdb_ci_hardware join |
-| CMDB-AT-03-C05 | Decommission completeness | deterministic+human | decommission changes vs six conditions (rels, alerts, config maps) |
-| CMDB-AT-03-C06 | Software normalization for EOL (conditional) | deterministic | software installs normalized to product models |
-| CMDB-AT-04-C01 | CMDB Health configured and baselined for FSI scope | deterministic+human | CMDB Health config per class plus a dated baseline record |
-| CMDB-AT-04-C03 | Correctness: duplicates, orphans, staleness | deterministic | CMDB Health correctness scores vs TH-10/11/12 |
-| CMDB-AT-04-C05 | Remediation workflow with SLA | deterministic | remediation tasks: closed within SLA, owner set |
-| CMDB-AT-05-C01 | Server and VM accuracy | deterministic | server/VM attributes vs discovery or cloud API inventory |
-| CMDB-AT-05-C02 | Database accuracy | deterministic | database CIs vs DBA inventory export |
-| CMDB-AT-05-C03 | Middleware and app-server accuracy | deterministic | middleware CIs vs inventory export |
-| CMDB-AT-05-C04 | Network and load-balancer accuracy | deterministic | Tier 1 VIPs registered and linked |
-| CMDB-AT-05-C05 | Container platform accuracy | deterministic | clusters/namespaces vs cloud API inventory |
-| CMDB-AT-05-C06 | Configuration drift detection | deterministic | sys_audit changes without a change_request, triage time |
-| CMDB-AT-06-C02 | Service population (no empty services) | deterministic | svc_ci_assoc: services with at least one CI |
-| CMDB-AT-06-C03 | Dependencies classified | deterministic+ai | dependency classification attributes (companion table, CONFIRM) |
-| CMDB-AT-06-C04 | Shared platforms modeled as Technical Service Offerings | deterministic | technical service offerings for shared platforms |
-| CMDB-AT-06-C05 | Validated against observed traffic | deterministic+human | observed calls (AppDynamics/Splunk export) vs modeled relationships |
-| CMDB-AT-07-C01 | Cloud account coverage | deterministic | cloud accounts discovered vs account inventory |
-| CMDB-AT-07-C02 | Kubernetes cluster, namespace and workload registration | deterministic | namespaces mapped to one Application Service |
-| CMDB-AT-07-C04 | Ephemeral resource retirement | deterministic | cloud CIs unseen > 7 days still Installed |
-| CMDB-AT-07-C06 | Cloud cost attribution (conditional) | deterministic | cloud billing export: attributed spend share |
-| CMDB-AT-08-C02 | Impacted Services calculated from CMDB | deterministic | task_cmdb_ci_service populated before approval |
-| CMDB-AT-08-C05 | Post-change CMDB update | deterministic | sys_audit CMDB updates within TH-14 of change close |
-| CMDB-AT-08-C06 | Conflict detection uses CMDB | deterministic | change conflict status populated |
-| CMDB-AT-09-C01 | EOL dates recorded on product models | deterministic | product models with an EOL date |
-| CMDB-AT-09-C02 | Exposure computed through CMDB | deterministic | EOL items need product models / software installs linked to CIs |
-| CMDB-AT-09-C04 | Risk acceptance for deferrals | deterministic | risk register: deferrals with valid unexpired acceptance |
-| CMDB-AT-09-C05 | Technical debt linked to Business Applications | deterministic | debt register items linked to a Business Application |
-| CMDB-AT-09-C06 | Burn-down velocity | deterministic | register: Critical/High closed per quarter |
-| CMDB-AT-10-C01 | Tier designated and approved | deterministic | tier field plus approval record |
-| CMDB-AT-10-C05 | Tier drives data-quality obligations | deterministic | health rules configured per tier |
-| CMDB-AT-10-C06 | Dependency tier inheritance | deterministic | needs which dependencies are Critical (CMDB-AT-06-C03 classification, CONFIRM) |
-| CMDB-AT-11-C01 | Attestation current by tier | deterministic | attestation dates by tier |
-| CMDB-AT-11-C02 | Data certification campaigns configured | deterministic | cert_policy / cert_filter coverage and completion |
-| CMDB-AT-11-C03 | Audit findings within SLA | deterministic | finding tasks within SLA by severity |
-| CMDB-AT-11-C05 | Exceptions controlled | deterministic+ai | exception records valid and unexpired |
-| CMDB-AT-12-C01 | Telemetry source inventory complete | deterministic | platform sweep vs source inventory |
-| CMDB-AT-12-C02 | Canonical identity tuple mapped | deterministic | mapping store: identity tuple per source |
-| CMDB-AT-12-C03 | Environment discrimination unambiguous | deterministic | environment in mapping vs naming; ML can flag odd names |
-| CMDB-AT-12-C06 | Mapping governance and drift detection | deterministic | unmapped identifiers older than 5 business days |
-| CMDB-AT-12-C07 | Telemetry retrievable for reliability metrics | deterministic | 28-day series retrievable per Tier 1/2 service |
-| CMDB-AT-13-C01 | Single approved scope list | deterministic | scope list approval; incident count variance vs Incident Management |
-| ITSM-AT-03-C04 | RCA-to-Fix Cycle Time | deterministic | RCA completion date needs problem state history (sys_audit) |
-| ITSM-AT-04-C02 | Escalation Quality & Timeliness | deterministic | escalation times need assignment history (sys_audit or metric_instance) |
-| ITSM-AT-04-C05 | Staffing Coverage & Key-Person Risk | human | roster export: at least 2 agents per queue and shift |
-| ITSM-AT-05-C01 | Service Coverage | deterministic | catalog items vs CMDB application list |
-| ITSM-AT-05-C02 | Ownership & SLA Assignment | deterministic | catalog item fulfillment_team, owner, SLA populated |
-| ITSM-AT-05-C05 | Catalog-to-CMDB Alignment | deterministic | catalog item linked to a CI or Business Service |
-| ITSM-AT-06-C01 | SLA Definition & Applicability | deterministic | contract_sla definitions for P1-P4 |
-| ITSM-AT-06-C02 | SLA Measurement & Reporting | deterministic | task_sla attainment by month |
-| ITSM-AT-06-C04 | SLA Breach Trending & Root Cause | human | breach register: causes categorized, top 3 with actions (ML can group causes) |
-| ITSM-AT-06-C05 | Corrective Action SLA Compliance | deterministic | corrective action register: done by due date |
-| ITSM-AT-07-C03 | OneNote / Email Knowledge Migration | deterministic | migration tracker; OneNote pointers are already detected |
-| ITSM-AT-08-C01 | Improvement Opportunity Register | deterministic | improvement register fields populated |
-| ITSM-AT-08-C02 | Value-Based Prioritization | human | register: top-5 by score scheduled this quarter |
-| ITSM-AT-08-C03 | Improvement Delivery Velocity | deterministic | register: delivered on schedule per quarter |
-| ITSM-AT-08-C04 | Improvement Impact Measurement | human | register: before/after metric pair present |
-| ITSM-AT-09-C01 | IT Risk Register Existence & Coverage | deterministic | risk register fields populated |
-| ITSM-AT-09-C05 | Policy Exception Management | deterministic | exception register: approval, expiry, compensating control |
-| ITSM-AT-10-C01 | Vendor Inventory & Dependency Mapping | deterministic | vendor inventory linked to applications in CMDB |
-| ITSM-AT-10-C02 | Contract & SLA Coverage | deterministic | contract register: SLA, penalty, review date |
-| ITSM-AT-10-C05 | Single-Vendor Concentration Risk | human | vendor-to-application counts > 5; mitigation plan exists |
-| SRE-AT-02-C05 | Risk Mitigation for Critical Paths | human | risk register: High/Critical with mitigation, owner, date |
-| SRE-AT-03-C04 | Distributed Tracing Coverage | ai | APM export: traces for top 3 transactions, correlation IDs |
-| SRE-AT-09-C03 | Post-Mortem Action Item Completion | deterministic | post-mortem action items (problem_task) done on time |
-| SRE-AT-10-C02 | Toil-as-Percentage-of-Engineering-Capacity | deterministic | toil share needs engineering capacity as well as time worked |
-| SRE-AT-10-C04 | Automation Delivery & Realized Value | deterministic | automation delivery records with before/after |
-| SRE-AT-10-C05 | Toil Reduction Trend | deterministic | quarterly toil percentage trend |
-| SRE-AT-11-C05 | Access Control & Privilege Review | deterministic | access review export: quarterly, no shared accounts |
-| SRE-AT-12-C04 | Deployment Frequency & Cycle Time | deterministic | deployment log: frequency and lead time |
-| SRE-AT-13-C02 | Integration Health Monitoring | ai | monitor export per integration with thresholds |
-| SRE-AT-13-C05 | Integration Change Impact Coverage | deterministic | integration changes list consumers in impacted CIs (task_ci) |
-| SRE-AT-14-C04 | Automation operational ownership is assigned and active | deterministic | automation registry owner and recent activity |
+| Criterion | Name | Template says | How | Built |
+|---|---|---|---|---|
+| CMDB-AT-01-C04 | Application Service per environment, correctly named and linked | deterministic | cmdb_ci_service_auto per environment; naming regex; rel to BA | yes |
+| CMDB-AT-01-C05 | Service Offering linkage (business and technical) | deterministic+ai | service_offering links for Tier 1/2 Application Services | yes |
+| CMDB-AT-01-C07 | Production telemetry identity registered | deterministic | telemetry source map vs CMDB-AT-12 inventory | no |
+| CMDB-AT-02-C01 | Discovery scope coverage | deterministic | discovery_status: sources with a run in 7 days | yes |
+| CMDB-AT-02-C02 | IRE identification and data-source precedence | deterministic+human | cmdb_identifier coverage; sys_audit overwrites (sample confirmed by a person) | yes |
+| CMDB-AT-02-C03 | Duplicate CI control | deterministic | reconcile_duplicate_task: rate and age per class | yes |
+| CMDB-AT-02-C05 | Post-discovery enrichment | deterministic | support_group, used_for, svc_ci_assoc on discovered CIs | yes |
+| CMDB-AT-02-C06 | Discovery health and credential hygiene | deterministic | discovery_device_history error rate; credential rotation dates | yes |
+| CMDB-AT-03-C02 | Life cycle transition governance | deterministic | sys_audit state transitions with a change_request | yes |
+| CMDB-AT-03-C03 | Hosting CI linked to Application Service | deterministic | svc_ci_assoc: hosting CIs linked to an Application Service | yes |
+| CMDB-AT-03-C04 | Asset-to-CI linkage (hardware) | deterministic | alm_hardware to cmdb_ci_hardware join | yes |
+| CMDB-AT-03-C05 | Decommission completeness | deterministic+human | decommission changes vs six conditions (rels, alerts, config maps) | no |
+| CMDB-AT-03-C06 | Software normalization for EOL (conditional) | deterministic | software installs normalized to product models | yes |
+| CMDB-AT-04-C01 | CMDB Health configured and baselined for FSI scope | deterministic+human | CMDB Health config per class plus a dated baseline record | no |
+| CMDB-AT-04-C03 | Correctness: duplicates, orphans, staleness | deterministic | CMDB Health correctness scores vs TH-10/11/12 | no |
+| CMDB-AT-04-C05 | Remediation workflow with SLA | deterministic | remediation tasks: closed within SLA, owner set | yes |
+| CMDB-AT-05-C01 | Server and VM accuracy | deterministic | server/VM attributes vs discovery or cloud API inventory | no |
+| CMDB-AT-05-C02 | Database accuracy | deterministic | database CIs vs DBA inventory export | no |
+| CMDB-AT-05-C03 | Middleware and app-server accuracy | deterministic | middleware CIs vs inventory export | no |
+| CMDB-AT-05-C04 | Network and load-balancer accuracy | deterministic | Tier 1 VIPs registered and linked | no |
+| CMDB-AT-05-C05 | Container platform accuracy | deterministic | clusters/namespaces vs cloud API inventory | no |
+| CMDB-AT-05-C06 | Configuration drift detection | deterministic | sys_audit changes without a change_request, triage time | no |
+| CMDB-AT-06-C02 | Service population (no empty services) | deterministic | svc_ci_assoc: services with at least one CI | yes |
+| CMDB-AT-06-C03 | Dependencies classified | deterministic+ai | dependency classification attributes (companion table, CONFIRM) | no |
+| CMDB-AT-06-C04 | Shared platforms modeled as Technical Service Offerings | deterministic | technical service offerings for shared platforms | no |
+| CMDB-AT-06-C05 | Validated against observed traffic | deterministic+human | observed calls (AppDynamics/Splunk export) vs modeled relationships | no |
+| CMDB-AT-07-C01 | Cloud account coverage | deterministic | cloud accounts discovered vs account inventory | no |
+| CMDB-AT-07-C02 | Kubernetes cluster, namespace and workload registration | deterministic | namespaces mapped to one Application Service | yes |
+| CMDB-AT-07-C04 | Ephemeral resource retirement | deterministic | cloud CIs unseen > 7 days still Installed | yes |
+| CMDB-AT-07-C06 | Cloud cost attribution (conditional) | deterministic | cloud billing export: attributed spend share | no |
+| CMDB-AT-08-C02 | Impacted Services calculated from CMDB | deterministic | task_cmdb_ci_service populated before approval | yes |
+| CMDB-AT-08-C05 | Post-change CMDB update | deterministic | sys_audit CMDB updates within TH-14 of change close | no |
+| CMDB-AT-08-C06 | Conflict detection uses CMDB | deterministic | change conflict status populated | yes |
+| CMDB-AT-09-C01 | EOL dates recorded on product models | deterministic | product models with an EOL date | yes |
+| CMDB-AT-09-C02 | Exposure computed through CMDB | deterministic | EOL items need product models / software installs linked to CIs | no |
+| CMDB-AT-09-C04 | Risk acceptance for deferrals | deterministic | risk register: deferrals with valid unexpired acceptance | yes |
+| CMDB-AT-09-C05 | Technical debt linked to Business Applications | deterministic | debt register items linked to a Business Application | yes |
+| CMDB-AT-09-C06 | Burn-down velocity | deterministic | register: Critical/High closed per quarter | yes |
+| CMDB-AT-10-C01 | Tier designated and approved | deterministic | tier field plus approval record | yes |
+| CMDB-AT-10-C05 | Tier drives data-quality obligations | deterministic | health rules configured per tier | no |
+| CMDB-AT-10-C06 | Dependency tier inheritance | deterministic | needs which dependencies are Critical (CMDB-AT-06-C03 classification, CONFIRM) | no |
+| CMDB-AT-11-C01 | Attestation current by tier | deterministic | attestation dates by tier | yes |
+| CMDB-AT-11-C02 | Data certification campaigns configured | deterministic | cert_policy / cert_filter coverage and completion | no |
+| CMDB-AT-11-C03 | Audit findings within SLA | deterministic | finding tasks within SLA by severity | yes |
+| CMDB-AT-11-C05 | Exceptions controlled | deterministic+ai | exception records valid and unexpired | yes |
+| CMDB-AT-12-C01 | Telemetry source inventory complete | deterministic | platform sweep vs source inventory | no |
+| CMDB-AT-12-C02 | Canonical identity tuple mapped | deterministic | mapping store: identity tuple per source | no |
+| CMDB-AT-12-C03 | Environment discrimination unambiguous | deterministic | environment in mapping vs naming; ML can flag odd names | no |
+| CMDB-AT-12-C06 | Mapping governance and drift detection | deterministic | unmapped identifiers older than 5 business days | no |
+| CMDB-AT-12-C07 | Telemetry retrievable for reliability metrics | deterministic | 28-day series retrievable per Tier 1/2 service | no |
+| CMDB-AT-13-C01 | Single approved scope list | deterministic | scope list approval; incident count variance vs Incident Management | no |
+| ITSM-AT-03-C04 | RCA-to-Fix Cycle Time | deterministic | RCA completion date needs problem state history (sys_audit) | yes |
+| ITSM-AT-04-C02 | Escalation Quality & Timeliness | deterministic | escalation times need assignment history (sys_audit or metric_instance) | no |
+| ITSM-AT-04-C05 | Staffing Coverage & Key-Person Risk | human | roster export: at least 2 agents per queue and shift | yes |
+| ITSM-AT-05-C01 | Service Coverage | deterministic | catalog items vs CMDB application list | yes |
+| ITSM-AT-05-C02 | Ownership & SLA Assignment | deterministic | catalog item fulfillment_team, owner, SLA populated | yes |
+| ITSM-AT-05-C05 | Catalog-to-CMDB Alignment | deterministic | catalog item linked to a CI or Business Service | yes |
+| ITSM-AT-06-C01 | SLA Definition & Applicability | deterministic | contract_sla definitions for P1-P4 | yes |
+| ITSM-AT-06-C02 | SLA Measurement & Reporting | deterministic | task_sla attainment by month | yes |
+| ITSM-AT-06-C04 | SLA Breach Trending & Root Cause | human | breach register: causes categorized, top 3 with actions (ML can group causes) | yes |
+| ITSM-AT-06-C05 | Corrective Action SLA Compliance | deterministic | corrective action register: done by due date | yes |
+| ITSM-AT-07-C03 | OneNote / Email Knowledge Migration | deterministic | migration tracker; OneNote pointers are already detected | yes |
+| ITSM-AT-08-C01 | Improvement Opportunity Register | deterministic | improvement register fields populated | yes |
+| ITSM-AT-08-C02 | Value-Based Prioritization | human | register: top-5 by score scheduled this quarter | yes |
+| ITSM-AT-08-C03 | Improvement Delivery Velocity | deterministic | register: delivered on schedule per quarter | yes |
+| ITSM-AT-08-C04 | Improvement Impact Measurement | human | register: before/after metric pair present | yes |
+| ITSM-AT-09-C01 | IT Risk Register Existence & Coverage | deterministic | risk register fields populated | yes |
+| ITSM-AT-09-C05 | Policy Exception Management | deterministic | exception register: approval, expiry, compensating control | yes |
+| ITSM-AT-10-C01 | Vendor Inventory & Dependency Mapping | deterministic | vendor inventory linked to applications in CMDB | yes |
+| ITSM-AT-10-C02 | Contract & SLA Coverage | deterministic | contract register: SLA, penalty, review date | yes |
+| ITSM-AT-10-C05 | Single-Vendor Concentration Risk | human | vendor-to-application counts > 5; mitigation plan exists | yes |
+| SRE-AT-02-C05 | Risk Mitigation for Critical Paths | human | risk register: High/Critical with mitigation, owner, date | yes |
+| SRE-AT-03-C04 | Distributed Tracing Coverage | ai | APM export: traces for top 3 transactions, correlation IDs | no |
+| SRE-AT-09-C03 | Post-Mortem Action Item Completion | deterministic | post-mortem action items (problem_task) done on time | yes |
+| SRE-AT-10-C02 | Toil-as-Percentage-of-Engineering-Capacity | deterministic | toil share needs engineering capacity as well as time worked | yes |
+| SRE-AT-10-C04 | Automation Delivery & Realized Value | deterministic | automation delivery records with before/after | yes |
+| SRE-AT-10-C05 | Toil Reduction Trend | deterministic | quarterly toil percentage trend | yes |
+| SRE-AT-11-C05 | Access Control & Privilege Review | deterministic | access review export: quarterly, no shared accounts | yes |
+| SRE-AT-12-C04 | Deployment Frequency & Cycle Time | deterministic | deployment log: frequency and lead time | yes |
+| SRE-AT-13-C02 | Integration Health Monitoring | ai | monitor export per integration with thresholds | no |
+| SRE-AT-13-C05 | Integration Change Impact Coverage | deterministic | integration changes list consumers in impacted CIs (task_ci) | no |
+| SRE-AT-14-C04 | Automation operational ownership is assigned and active | deterministic | automation registry owner and recent activity | yes |
 
 ## 3. Document checklist (38)
 

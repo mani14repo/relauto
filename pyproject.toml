@@ -15,6 +15,10 @@ dependencies = [
     "psycopg[binary,pool]>=3.2",
     "aiokafka>=0.11",
     "numpy>=1.26",
+    "openpyxl>=3.1",
+    "pypdf>=5",
+    "rapidocr-onnxruntime>=1.3",
+    "opencv-python-headless>=4.8",
 ]
 
 [project.optional-dependencies]
@@ -34,3 +38,8 @@ where = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+
+[tool.uv]
+# rapidocr-onnxruntime asks for opencv-python, which needs libGL (absent from the distroless image); use the
+# headless build, which is the same library without the GUI parts.
+override-dependencies = ["opencv-python; sys_platform == 'never'", "opencv-python-headless>=4.8"]

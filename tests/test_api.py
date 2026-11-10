@@ -94,3 +94,31 @@ def test_unknown_assessment_404(client):
     c, _ = client
     assert c.get("/api/assessments/SRA-0000000000").status_code == 404
     assert c.get("/api/assessments/../../etc").status_code == 404
+
+
+def test_parse_profile_file(client):
+    c, store = client
+    text = Path("eval/scenarios/orders_batch/profile.yaml").read_bytes() if Path("eval/scenarios/orders_batch/profile.yaml").exists() else (
+        b"name: Orders Batch\naliases: [Orders Support]\ntier: 1\npriority_class: P1\ntrigger: major_change\nhosting: hybrid\n"
+        b"containerized: true\nci_tool: jenkins\nincidents_90d: 40\n")
+    r = c.post("/api/profile/parse", files={"file": ("profile.yaml", text, "application/x-yaml")})
+    assert r.status_code == 200, r.text
+    p = r.json()["profile"]
+    assert p["name"] == "Orders Batch" and p["tier"] == 1 and p["trigger"] == "major_change" and p["hosting"] == "hybrid"
+    assert p["containerized"] is True and p["vendors"] is False and p["aliases"] == ["Orders Support"]
+    assert r.json()["ignored"] == []
+    assert store.list() == []  # nothing is stored
+
+
+def test_parse_profile_lenient_and_errors(client):
+    c, _ = client
+    r = c.post("/api/profile/parse", files={"file": ("p.yml", b"aliases: A, B\nowner_team: x\ntier: 2\n", "text/plain")})
+    assert r.status_code == 200, r.text
+    j = r.json()
+    assert j["profile"]["name"] == "" and j["profile"]["aliases"] == ["A", "B"] and j["ignored"] == ["owner_team"]
+    r = c.post("/api/profile/parse", files={"file": ("p.json", b'{"name": "X", "tier": 7}', "application/json")})
+    assert r.status_code == 422 and "tier" in r.json()["detail"]
+    r = c.post("/api/profile/parse", files={"file": ("p.yaml", b"- just\n- a list\n", "text/plain")})
+    assert r.status_code == 422
+    r = c.post("/api/profile/parse", files={"file": ("p.yaml", b"name: [unclosed\n", "text/plain")})
+    assert r.status_code == 422 and "readable" in r.json()["detail"]

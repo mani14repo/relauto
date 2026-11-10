@@ -19,7 +19,8 @@ ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
 WORKDIR /app
 COPY requirements.txt .
 RUN --mount=type=secret,id=pipconf,target=/etc/pip.conf \
-    pip install --target /app/deps -r requirements.txt
+    pip install --target /app/deps -r requirements.txt \
+ && pip install --no-deps --target /app/deps rapidocr-onnxruntime==1.4.4
 COPY pyproject.toml ./
 COPY src/ src/
 RUN --mount=type=secret,id=pipconf,target=/etc/pip.conf \

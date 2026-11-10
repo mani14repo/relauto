@@ -31,7 +31,11 @@ def _sev(rid: str) -> Risk:
 def _app_ci(b: EvidenceBundle, ctx: Context, table: str | None = None) -> list[dict]:
     table = table or ctx.cfg["servicenow"]["app_table"]
     rows = b.table(table) + (b.table("u_business_application") if table != "u_business_application" else [])
-    return [r for r in rows if ctx.matches(r, ("name", "u_name", "display_name"))]
+    # Only application records: hosting CIs (servers, VMs, namespaces...) are often named after the application
+    # too, but they are not the Business Application. Rows without a class are assumed to be applications.
+    app_class = re.compile(r"business_app|appl|^$", re.I)
+    return [r for r in rows if ctx.matches(r, ("name", "u_name", "display_name"))
+            and app_class.search(str(r.get("sys_class_name", "")).strip())]
 
 
 def _incidents(b, ctx, days):
@@ -245,7 +249,12 @@ def p2_01(b, ctx, rep):
     rels = b.table("cmdb_rel_ci")
     if not rels:
         return _emit(rep, "P2-01", IE, "No cmdb_rel_ci (dependency) export provided")
-    mine = [r for r in rels if ctx.matches(r, ("parent", "child"))]
+    # Dependencies between applications only: the Business Application's own service model (its Application Services
+    # and Service Offerings, "Consumes" links) is not an upstream/downstream dependency.
+    model = {str(r.get("name", "")).strip() for t in ("cmdb_ci_service_auto", "service_offering") for r in b.table(t)}
+    model -= {str(r.get("name", "")).strip() for r in _app_ci(b, ctx)}   # a service misnamed after the BA is still the BA here
+    mine = [r for r in rels if ctx.matches(r, ("parent", "child")) and not re.search(r"consumes", str(r.get("type", "")), re.I)
+            and str(r.get("parent", "")).strip() not in model and str(r.get("child", "")).strip() not in model]
     if not mine:
         return _emit(rep, "P2-01", GAP, "No upstream/downstream dependencies mapped for the application", b.table_ids("cmdb_rel_ci"),
                      action="Map upstream and downstream dependencies in CMDB (CMDB-PB-05)")
@@ -386,32 +395,76 @@ def p2_09(b, ctx, rep):
     _emit(rep, "P2-09", MET, f"{len(with_wa)} known errors documented", [ref(r) for r in with_wa[:5]])
 
 
+def _col(rows: list[dict], field) -> str | None:
+    """The column for a required field: a name, or a list of alternative names (first one in the export wins)."""
+    for name in (field if isinstance(field, list) else [field]):
+        if any(name in r for r in rows):
+            return name
+    return None
+
+
+def _absent(rows: list[dict], fields: list) -> list[str]:
+    return [f if isinstance(f, str) else "/".join(f) for f in fields if _col(rows, f) is None]
+
+
+def _completeness(rows: list[dict], fields: list) -> tuple[float, list[str], Counter]:
+    """(% of required cells filled, columns measured, Counter of empty columns) over the fields present in the export."""
+    cols = [c for c in (_col(rows, f) for f in fields) if c]
+    if not rows or not cols:
+        return 0.0, cols, Counter()
+    filled = sum(1 for r in rows for c in cols if truthy(r.get(c)))
+    empty = Counter(c for r in rows for c in cols if not truthy(r.get(c)))
+    return round(100 * filled / (len(rows) * len(cols)), 1), cols, empty
+
+
+def _child_cis(b: EvidenceBundle, ctx: Context, apps: list[dict]) -> list[dict]:
+    """CMDB records of the application's direct children in cmdb_rel_ci (P2-10 measures them too)."""
+    names = {str(a.get("name", "")).strip().lower() for a in apps} - {""}
+    kids = {str(r.get("child", "")).strip().lower() for r in b.table("cmdb_rel_ci")
+            if str(r.get("parent", "")).strip().lower() in names} - names - {""}
+    if not kids:
+        return []
+    seen, out = set(), []
+    for r in b.table(ctx.cfg["servicenow"]["app_table"]):
+        n = str(r.get("name", "")).strip().lower()
+        if n in kids and n not in seen:
+            seen.add(n)
+            out.append(r)
+    return out
+
+
 def p2_10(b, ctx, rep):
     tier = ctx.tier or 2
     threshold = load_yaml("scoring_matrix")["tier_thresholds"]["cmdb_completeness_pct"].get(tier, 85)
-    cis = _app_ci(b, ctx)
-    if not cis:
+    apps = _app_ci(b, ctx)
+    if not apps:
         return _emit(rep, "P2-10", IE, "No CMDB CI record to measure attribute completeness")
-    fields = ctx.cfg["rubric_rules"]["required_ci_fields"]
-    present = [f for f in fields if any(f in ci for ci in cis)]
+    cfg = ctx.cfg["rubric_rules"]
+
+    # V2 CMDB-AT-04-C02 / CMDB-AT-11-C04: TH-01 over the application records, with CMDB-STD-00's required fields
+    v2_fields = cfg.get("th01_required_fields") or cfg["required_ci_fields"]
+    v2_pct, v2_present, _ = _completeness(apps, v2_fields)
+    if v2_present:
+        th01 = cmdb_threshold("TH-01", tier)
+        v2 = result("CMDB-AT-04-C02", MET if v2_pct >= th01 else GAP,
+                    f"Required-attribute completeness {v2_pct}% (TH-01 for Tier {tier}: {th01:.0f}%) over {', '.join(v2_present)}"
+                    + (f" (not in export: {', '.join(_absent(apps, v2_fields))})" if _absent(apps, v2_fields) else ""),
+                    [ref(ci, "name") for ci in apps[:5]])
+        v2.measured_value = f"{v2_pct}% of {len(v2_present)} required fields"
+        v2.maturity_level = level_from_pct(v2_pct, th01)
+        rep.results["CMDB-AT-04-C02"] = v2
+        rep.results["CMDB-AT-11-C04"] = v2.model_copy(update={"criterion_id": "CMDB-AT-11-C04"})
+
+    # P2-10: the application CI and its direct child CIs (cmdb_rel_ci), with the rubric's field list
+    cis = apps + _child_cis(b, ctx, apps)
+    fields = cfg["required_ci_fields"]
+    pct, present, empty = _completeness(cis, fields)
     if not present:
         return _emit(rep, "P2-10", IE, "CMDB export does not include the required attribute columns")
-    filled = sum(1 for ci in cis for f in present if truthy(ci.get(f)))
-    pct = round(100 * filled / (len(cis) * len(present)), 1)
-    # V2 CMDB-AT-04-C02 measures the same completeness against TH-01 (95/90/85%)
-    th01 = cmdb_threshold("TH-01", tier)
-    v2 = result("CMDB-AT-04-C02", MET if pct >= th01 else GAP,
-                f"Required-attribute completeness {pct}% (TH-01 for Tier {tier}: {th01:.0f}%) over {', '.join(present)}",
-                [ref(ci, "name") for ci in cis[:5]])
-    v2.measured_value = f"{pct}% of {len(present)} required fields"
-    v2.maturity_level = level_from_pct(pct, th01)
-    rep.results["CMDB-AT-04-C02"] = v2
-    # CMDB-AT-11-C04 (certification view) measures the same required-field completeness against TH-01
-    rep.results["CMDB-AT-11-C04"] = v2.model_copy(update={"criterion_id": "CMDB-AT-11-C04"})
-    absent = [f for f in fields if f not in present]
-    note = f" (columns not in export: {', '.join(absent)})" if absent else ""
+    absent = _absent(cis, fields)
+    note = (f" (columns not in export: {', '.join(absent)})" if absent else "") + (
+        f"; {len(cis) - len(apps)} direct child CI(s) included" if len(cis) > len(apps) else "")
     if pct < threshold:
-        empty = Counter(f for ci in cis for f in present if not truthy(ci.get(f)))
         return _emit(rep, "P2-10", GAP, f"CI attribute completeness {pct}% < {threshold}% (Tier {tier}); empty: "
                      f"{', '.join(f for f, _ in empty.most_common(5))}{note}", [ref(ci, "name") for ci in cis[:5]],
                      action="Populate the required CI attributes (CMDB-PB-02)")
