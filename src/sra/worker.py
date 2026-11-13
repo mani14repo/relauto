@@ -14,6 +14,7 @@ import signal
 
 from .config import setting
 from .events.bus import JOBS_TOPIC
+from .knowledge.jobs import KNOWLEDGE_JOBS, run_job as run_knowledge_job
 from .service import AssessmentService
 from .store import store_from_settings
 
@@ -29,11 +30,11 @@ async def relay_outbox(store, producer, stop: asyncio.Event, batch: int = 100, i
     """Publish unpublished outbox rows in id order, then mark them (at-least-once)."""
     while not stop.is_set():
         with store.pool.connection() as c, c.transaction():
-            rows = c.execute("SELECT id, topic, key, payload FROM outbox WHERE published_at IS NULL ORDER BY id "
+            rows = c.execute("SELECT id, topic, key, payload FROM sra_outbox WHERE published_at IS NULL ORDER BY id "
                              "LIMIT %s FOR UPDATE SKIP LOCKED", (batch,)).fetchall()
             for rid, topic, key, payload in rows:
                 await producer.send_and_wait(topic, json.dumps(payload).encode(), key=key.encode())
-                c.execute("UPDATE outbox SET published_at = now() WHERE id = %s", (rid,))
+                c.execute("UPDATE sra_outbox SET published_at = now() WHERE id = %s", (rid,))
         if not rows:
             try:
                 await asyncio.wait_for(stop.wait(), timeout=idle)
@@ -52,6 +53,9 @@ async def consume_jobs(svc: AssessmentService, consumer, stop: asyncio.Event) ->
                     if job.get("job") == "run":
                         # CPU-bound LLM work runs in a thread so the relay keeps flowing
                         await asyncio.to_thread(svc.run_job, job)
+                    elif job.get("job") in KNOWLEDGE_JOBS:
+                        # the ingestion service: extract, chunk, embed, store (and source sync)
+                        await asyncio.to_thread(run_knowledge_job, svc.store, job)
                     elif job.get("job") == "report":
                         await asyncio.to_thread(svc.report_zip, job["assessment_id"], job.get("actor", "worker"))
                 except Exception:  # noqa: BLE001
@@ -64,8 +68,9 @@ async def main() -> None:
 
     logging.basicConfig(level=logging.INFO)
     bootstrap = setting("KAFKA_BOOTSTRAP_SERVERS")
-    if not bootstrap or not setting("DATABASE_URL"):
-        raise SystemExit("worker needs KAFKA_BOOTSTRAP_SERVERS and DATABASE_URL")
+    from .config import database_dsn
+    if not bootstrap or not database_dsn():
+        raise SystemExit("worker needs KAFKA_BOOTSTRAP_SERVERS and a database (DATABASE_URL or CAP_POSTGRES_*)")
     store = store_from_settings()
     svc = AssessmentService(store, _evaluator_factory)
     security = {}

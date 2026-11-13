@@ -26,10 +26,100 @@ React UI ──► sra-api (FastAPI :8080) ──► Postgres (Cloud SQL + pgvec
 | Selection | `sra.selection` + `config/selection_rules.yaml` | Applicability predicates per template, scored and explained; the SRE confirms |
 | Evidence | `sra.evidence` | ServiceNow CSV, XLSX and Table API JSON (incident, change_request, problem, kb_knowledge, em_alert, cmdb_ci, cmdb_rel_ci); docx/pdf/md/txt; images (jpg/png/tiff/webp) and scanned PDFs via RapidOCR (CPU, weights inside the wheel); Trivy/Grype/CycloneDX/SARIF; Kubernetes YAML; Jenkinsfile/GitHub Actions |
 | Detectors | `sra.detectors` | `rubric_rules` (all 18 Evidence Catalog rules), `criteria_rules` (25 template criteria computed from ingested data), `checklists` (37 document checklists, `config/checklists.yaml`), `data_rules` (52 criteria from extra ServiceNow tables and registers), `incident_anomalies`, `incident_clusters`, `vulnerabilities`, `config_checks`. Thresholds are in `config/detectors.yaml` |
-| LLM | `sra.llm`, `sra.retrieval` | BM25, plus optional local ONNX embeddings fused with RRF. Per-criterion JSON-schema calls; `verify.py` rejects invented citations |
+| Retrieval | `sra.retrieval` | Hybrid: keyword + semantic vector search fused with RRF, optional local reranker. In PostgreSQL (tsvector + pgvector) when the service has a database, in memory otherwise |
+| LLM | `sra.llm` | Per-criterion JSON-schema calls; `verify.py` rejects invented citations. Local Ollama by default; Claude through the LMS gateway is an optional provider, off by default |
 | Scoring | `sra.scoring` + `config/scoring_matrix.yaml` | See below |
 | Reports | `sra.report` | `docx_fill.py` edits the original template XML in place; `summary.py` produces the rubric Section 8 output |
 | Service | `sra.service`, `sra.api`, `sra.worker`, `sra.store` | FileStore for dev; PgStore with a transactional outbox → Kafka |
+
+### Knowledge store and hybrid retrieval (`sra.knowledge`, `sra.connectors`, `sra.retrieval`)
+
+Built to `docs/Hybrid Retrieval Architecture Overview.png`: one PostgreSQL database, no separate vector database.
+
+**The store stands on its own.** It is not tied to assessments.
+
+| Table | Holds |
+|---|---|
+| `sra_documents` | One row per source document or record: an uploaded evidence file, a ServiceNow record, an OIPReqs standard or playbook. Metadata (source system, type, application), source ids, access list, tags. |
+| `sra_chunks` | Its text in retrievable pieces: `tsv` + GIN index for keyword search, `embedding vector(384)` + HNSW index for semantic search. |
+| `sra_relations` | Links between documents (below). |
+| `sra_sync_state` | Where each connector stream stopped. |
+
+A file uploaded to an assessment belongs to it and is deleted with it. ServiceNow records and the standards have no owner: they stay, and every consumer can search them.
+
+**Sources (diagram box 1).**
+
+| Source | How it arrives | Status |
+|---|---|---|
+| Uploaded evidence | The upload API | Working |
+| ServiceNow (incident, problem, change_request, kb_knowledge, em_alert, cmdb_ci, cmdb_rel_ci) | Connector: Table API, incremental by `sys_updated_on`, paged, retried (`sra.connectors.servicenow`, `config/sources.yaml`) | Built and tested against a stand-in API; **not yet run against a real instance** |
+| OIPReqs standards, policies, procedures, playbooks, templates | Loader over `docs/OIPReqs` (206 documents; the newest version of each) | Working |
+| AppDynamics, Splunk | | Not built |
+
+**Ingestion is its own service (box 2).** Saving a document only queues it (`indexed_at IS NULL`). The ingestion service (`sra.knowledge.ingest`) then extracts and normalises, chunks, embeds (FastEmbed/ONNX, `BAAI/bge-small-en-v1.5`, 384-d), stores and links. It runs in the Kafka worker, or in a background thread of a single-process deployment, or as its own process:
+
+```
+sra ingest --standards              # load / refresh the OIPReqs library, then ingest what is waiting
+sra ingest --servicenow             # sync ServiceNow, then ingest what changed
+sra ingest --every 900              # keep running: every 15 minutes
+```
+
+An upload request no longer waits for chunking or embedding. An automated pass first ingests anything of its own assessment that is still waiting, so it never runs on half-indexed evidence. One bad document is recorded as failed and does not block the queue.
+
+**Synced records feed assessments.** The rules read the ServiceNow records about an assessment's application (matched by its name and aliases) straight from the store, so an assessment can run without uploading exports of the synced tables. An uploaded export of a table replaces the synced copy of that table, so nothing is counted twice. Records are stored redacted exactly as an uploaded export would be (people fields dropped, secrets and personal data blanked).
+
+**Relationships.** Each result of a search lists the documents it is linked to, in both directions:
+
+| Link | From |
+|---|---|
+| incident → problem (`problem_id`), incident/problem → change (`rfc`, `caused_by`), record → configuration item (`cmdb_ci`, `business_service`), alert → incident | ServiceNow reference fields (`config/sources.yaml`) |
+| configuration item → configuration item, typed ("Depends on::Used by") | `cmdb_rel_ci` rows |
+| document → the service it is about (`about`) | Matching a document's application to that application's configuration item |
+| standard → the documents it cites (`references`) | Document codes in the text (SRE-PB-08, CMDB-STD-10, ...) |
+
+**Access lists.** Uploads: the `acl` form field. ServiceNow: the fields named per table in `config/sources.yaml` (knowledge articles carry `roles` and `can_read_user_criteria`). ServiceNow's own ACLs are role-based rules that the Table API does not export, so for tables without such fields the connector's service account decides what is copied, and records are readable by every caller unless `acl_fields` is set. The caller is taken from the ingress headers (`X-User` / IAP e-mail, `X-Groups`); the UI has no login of its own, so this is only as strong as the ingress in front of it.
+
+**Retrieval (box 4)** runs in the database:
+
+| Step | Here |
+|---|---|
+| 1. Keyword search | `websearch_to_tsquery` over the query's words (OR-ed, so a long criterion text still matches), ranked with `ts_rank_cd`, top 50 |
+| 2. Semantic vector search | `embedding <=> query` (pgvector), top 50; iterative HNSW scan on pgvector 0.8+ |
+| 3. Reciprocal Rank Fusion | In Python (`retrieval.chunks.rrf`, k = 60), the same function the in-memory index uses |
+| 4. Optional reranking | `RETRIEVAL_RERANK=auto`: a local cross-encoder (`Xenova/ms-marco-MiniLM-L-6-v2`, ONNX) re-orders the best 20. Off by default |
+| 5. Evidence and access validation | Access list filter; every result carries chunk id, document id, source system and source reference; model answers must cite chunks that were retrieved (`llm/verify.py`) |
+
+Standards and playbooks say what should exist, not what does, so they are never retrieved as evidence for a criterion; they are found through the API.
+
+**API (box 5).**
+
+| Call | For |
+|---|---|
+| `POST /api/search` | The whole store. Filters: `application`, `kinds`, `doc_types`, `source_systems` (`upload`, `servicenow`, `oipreqs`) |
+| `POST /api/assessments/{id}/search` | One assessment's files plus the standing records about its application |
+| `GET /api/knowledge/documents/{id}` | A document and everything linked to it |
+| `GET /api/knowledge/status` | Counts by source, what is waiting or failed, each connector's watermark |
+| `POST /api/knowledge/sync` | Refresh the sources and ingest what changed (runs in the ingestion service) |
+
+- **Without pgvector** retrieval is keyword-only and says so; nothing fails. An administrator runs `CREATE EXTENSION vector` once per database.
+- **Without a database** (local files) uploads are searched in memory per assessment; the standing store, the connector and the standards need PostgreSQL.
+- **Tested** against PostgreSQL 16 + pgvector 0.8 (`tests/test_postgres.py`: set `SRA_TEST_DATABASE_URL`; it creates and drops its own scratch database).
+- **To confirm before the first real sync:** the field names and the query scope per table in `config/sources.yaml` (every assumption is marked CONFIRM), and which ServiceNow account the connector may use.
+
+### Running beside COG on CAP
+
+`docs/cog_cap_deployment.svg` shows how COG v2 runs; SRA follows the same pattern and can use the same CAP-provisioned database.
+
+| COG | SRA |
+|---|---|
+| One process, port 8080, FastAPI + React UI, `/healthz` | Same |
+| Distroless Python image, UID 31337, pulled from JFrog by tag `fsic-cog-v2-<run>` | Same, tag `sra-<run>` |
+| cloud-sql-proxy sidecar on localhost, IAM login, no password | Same |
+| `CAP_POSTGRES_<APP>_<DB>_JDBC_URI`, `CAP_POSTGRES_USER` injected by CAP | Read when `DATABASE_URL` is not set (`config.database_dsn`). Helm: `cloudSql.useCapInjected: true`. If CAP injects several databases, `SRA_CAP_POSTGRES_VAR` names the one to use. |
+| Tables `cog_*`, created on first use | Tables and indexes `sra_*`, created on first use, in the same database. SRA never reads or writes a `cog_*` table. |
+| Claude through the LMS gateway (`ANTHROPIC_BASE_URL` in the image, `ANTHROPIC_API_KEY` at runtime) | Optional provider `LLM_PROVIDER=anthropic`, **off by default**, same two variables. Evidence then leaves the cluster for the hosted model, so it needs the approval COG has. See `src/sra/llm/anthropic_client.py` for the settings. |
+
+SRA additionally needs Kafka (jobs and events), a GCS bucket (evidence files and reports) and, unless the gateway provider is used, the Ollama StatefulSet. To confirm with CAP: the exact injected variable names, whether the SRA service account may create tables in COG's database, and who enables pgvector there.
 
 ### Images and diagrams in evidence (OCR)
 
@@ -137,7 +227,7 @@ Settings: everything is optional. Copy `.env.example` to `.env` to change the mo
 
 Editing and deleting: the assessment page has **Edit** and **Delete**.
 - **Edit** changes the application profile (name, CMDB ID, tier, characteristics…), the assessment date and the assessor, and the change is recorded in the audit trail. Existing results are kept. If the profile or date changed after an automated pass, the page says to re-run it.
-- **Delete** asks you to type the application name. It then permanently removes the assessment, its evidence files, results, findings, job and audit trail. A record of the deletion (id, application, who, when) is kept, and a `deleted` event is sent so other systems can remove their copies. SRE decisions on criteria are kept as training data, each with up to four evidence passages it was based on (`data/feedback/<id>.jsonl`, or the `feedback` table in Postgres). `SRA_KEEP_FEEDBACK=false` deletes them too.
+- **Delete** asks you to type the application name. It then permanently removes the assessment, its evidence files, results, findings, job and audit trail. A record of the deletion (id, application, who, when) is kept, and a `deleted` event is sent so other systems can remove their copies. SRE decisions on criteria are kept as training data, each with up to four evidence passages it was based on (`data/feedback/<id>.jsonl`, or the `sra_feedback` table in Postgres). `SRA_KEEP_FEEDBACK=false` deletes them too.
 
 Training labels: every SRE decision on a criterion is recorded as feedback, with its kind:
 - **confirm:** agreed with the rule or LLM result;
@@ -173,6 +263,8 @@ UI: `python -m sra.cli serve --build` builds the web UI (running `npm install` t
 Local LLM: install Ollama and run `ollama pull qwen3.5:4b` (the laptop default; set `LLM_MODEL` to change it). Thinking mode is off by default (`LLM_THINK=false`), because reasoning tokens are too slow on CPU. For the cluster, the candidate is `gemma4:26b`, a mixture-of-experts model that uses about 4B parameters per token; confirm it with the eval. Then add `--llm` to `assess`, or tick "Use local LLM" in the UI. To compare models, use `python eval/run_eval.py --llm --model <a> --model <b>`.
 
 Full stack: `docker compose up` (Postgres+pgvector, Kafka KRaft, Ollama, api, worker).
+
+Postgres tests: `docker compose up -d postgres`, then run pytest with `SRA_TEST_DATABASE_URL=postgresql://sra:sra-dev-only@localhost:5432/sra`.
 
 ## Deploying to GKE (CAP)
 

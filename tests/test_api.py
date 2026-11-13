@@ -122,3 +122,23 @@ def test_parse_profile_lenient_and_errors(client):
     assert r.status_code == 422
     r = c.post("/api/profile/parse", files={"file": ("p.yaml", b"name: [unclosed\n", "text/plain")})
     assert r.status_code == 422 and "readable" in r.json()["detail"]
+
+
+def test_search_inside_an_assessment_without_a_database(client):
+    """Hybrid retrieval through the API on the file store (in-memory index), with the access list applied."""
+    c, _ = client
+    aid = c.post("/api/assessments", json={"profile": {"name": "Orders", "tier": 2}}).json()["assessment"]["id"]
+    dr = b"# Orders DR plan\nThe failover procedure moves traffic to the secondary region.\n"
+    sec = b"# Orders security review\nFailover of the HSM is manual and owned by the security team.\n"
+    assert c.post(f"/api/assessments/{aid}/evidence", files=[("files", ("orders-dr-plan.md", dr, "text/markdown"))]).status_code == 201
+    assert c.post(f"/api/assessments/{aid}/evidence", data={"acl": "security-team"},
+                  files=[("files", ("orders-security-review.md", sec, "text/markdown"))]).status_code == 201
+    r = c.post(f"/api/assessments/{aid}/search", json={"query": "failover"}, headers={"X-User": "bob"})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert [x["source"] for x in body["results"]] == ["orders-dr-plan.md"]
+    assert body["results"][0]["chunk_id"].startswith(body["results"][0]["evidence_id"]) and body["results"][0]["assessment_id"] == aid
+    r = c.post(f"/api/assessments/{aid}/search", json={"query": "failover"}, headers={"X-User": "bob", "X-Groups": "security-team"})
+    assert {x["source"] for x in r.json()["results"]} == {"orders-dr-plan.md", "orders-security-review.md"}
+    assert c.post("/api/search", json={"query": "failover"}).status_code == 501        # across assessments needs Postgres
+    assert c.post("/api/assessments/nope/search", json={"query": "x"}).status_code == 404

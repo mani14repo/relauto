@@ -20,6 +20,8 @@ src/sra/catalog/docx_reader.py
 src/sra/catalog/models.py
 src/sra/catalog/playbooks.py
 src/sra/catalog/rubric.py
+src/sra/connectors/__init__.py
+src/sra/connectors/servicenow.py
 src/sra/db/__init__.py
 src/sra/detectors/__init__.py
 src/sra/detectors/base.py
@@ -40,7 +42,13 @@ src/sra/evidence/parsers.py
 src/sra/evidence/redact.py
 src/sra/evidence/registers.py
 src/sra/evidence/servicenow.py
+src/sra/knowledge/__init__.py
+src/sra/knowledge/ingest.py
+src/sra/knowledge/jobs.py
+src/sra/knowledge/standards.py
+src/sra/knowledge/store.py
 src/sra/llm/__init__.py
+src/sra/llm/anthropic_client.py
 src/sra/llm/client.py
 src/sra/llm/evaluate.py
 src/sra/llm/prompts.py
@@ -53,6 +61,7 @@ src/sra/report/summary.py
 src/sra/retrieval/__init__.py
 src/sra/retrieval/chunks.py
 src/sra/retrieval/nli.py
+src/sra/retrieval/pg.py
 src/sra/scoring/__init__.py
 src/sra/scoring/cmdb.py
 src/sra/scoring/engine.py
@@ -65,6 +74,7 @@ src/sre_agent.egg-info/dependency_links.txt
 src/sre_agent.egg-info/entry_points.txt
 src/sre_agent.egg-info/requires.txt
 src/sre_agent.egg-info/top_level.txt
+tests/test_anthropic_client.py
 tests/test_api.py
 tests/test_cancel.py
 tests/test_catalog.py
@@ -81,6 +91,10 @@ tests/test_llm_client.py
 tests/test_llm_efficiency.py
 tests/test_llm_off_and_feedback.py
 tests/test_llm_parallel.py
+tests/test_postgres.py
 tests/test_report.py
 tests/test_scenario_kit.py
 tests/test_scoring.py
+tests/test_second_opinion.py
+tests/test_servicenow_connector.py
+tests/test_upload_formats.py

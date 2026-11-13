@@ -13,7 +13,8 @@ jobs:
         with: {python-version: "3.13"}
       - name: Install (JFrog PyPI remote)
         env: {PIP_INDEX_URL: "${{ secrets.ARTIFACTORY_PYPI_URL }}"}
-        run: pip install --no-cache-dir -r requirements.txt pytest && pip install --no-deps -e .
+        # rapidocr is installed without its dependencies, as in the Dockerfile (it asks for opencv-python; we use the headless build)
+        run: pip install --no-cache-dir -r requirements.txt pytest && pip install --no-deps rapidocr-onnxruntime==1.4.4 && pip install --no-deps -e .
       - name: Tests
         run: python -m pytest -q
   build:

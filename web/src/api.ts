@@ -149,7 +149,7 @@ export const api = {
     if (hint) fd.append("hint", hint);
     return req<any[]>("POST", `/api/assessments/${id}/evidence`, fd, true);
   },
-  evidence: (id: string) => req<{ files: any[]; errors: string[]; summary: Record<string, number> }>("GET", `/api/assessments/${id}/evidence`),
+  evidence: (id: string) => req<{ files: any[]; errors: string[]; summary: Record<string, number>; synced?: { table: string; rows: number; source: string }[]; notes?: string[] }>("GET", `/api/assessments/${id}/evidence`),
   run: (id: string, llm: boolean) => req<Job>("POST", `/api/assessments/${id}/run`, { llm }),
   job: (id: string) => req<Job>("GET", `/api/assessments/${id}/job`),
   cancel: (id: string) => req<Job>("POST", `/api/assessments/${id}/cancel`),

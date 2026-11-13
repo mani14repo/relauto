@@ -45,6 +45,51 @@ def llm_enabled() -> bool:
     return flag("LLM_ENABLED", True)
 
 
+CAP_JDBC = re.compile(r"^CAP_POSTGRES_(?:.+_)?JDBC_URI$")
+
+
+def database_dsn() -> str | None:
+    """The Postgres connection string, or None to use local files.
+
+    DATABASE_URL wins. Otherwise the settings CAP injects for a provisioned database are used, the same ones COG
+    reads: CAP_POSTGRES_<APP>_<DB>_JDBC_URI and CAP_POSTGRES_USER (IAM login through the cloud-sql-proxy sidecar, so
+    no password). When CAP injects more than one database, SRA_CAP_POSTGRES_VAR names the variable to use.
+    """
+    load_dotenv()
+    url = os.environ.get("DATABASE_URL")
+    if url:
+        return url
+    wanted = os.environ.get("SRA_CAP_POSTGRES_VAR")
+    names = [wanted] if wanted else sorted(k for k in os.environ if CAP_JDBC.match(k))
+    if len(names) > 1:
+        raise ValueError(f"several CAP Postgres settings found ({', '.join(names)}); set SRA_CAP_POSTGRES_VAR to one of them")
+    jdbc = os.environ.get(names[0]) if names else None
+    return jdbc_to_conninfo(jdbc, os.environ.get("CAP_POSTGRES_USER"), os.environ.get("CAP_POSTGRES_PASSWORD")) if jdbc else None
+
+
+def jdbc_to_conninfo(jdbc: str, user: str | None = None, password: str | None = None) -> str:
+    """'jdbc:postgresql://host:5432/db?sslmode=disable' -> a libpq connection string for psycopg.
+
+    A JDBC URI that connects through the Cloud SQL socket factory has no usable host; the sidecar proxy on
+    127.0.0.1:5432 is used then. user/password in the URI are honoured when CAP_POSTGRES_USER is not set.
+    """
+    from urllib.parse import parse_qs, unquote, urlsplit
+    if not jdbc.startswith("jdbc:postgresql:"):
+        raise ValueError("expected a jdbc:postgresql:// URI")
+    u = urlsplit(jdbc[len("jdbc:"):])
+    q = {k: v[-1] for k, v in parse_qs(u.query).items()}
+    via_proxy = "socketFactory" in q or "cloudSqlInstance" in q or not u.hostname
+    parts = {"host": "127.0.0.1" if via_proxy else u.hostname, "port": str(5432 if via_proxy else (u.port or 5432)),
+             "dbname": unquote(u.path.lstrip("/")) or "postgres",
+             "user": user or q.get("user") or (unquote(u.username) if u.username else None),
+             "password": password or q.get("password") or (unquote(u.password) if u.password else None),
+             "sslmode": q.get("sslmode") or ("require" if q.get("ssl", "").lower() == "true" else "disable" if via_proxy else None)}
+
+    def quote(v: str) -> str:
+        return "'" + v.replace("\\", "\\\\").replace("'", "\\'") + "'"
+    return " ".join(f"{k}={quote(v)}" for k, v in parts.items() if v)
+
+
 def path_setting(name: str, default: Path) -> Path:
     """A directory setting; empty means the default, relative paths are relative to the repo root."""
     raw = setting(name) or ""

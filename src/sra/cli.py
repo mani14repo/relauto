@@ -121,6 +121,28 @@ def build_web() -> None:
             sys.exit(f"web build failed: npm {' '.join(cmd[1:])}; API not started")
 
 
+def cmd_ingest(args) -> None:
+    """The ingestion service as its own process: refresh the chosen sources, then ingest everything waiting."""
+    import json
+    import logging
+    import time
+
+    from .knowledge.jobs import run_job
+    from .store import store_from_settings
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    store = store_from_settings()
+    if not hasattr(store, "knowledge"):
+        sys.exit("the knowledge store needs PostgreSQL: set DATABASE_URL (or the CAP_POSTGRES_* settings)")
+    job = {"job": "sync" if (args.standards or args.servicenow) else "ingest", "standards": args.standards,
+           "servicenow": args.servicenow, "tables": [t.strip() for t in args.tables.split(",")] if args.tables else None}
+    while True:
+        print(json.dumps(run_job(store, job), indent=1, default=str), flush=True)
+        if not args.every:
+            break
+        time.sleep(args.every)
+    store.close()
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="sra", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -138,6 +160,11 @@ def main(argv=None):
     sp = sub.add_parser("serve")
     sp.add_argument("--build", action="store_true", help="run the web UI build (npm) before starting the API")
     sub.add_parser("worker")
+    ip = sub.add_parser("ingest", help="run the ingestion service: refresh sources and ingest waiting documents (needs PostgreSQL)")
+    ip.add_argument("--standards", action="store_true", help="register the OIPReqs standards, playbooks and templates")
+    ip.add_argument("--servicenow", action="store_true", help="sync ServiceNow (SERVICENOW_INSTANCE_URL and credentials)")
+    ip.add_argument("--tables", help="comma-separated ServiceNow tables (default: all in config/sources.yaml)")
+    ip.add_argument("--every", type=int, metavar="SECONDS", help="keep running: repeat after this many seconds")
     args = ap.parse_args(argv)
     if args.cmd == "catalog":
         from .catalog import compile_catalog
@@ -157,6 +184,8 @@ def main(argv=None):
         import asyncio
         from .worker import main as worker_main
         asyncio.run(worker_main())
+    elif args.cmd == "ingest":
+        cmd_ingest(args)
 
 
 if __name__ == "__main__":

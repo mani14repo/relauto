@@ -1,0 +1,46 @@
+{{- if .Values.ingestion.schedule }}
+# The ingestion service on a schedule: refresh the sources of the standing knowledge store, then ingest what changed.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ .Release.Name }}-ingest
+  labels: {{- include "sra.labels" . | nindent 4 }}
+spec:
+  schedule: {{ .Values.ingestion.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        metadata:
+          labels: {{- include "sra.labels" . | nindent 12 }}
+        spec:
+          restartPolicy: Never
+          serviceAccountName: {{ .Values.serviceAccount.name }}
+          {{- with .Values.imagePullSecrets }}
+          imagePullSecrets: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          securityContext: {runAsNonRoot: true, runAsUser: 31337, fsGroup: 31337, seccompProfile: {type: RuntimeDefault}}
+          initContainers:
+            {{- include "sra.proxy" . | nindent 12 }}
+          containers:
+            - name: ingest
+              image: {{ include "sra.image" . }}
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              args:
+                - ingest
+                {{- if .Values.ingestion.standards }}
+                - --standards
+                {{- end }}
+                {{- if .Values.servicenow.instanceUrl }}
+                - --servicenow
+                {{- end }}
+              env:
+                {{- include "sra.env" . | nindent 16 }}
+              securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+              resources: {{- toYaml .Values.ingestion.resources | nindent 16 }}
+              volumeMounts: [{name: tmp, mountPath: /tmp}]
+          volumes: [{name: tmp, emptyDir: {}}]
+{{- end }}

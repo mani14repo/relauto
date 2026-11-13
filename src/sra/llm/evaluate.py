@@ -85,6 +85,9 @@ class Evaluator:
     chunk_chars: int = 800
     min_confidence: float = 0.6
     embedder: object | None = None
+    # On Postgres: store.retriever, i.e. (assessment id, embedder) -> PgHybridIndex over the knowledge store.
+    # None = build the index in memory from the bundle (no database, CLI, tests).
+    retriever: object | None = None
     use_cache: bool = True
     # One client per call that may be in flight (LLM_CONCURRENCY per server, across LLM_BASE_URL servers).
     # Empty means just `client`, one call at a time.
@@ -108,7 +111,13 @@ class Evaluator:
         with self._lock:
             self.stats[key] += n
 
-    def index(self, bundle: EvidenceBundle) -> HybridIndex:
+    def index(self, bundle: EvidenceBundle, a: Assessment | None = None) -> HybridIndex:
+        """The hybrid index for this evidence: Postgres (tsvector + pgvector) when the store offers one, else in memory."""
+        if self.retriever is not None and a is not None:
+            try:
+                return self.retriever(a.id, self.embedder)
+            except Exception:  # noqa: BLE001 - retrieval must not stop an assessment; the in-memory index gives the same ranking idea
+                log.exception("Postgres retrieval unavailable for %s; using the in-memory index", a.id)
         return cached_index(bundle, self.embedder)
 
     # ------------------------------------------------------------------------------------------ evidence for a call
@@ -183,11 +192,13 @@ class Evaluator:
             a.detector_runs["llm"] = f"skipped: model {model} unavailable"
             self.stats["errors"] += 1
             progress.warn(f"Model {model} is not available" + (f" at {where}" if where else "")
-                          + f" (is Ollama running and the model pulled?). {len(pending)} criteria left for the assessor.")
+                          + (" (is ANTHROPIC_API_KEY set?)" if hasattr(self.client, "refusal_fallback")
+                             else " (is Ollama running and the model pulled?)")
+                          + f". {len(pending)} criteria left for the assessor.")
             return
         progress.info(f"Model {model} is reachable; indexing the evidence for retrieval")
         progress.busy("Indexing the evidence for retrieval" + (" (computing embeddings)" if self.embedder else ""))
-        idx = self.index(bundle)
+        idx = self.index(bundle, a)
         n_servers = len({getattr(cl, "base_url", "") for cl in pool})
         how = ("one at a time" if len(pool) == 1 else
                f"{len(pool)} at a time" + (f" across {n_servers} servers" if n_servers > 1 else ""))
@@ -362,7 +373,7 @@ class Evaluator:
         c = next(c for c in templates[tid].criteria if c.id == criterion_id)
         q = f"{question} {query_for(c)}"
         chunks = [Chunk(id=ch.id, evidence_id=ch.evidence_id, source=ch.source, kind=ch.kind, text=focus(ch.text, q, self.chunk_chars))
-                  for ch in self.index(bundle).search(q, k=self.top_k)]
+                  for ch in self.index(bundle, a).search(q, k=self.top_k)]
         cur = a.results.get(criterion_id)
         ev = "\n".join(f'<evidence id="{ch.id}" source="{ch.source}">\n{ch.text}\n</evidence>' for ch in chunks)
         user = (f"Criterion {c.id} {c.name}\nAcceptance criteria: {c.acceptance_criteria}\n"

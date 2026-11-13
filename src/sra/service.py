@@ -35,9 +35,23 @@ class Conflict(Exception):
 
 
 class AssessmentService:
-    def __init__(self, store: Store, evaluator_factory=None) -> None:
+    def __init__(self, store: Store, evaluator_factory=None, submit_job=None) -> None:
         self.store = store
         self.evaluator_factory = evaluator_factory
+        # How knowledge jobs ("ingest", "sync") reach the ingestion service: set by the API (Kafka or a background
+        # thread). None = nothing is queued; ingestion then happens when an assessment's evidence is first needed.
+        self.submit_job = submit_job
+
+    @property
+    def knowledge(self):
+        """The standing knowledge store, or None without PostgreSQL."""
+        return getattr(self.store, "knowledge", None)
+
+    def request_ingestion(self, job: dict | None = None) -> bool:
+        if self.knowledge is None or self.submit_job is None:
+            return False
+        self.submit_job(job or {"job": "ingest"})
+        return True
 
     # ---------------------------------------------------------------- lifecycle
     def create(self, profile: ApplicationProfile, assessor: str = "", actor: str = "system") -> tuple[Assessment, list]:
@@ -141,12 +155,59 @@ class AssessmentService:
                         audit=[{"actor": actor, "action": "set_templates", "before": before, "after": a.templates}])
         return a
 
-    def add_evidence(self, aid: str, files: list[tuple[str, bytes]], hint: str | None, actor: str) -> list[dict]:
+    def add_evidence(self, aid: str, files: list[tuple[str, bytes]], hint: str | None, actor: str,
+                     acl: list[str] | None = None) -> list[dict]:
         a = self.store.get(aid)
-        rows = [self.store.add_evidence(aid, name, data, hint) for name, data in files]
+        rows = [self.store.add_evidence(aid, name, data, hint, acl) for name, data in files]
+        self.request_ingestion()            # chunking and embedding happen in the ingestion service, not here
         self.store.save(a, events=[envelope("evidence_ingested", aid, {"files": [r["name"] for r in rows]}, actor)],
                         audit=[{"actor": actor, "action": "add_evidence", "after": [r["name"] for r in rows]}])
         return rows
+
+    def search(self, query: str, aid: str | None = None, k: int = 6, principals: list[str] | None = None,
+               application: str | None = None, kinds: list[str] | None = None, doc_types: list[str] | None = None,
+               source_systems: list[str] | None = None, related: bool = True) -> dict:
+        """Hybrid retrieval: keyword + vector search fused with RRF, optional rerank, then the access check; every
+        result carries its source reference and, from the knowledge store, the documents it is linked to.
+
+        With `aid`: that assessment's uploaded files and the standing records about its application.
+        Without: the whole knowledge store (PostgreSQL only): uploads, synced ServiceNow records, the OIPReqs
+        standards and playbooks; narrow it with application / kinds / doc_types / source_systems.
+        `principals` are the caller's user name, groups and roles; None skips the access check (trusted internal use)."""
+        from .retrieval.chunks import cached_index, shared_embedder
+        embedder = shared_embedder()
+        links: dict = {}
+        if hasattr(self.store, "retriever"):
+            idx = self.store.retriever(aid, embedder, principals, application=application, kinds=kinds, doc_types=doc_types,
+                                       source_systems=source_systems)
+            chunks = idx.search(query, k=k)
+            info = idx.last
+            if related:
+                links = self.knowledge.related(list(dict.fromkeys(c.document_id for c in chunks)), principals)
+        elif aid:
+            # no database: the in-memory index over this assessment's files, with the same filters applied here
+            a = self.store.get(aid)
+            acl = {r["id"]: r.get("acl") or [] for r in self.store.evidence(aid)}
+            idx = cached_index(self.store.bundle(aid, datetime.combine(a.assessment_date, dt.time(12))), embedder)
+
+            def allowed(c) -> bool:
+                return ((principals is None or not acl.get(c.evidence_id) or set(acl[c.evidence_id]) & set(principals))
+                        and (not kinds or c.kind in kinds) and (not doc_types or c.doc_type in doc_types))
+            chunks = [c for c in idx.search(query, k=max(k * 5, 50)) if allowed(c)][:k]
+            for c in chunks:
+                c.assessment_id, c.application = aid, a.application.name
+            info = {"mode": "hybrid (keyword + vector, RRF)" if idx.vectors is not None else "keyword only",
+                    "reranked": idx.reranker is not None, "keyword_rank": {}, "vector_rank": {}}
+        else:
+            raise ValueError("searching the knowledge store needs PostgreSQL (set DATABASE_URL or CAP_POSTGRES_*)")
+        return {"query": query, "mode": info.get("mode"), "reranked": bool(info.get("reranked")),
+                "results": [{"rank": n, "chunk_id": c.id, "document_id": c.document_id or None, "source_system": c.source_system,
+                             "assessment_id": c.assessment_id or None, "application": c.application,
+                             "evidence_id": c.evidence_id, "source": c.source, "kind": c.kind, "doc_type": c.doc_type,
+                             "keyword_rank": info["keyword_rank"].get((c.document_id, c.id)),
+                             "vector_rank": info["vector_rank"].get((c.document_id, c.id)), "text": c.text,
+                             "related": links.get(c.document_id, [])}
+                            for n, c in enumerate(chunks, 1)]}
 
     def run(self, aid: str, use_llm: bool = False, actor: str = "system", progress: Progress | None = None) -> dict:
         progress = progress or NullProgress()
@@ -166,6 +227,7 @@ class AssessmentService:
         if use_llm and self.evaluator_factory:
             progress.busy("Starting the local LLM client and loading the embedding model")
             evaluator = self.evaluator_factory()
+            evaluator.retriever = getattr(self.store, "retriever", None)   # Postgres hybrid retrieval when available
         sc, gate = run_assessment(a, bundle, self.profile(a), as_of, evaluator, progress)
         progress.phase("Saving", msg="Saving results")
         for f in a.findings:

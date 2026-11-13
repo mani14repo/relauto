@@ -14,11 +14,12 @@ from pathlib import Path
 from fastapi import Body, Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from .. import config
 from ..catalog import load_playbooks, load_rubric, load_templates, load_titles
 from ..events.bus import JOBS_TOPIC, LocalJobs
+from ..knowledge.jobs import KNOWLEDGE_JOBS, run_job as run_knowledge_job
 from ..scoring import load_matrix
 from ..selection.profile import ApplicationProfile
 from ..service import AssessmentService, Conflict
@@ -31,6 +32,22 @@ MAX_UPLOAD = int(config.setting("SRA_MAX_UPLOAD_MB", "50")) * 1024 * 1024
 class CreateBody(BaseModel):
     profile: ApplicationProfile
     assessor: str = ""
+
+
+class SearchBody(BaseModel):
+    query: str = Field(min_length=1, max_length=2000)
+    k: int = Field(6, ge=1, le=50)
+    application: str | None = None          # only with /api/search
+    kinds: list[str] | None = None          # document, servicenow_table, scan, k8s_manifest, ci_config, other
+    doc_types: list[str] | None = None      # runbook, architecture, standard, playbook, policy, procedure, ...
+    source_systems: list[str] | None = None  # upload, servicenow, oipreqs (only with /api/search)
+    related: bool = True                    # include each result's linked documents
+
+
+class SyncBody(BaseModel):
+    standards: bool = True                  # the OIPReqs standards, policies, procedures, playbooks and templates
+    servicenow: bool = True                 # needs SERVICENOW_INSTANCE_URL and credentials in the environment
+    tables: list[str] | None = None         # ServiceNow tables to sync; default: all in config/sources.yaml
 
 
 def _evaluator_factory():
@@ -49,7 +66,10 @@ def create_app(store=None, run_jobs_inline: bool = False) -> FastAPI:
     stale_after = int(config.setting("LLM_TIMEOUT", "300")) + 120
 
     def handle_job(job: dict) -> None:
-        svc.run_job(job)
+        if job.get("job") in KNOWLEDGE_JOBS:
+            run_knowledge_job(store, job)
+        else:
+            svc.run_job(job)
 
     def job_view(aid: str) -> dict:
         j = store.get_job(aid)
@@ -72,6 +92,18 @@ def create_app(store=None, run_jobs_inline: bool = False) -> FastAPI:
 
     kafka = bool(config.setting("KAFKA_BOOTSTRAP_SERVERS"))
     local_jobs = None if kafka else LocalJobs(handle_job)
+    # The ingestion service: with Kafka the worker runs it; otherwise its own background thread here, so a long
+    # assessment run never holds up ingestion and an upload request never waits for chunking and embedding.
+    local_ingest = None if kafka else LocalJobs(handle_job)
+
+    def submit_knowledge_job(job: dict) -> None:
+        if run_jobs_inline:
+            handle_job(job)
+        elif kafka:
+            store.bus.publish(JOBS_TOPIC, "knowledge", job)
+        else:
+            local_ingest.submit(job)
+    svc.submit_job = submit_knowledge_job
 
     def actor(request: Request) -> str:
         for h in ("x-goog-authenticated-user-email", "x-forwarded-email", "x-user"):
@@ -79,6 +111,12 @@ def create_app(store=None, run_jobs_inline: bool = False) -> FastAPI:
             if v:
                 return v.split(":", 1)[-1]
         return "anonymous"
+
+    def principals(request: Request) -> list[str]:
+        """Who is searching: the user and their groups, as passed on by the ingress (X-Groups: comma-separated).
+        Retrieval returns a chunk only if its access list is empty or names one of these."""
+        groups = [g.strip() for g in (request.headers.get("x-groups") or "").split(",") if g.strip()]
+        return [actor(request), *groups]
 
     def get_or_404(aid: str):
         try:
@@ -194,7 +232,10 @@ def create_app(store=None, run_jobs_inline: bool = False) -> FastAPI:
         return svc.set_templates(aid, templates, who).model_dump(mode="json")
 
     @app.post("/api/assessments/{aid}/evidence", status_code=201)
-    async def upload(aid: str, files: list[UploadFile] = File(...), hint: str | None = Form(None), who: str = Depends(actor)):
+    async def upload(aid: str, files: list[UploadFile] = File(...), hint: str | None = Form(None),
+                     acl: str | None = Form(None), who: str = Depends(actor)):
+        """acl: optional comma-separated users/groups allowed to read these files through search (default: everyone
+        who can see the assessment)."""
         get_or_404(aid)
         data = []
         for f in files:
@@ -202,7 +243,51 @@ def create_app(store=None, run_jobs_inline: bool = False) -> FastAPI:
             if len(body) > MAX_UPLOAD:
                 raise HTTPException(413, f"{f.filename} exceeds {MAX_UPLOAD // 1024 // 1024} MB")
             data.append((f.filename or "upload", body))
-        return svc.add_evidence(aid, data, hint or None, who)
+        readers = [x.strip() for x in (acl or "").split(",") if x.strip()]
+        return svc.add_evidence(aid, data, hint or None, who, readers or None)
+
+    @app.post("/api/assessments/{aid}/search")
+    def search_assessment(aid: str, body: SearchBody, who: list[str] = Depends(principals)):
+        """Hybrid retrieval inside one assessment's evidence (keyword + vector + RRF, optional rerank)."""
+        get_or_404(aid)
+        return svc.search(body.query, aid, body.k, who, kinds=body.kinds, doc_types=body.doc_types, related=body.related)
+
+    @app.post("/api/search")
+    def search_all(body: SearchBody, who: list[str] = Depends(principals)):
+        """Hybrid retrieval over the standing knowledge store, for other applications and agents (PostgreSQL only):
+        uploaded evidence, synced ServiceNow records, and the OIPReqs standards and playbooks."""
+        if svc.knowledge is None:
+            raise HTTPException(501, "The knowledge store needs PostgreSQL")
+        return svc.search(body.query, None, body.k, who, application=body.application, kinds=body.kinds,
+                          doc_types=body.doc_types, source_systems=body.source_systems, related=body.related)
+
+    def knowledge_or_501():
+        if svc.knowledge is None:
+            raise HTTPException(501, "The knowledge store needs PostgreSQL")
+        return svc.knowledge
+
+    @app.get("/api/knowledge/status")
+    def knowledge_status():
+        """What is in the knowledge store, what is waiting for ingestion, and where each connector stopped."""
+        return knowledge_or_501().status()
+
+    @app.post("/api/knowledge/sync", status_code=202)
+    def knowledge_sync(body: SyncBody | None = None, who: str = Depends(actor)):
+        """Refresh the sources (OIPReqs library, ServiceNow) and ingest what changed. Runs in the ingestion service."""
+        knowledge_or_501()
+        body = body or SyncBody()
+        job = {"job": "sync", "standards": body.standards, "servicenow": body.servicenow, "tables": body.tables, "actor": who}
+        svc.request_ingestion(job)
+        return {"queued": True, "job": job}
+
+    @app.get("/api/knowledge/documents/{did}")
+    def knowledge_document(did: str, who: list[str] = Depends(principals)):
+        """One document's metadata and the documents it is linked to (incident -> problem -> change, document -> service)."""
+        k = knowledge_or_501()
+        doc = k.get(did)
+        if not doc or (doc["acl"] and not set(doc["acl"]) & set(who)):
+            raise HTTPException(404, "document not found")
+        return {**doc, "related": k.related([did], who, per_doc=50).get(did, [])}
 
     @app.get("/api/assessments/{aid}/evidence")
     def evidence(aid: str):
@@ -213,7 +298,10 @@ def create_app(store=None, run_jobs_inline: bool = False) -> FastAPI:
                         "reviewed_at": it.reviewed_at.isoformat() if it.reviewed_at else None, "meta": {k: v for k, v in it.meta.items()
                                                                                                         if k != "raw_secret_scan"}}
                 for it in b.items.values()}
-        return {"files": [{**r, **info.get(r["id"], {})} for r in rows], "errors": b.errors, "summary": b.summary()}
+        mine = {r["id"] for r in rows}
+        synced = [{"table": it.table, "rows": len(it.records), "source": it.name} for it in b.items.values() if it.id not in mine]
+        return {"files": [{**r, **info.get(r["id"], {})} for r in rows], "errors": b.errors, "summary": b.summary(),
+                "synced": synced, "notes": b.notes}
 
     @app.post("/api/assessments/{aid}/run", status_code=202)
     def run(aid: str, llm: bool = Body(False, embed=True), who: str = Depends(actor)):
@@ -282,7 +370,9 @@ def create_app(store=None, run_jobs_inline: bool = False) -> FastAPI:
             raise HTTPException(409, "Criterion chat needs the local LLM, which is turned off (LLM_ENABLED=false)")
         from ..llm.client import LLMError
         try:
-            return {"answer": _evaluator_factory().chat(a, store.bundle(aid), cid, question)}
+            ev = _evaluator_factory()
+            ev.retriever = getattr(store, "retriever", None)
+            return {"answer": ev.chat(a, store.bundle(aid), cid, question)}
         except LLMError as exc:
             raise HTTPException(503, f"local LLM unavailable: {exc}")
 

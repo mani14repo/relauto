@@ -1,0 +1,48 @@
+# Enterprise data sources for the standing knowledge store (docs/Hybrid Retrieval Architecture Overview.png, box 1).
+# Connection details and credentials come from the environment, never from this file:
+#   SERVICENOW_INSTANCE_URL   e.g. https://<instance>.service-now.com
+#   SERVICENOW_TOKEN          an OAuth bearer token,  or  SERVICENOW_USER + SERVICENOW_PASSWORD (basic)
+# Everything marked CONFIRM is an assumption about the instance, to check with the ServiceNow platform owner
+# (CMDB-STD-00 open decision OD-1 covers the field names).
+servicenow:
+  page_size: 500
+  max_records_per_table: 20000          # per sync run; the next run continues from the watermark
+  lookback_days: 365                    # how far back the first sync of a table goes (tables may override; 0 = everything)
+  timeout_seconds: 60
+
+  defaults:
+    # Fields that say which application a record is about (first non-empty one becomes the document's application).
+    application_fields: [cmdb_ci_business_app, u_business_application, business_service, cmdb_ci, u_application]
+    # Fields whose values become the document's access list (users, groups, roles or user-criteria names). Empty =
+    # readable by every caller. ServiceNow's own ACLs are role-based and are not exported by the Table API, so only
+    # record-level restrictions that are stored as fields can be carried over. CONFIRM per table.
+    acl_fields: []
+    # Reference fields that link a record to another record: field -> target table.
+    references: {}
+
+  tables:
+    incident:
+      query: ""                         # extra encoded query, e.g. "assignment_group.nameSTARTSWITHFSI"  CONFIRM scope
+      references: {problem_id: problem, rfc: change_request, caused_by: change_request, parent_incident: incident,
+                   cmdb_ci: cmdb_ci, business_service: cmdb_ci}
+    problem:
+      references: {rfc: change_request, first_reported_by_task: incident, cmdb_ci: cmdb_ci, business_service: cmdb_ci}
+    change_request:
+      references: {parent: change_request, cmdb_ci: cmdb_ci, business_service: cmdb_ci}
+    kb_knowledge:
+      query: "workflow_state=published"
+      application_fields: [u_application, cmdb_ci, kb_category]
+      acl_fields: [can_read_user_criteria, roles]     # knowledge articles carry their own read restrictions
+      references: {cmdb_ci: cmdb_ci}
+    em_alert:
+      lookback_days: 30
+      references: {cmdb_ci: cmdb_ci, incident: incident}
+    cmdb_ci:
+      lookback_days: 0
+      query: ""                         # CONFIRM: restrict to the FSI REO scope, e.g. a class or support-group filter
+      application_fields: [name]
+    cmdb_rel_ci:
+      lookback_days: 0
+      application_fields: [parent, child]
+      # each row is itself a link between two configuration items
+      link: {from: parent, to: child, type_field: type, table: cmdb_ci}

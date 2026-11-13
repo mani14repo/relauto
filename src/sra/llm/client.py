@@ -298,6 +298,9 @@ def _parse_json(text: str) -> dict:
     return obj
 
 
+HOSTED = ("anthropic", "lms_gateway")     # Claude through the Anthropic Messages API (llm/anthropic_client.py); off by default
+
+
 def base_urls() -> list[str]:
     """LLM_BASE_URL may list several servers, comma-separated (e.g. one per Ollama replica)."""
     default = "http://localhost:8000/v1" if setting("LLM_PROVIDER", "ollama") == "openai_compat" else "http://localhost:11434"
@@ -324,12 +327,17 @@ def clients_from_settings() -> list[ChatClient]:
     Each client is used by one call at a time, so its `last_usage` and `cancel_check` are never shared.
     """
     per_server = max(1, int(concurrency()))
+    if setting("LLM_PROVIDER", "ollama") in HOSTED:      # one endpoint (ANTHROPIC_BASE_URL); LLM_BASE_URL is not used
+        return [from_settings() for _ in range(per_server)]
     urls = base_urls()
     return [from_settings(url) for _ in range(per_server) for url in urls]
 
 
 def from_settings(base_url: str | None = None) -> ChatClient:
     provider = setting("LLM_PROVIDER", "ollama")
+    if provider in HOSTED:
+        from . import anthropic_client
+        return anthropic_client.from_settings()
     timeout = float(setting("LLM_TIMEOUT", "300"))
     think = str(setting("LLM_THINK", "false")).strip().lower() in ("1", "true", "yes")
     num_predict = int(setting("LLM_NUM_PREDICT", "768"))

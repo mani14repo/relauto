@@ -28,6 +28,7 @@ class EvidenceBundle:
         self.components: list[dict] = []
         self.k8s: list[tuple[str, dict]] = []          # (evidence id, object)
         self.errors: list[str] = []
+        self.notes: list[str] = []                     # information about where evidence came from (not problems)
 
     # ------------------------------------------------------------ ingestion
     def ingest(self, name: str, data: bytes, hint: str | None = None, as_of: datetime | None = None) -> EvidenceItem | None:
@@ -44,6 +45,19 @@ class EvidenceBundle:
             return None
         if item:
             self.items[eid] = item
+        return item
+
+    def add_table(self, table: str, rows: list[dict], name: str, as_of: datetime | None = None) -> EvidenceItem:
+        """Add rows that did not come from a file: records synced from a source system into the knowledge store.
+        The rows are already normalised and redacted (connectors.servicenow.restore)."""
+        import hashlib
+        keys = sorted(str(r.get("sys_id") or r.get("number") or r.get("name") or i) + str(r.get("sys_updated_on", ""))
+                      for i, r in enumerate(rows))
+        sha = hashlib.sha256(("|".join([table, *keys])).encode()).hexdigest()
+        eid = f"EV-{sha[:8]}"
+        item = EvidenceItem(id=eid, kind=Kind.SN_TABLE, name=name, sha256=sha, ingested_at=as_of or datetime.now(),
+                            table=table, records=rows, meta={"rows": len(rows), "source": "servicenow sync"})
+        self.items[eid] = item
         return item
 
     def ingest_path(self, path: str | Path, hint: str | None = None) -> EvidenceItem | None:

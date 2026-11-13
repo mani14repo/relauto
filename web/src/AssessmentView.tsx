@@ -157,7 +157,7 @@ const HINTS = ["", "runbook", "architecture", "dr_test", "dr_plan", "load_test",
   "observability", "security", "incident", "change_request", "problem", "kb_knowledge", "em_alert", "cmdb_ci", "cmdb_rel_ci", "scan"];
 
 function EvidenceTab({ a, running, llmOn, onRun, setError }: { a: Assessment; running: boolean; llmOn: boolean; onRun: (llm: boolean) => void; setError: (e: string | null) => void }) {
-  const [ev, setEv] = useState<{ files: any[]; errors: string[]; summary: Record<string, number> } | null>(null);
+  const [ev, setEv] = useState<{ files: any[]; errors: string[]; summary: Record<string, number>; synced?: { table: string; rows: number; source: string }[]; notes?: string[] } | null>(null);
   const [hint, setHint] = useState("");
   const [over, setOver] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -193,8 +193,15 @@ function EvidenceTab({ a, running, llmOn, onRun, setError }: { a: Assessment; ru
           {llmOn
             ? <label className="check"><input type="checkbox" checked={llm} onChange={(e) => setLlm(e.target.checked)} />Use local LLM for AI-assisted criteria</label>
             : <span className="muted small" title="LLM_ENABLED=false">Rules and checklists only (local LLM is off)</span>}
-          <button className="primary" disabled={running || !ev?.files.length} onClick={() => onRun(llmOn && llm)}>{running ? "Running…" : "Run automated assessment"}</button>
+          <button className="primary" disabled={running || !(ev?.files.length || ev?.synced?.length)} onClick={() => onRun(llmOn && llm)}>{running ? "Running…" : "Run automated assessment"}</button>
         </div>
+        {!!ev?.synced?.length && (
+          <p className="muted small" style={{ marginTop: 8 }}>
+            Also used, from the ServiceNow sync: {ev.synced.map((x) => `${x.table} (${x.rows} record${x.rows === 1 ? "" : "s"})`).join(", ")}.
+            An uploaded export of a table replaces its synced copy.
+          </p>
+        )}
+        {ev?.notes?.map((n) => <p key={n} className="muted small" style={{ marginTop: 4 }}>{n}</p>)}
         {ev?.errors.map((e) => <div key={e} className="notice small" style={{ marginTop: 8 }}>{e}</div>)}
         <table style={{ marginTop: 10 }}>
           <thead><tr><th>File</th><th>Detected as</th><th>Reviewed</th><th>Details</th></tr></thead>

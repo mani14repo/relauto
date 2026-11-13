@@ -7,8 +7,31 @@ app.kubernetes.io/version: {{ .Values.image.tag | quote }}
 {{- define "sra.image" -}}{{ .Values.image.repository }}:{{ .Values.image.tag }}{{- end -}}
 
 {{- define "sra.env" -}}
+{{- if .Values.cloudSql.useCapInjected }}
+{{- /* CAP injects CAP_POSTGRES_<APP>_<DB>_JDBC_URI and CAP_POSTGRES_USER (as for COG); the app reads them itself. */}}
+{{- if .Values.cloudSql.capJdbcVar }}
+- name: SRA_CAP_POSTGRES_VAR
+  value: {{ .Values.cloudSql.capJdbcVar | quote }}
+{{- end }}
+{{- else }}
 - name: DATABASE_URL
   value: "postgresql://{{ .Values.cloudSql.user | urlquery }}@127.0.0.1:5432/{{ .Values.cloudSql.database }}?sslmode=disable"
+{{- end }}
+- name: RETRIEVAL_RERANK
+  value: {{ .Values.retrieval.rerank | default "off" | quote }}
+{{- if .Values.servicenow.instanceUrl }}
+- name: SERVICENOW_INSTANCE_URL
+  value: {{ .Values.servicenow.instanceUrl | quote }}
+{{- if .Values.servicenow.tokenKey }}
+- name: SERVICENOW_TOKEN
+  valueFrom: {secretKeyRef: {name: {{ required "servicenow.existingSecret is required when servicenow.instanceUrl is set" .Values.servicenow.existingSecret }}, key: {{ .Values.servicenow.tokenKey }}}}
+{{- else }}
+- name: SERVICENOW_USER
+  valueFrom: {secretKeyRef: {name: {{ required "servicenow.existingSecret is required when servicenow.instanceUrl is set" .Values.servicenow.existingSecret }}, key: {{ .Values.servicenow.userKey | default "username" }}}}
+- name: SERVICENOW_PASSWORD
+  valueFrom: {secretKeyRef: {name: {{ .Values.servicenow.existingSecret }}, key: {{ .Values.servicenow.passwordKey | default "password" }}}}
+{{- end }}
+{{- end }}
 - name: KAFKA_BOOTSTRAP_SERVERS
   value: {{ .Values.kafka.bootstrap | quote }}
 - name: KAFKA_GROUP
@@ -29,6 +52,25 @@ app.kubernetes.io/version: {{ .Values.image.tag | quote }}
   value: {{ ternary "true" "false" (ne .Values.llm.enabled false) | quote }}
 - name: LLM_PROVIDER
   value: {{ .Values.llm.provider | quote }}
+- name: LLM_TIMEOUT
+  value: {{ .Values.llm.timeoutSeconds | quote }}
+{{- if or (eq .Values.llm.provider "anthropic") (eq .Values.llm.provider "lms_gateway") }}
+- name: LLM_MODEL
+  value: {{ .Values.llm.gateway.model | default "claude-opus-5-5" | quote }}
+{{- /* Claude through the LMS gateway, as COG does: base URL here, key from the approved secret store at runtime. */}}
+- name: ANTHROPIC_BASE_URL
+  value: {{ required "llm.gateway.baseUrl is required when llm.provider is anthropic" .Values.llm.gateway.baseUrl | quote }}
+- name: ANTHROPIC_API_KEY
+  valueFrom: {secretKeyRef: {name: {{ required "llm.gateway.existingSecret is required when llm.provider is anthropic" .Values.llm.gateway.existingSecret }}, key: {{ .Values.llm.gateway.secretKey | default "ANTHROPIC_API_KEY" }}}}
+- name: LLM_CONCURRENCY
+  value: {{ .Values.llm.gateway.concurrency | default 4 | quote }}
+- name: LLM_EFFORT
+  value: {{ .Values.llm.gateway.effort | quote }}   {{- /* "" is meaningful: do not send the field */}}
+- name: LLM_STRUCTURED_OUTPUT
+  value: {{ ternary "true" "false" (ne .Values.llm.gateway.structuredOutput false) | quote }}
+{{- else }}
+- name: LLM_MODEL
+  value: {{ .Values.llm.model | quote }}
 - name: LLM_BASE_URL
   {{- /* one URL per Ollama replica (stable pod DNS via the headless service) so criteria spread across replicas */}}
   {{- $urls := list }}
@@ -42,14 +84,11 @@ app.kubernetes.io/version: {{ .Values.image.tag | quote }}
   value: "24h"
 - name: LLM_NUM_PREDICT
   value: {{ .Values.llm.numPredict | default 768 | quote }}
-- name: LLM_MODEL
-  value: {{ .Values.llm.model | quote }}
-- name: LLM_TIMEOUT
-  value: {{ .Values.llm.timeoutSeconds | quote }}
 - name: LLM_THINK
   value: {{ .Values.llm.think | default false | quote }}
 - name: LLM_NUM_CTX
   value: {{ .Values.llm.numCtx | quote }}
+{{- end }}
 - name: HF_HUB_OFFLINE
   value: "1"
 {{- end -}}

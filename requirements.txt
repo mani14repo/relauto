@@ -26,3 +26,5 @@ six==1.17.0
 tqdm==4.70.1
 onnxruntime==1.31.1
 Pillow==13.0.0
+# Optional LLM provider (LLM_PROVIDER=anthropic: Claude through the LMS gateway, as COG does); off by default
+anthropic==2.8.0
