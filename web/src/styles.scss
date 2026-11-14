@@ -1,0 +1,235 @@
+// Carbon (IBM) as in the OIP portal. The g100 (dark) and white (light) themes are Carbon zone classes that theme.tsx
+// puts on <html> together with data-theme, so every --cds-* token, component token and portalled popover follows it.
+// Fonts are IBM Plex Sans and Mono from the @ibm/plex-* packages, bundled by Vite (no CDN at runtime).
+@use '@carbon/react/scss/config' with (
+  $css--font-face: true,
+  $font-path: '~@ibm/plex'
+);
+@use '@carbon/react/scss/fonts' with (
+  $fonts: (IBM-Plex-Serif: false)
+);
+@use '@carbon/react';
+@use '@carbon/react/scss/breakpoint' as bp;
+
+// ---- SRA colour aliases: status from Carbon support tokens, charts from the theme -----------------------------------
+:root {
+  --sra-met: var(--cds-support-success);
+  --sra-gap: var(--cds-support-error);
+  --sra-ie: var(--cds-support-warning);
+  --sra-na: var(--cds-icon-secondary);
+  --sra-crit: var(--cds-support-error);
+  --sra-high: var(--cds-support-caution-major);
+  --sra-med: var(--cds-support-caution-minor);
+  --sra-low: var(--cds-support-info);
+  --sra-bar: var(--cds-interactive);
+  --sra-bar-track: var(--cds-layer-accent-01);
+  --sra-mono: 'IBM Plex Mono', 'Menlo', 'DejaVu Sans Mono', 'Courier New', monospace;
+  --sra-nav-w: 16rem;
+  --sra-rail-w: 3rem;
+}
+
+* { box-sizing: border-box; }
+html, body { background: var(--cds-background); color: var(--cds-text-primary); }
+body { margin: 0; font-family: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: 0.875rem; line-height: 1.43; letter-spacing: 0.16px; }
+a { color: var(--cds-link-primary); }
+a:hover { color: var(--cds-link-primary-hover); }
+h1 { font-size: 1.75rem; font-weight: 400; line-height: 1.29; margin: 0; }
+h2 { font-size: 1rem; font-weight: 600; line-height: 1.375; margin: 0 0 0.75rem; }
+h3 { font-size: 0.875rem; font-weight: 600; margin: 0 0 0.5rem; }
+.muted { color: var(--cds-text-secondary); }
+.small { font-size: 0.75rem; line-height: 1.34; letter-spacing: 0.32px; }
+.mono { font-family: var(--sra-mono); font-size: 0.75rem; }
+.num { font-family: var(--sra-mono); font-variant-numeric: tabular-nums; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+// ---- Shell: header status bar, collapsible side nav ---------------------------------------------------------------
+.sra-status { align-items: center; gap: 0.75rem; padding-right: 1rem; }
+.sra-status__asof { color: var(--cds-text-secondary); white-space: nowrap; }
+.sra-status__user {
+  width: 14rem; height: 2rem; padding: 0 0.75rem; font: inherit; font-size: 0.875rem; border: none;
+  border-bottom: 1px solid var(--cds-border-strong-01); background: var(--cds-field-01); color: var(--cds-text-primary);
+  &:focus { outline: 2px solid var(--cds-focus); outline-offset: -2px; }
+}
+@media (max-width: 42rem) { .sra-status__asof, .sra-status .cds--tag { display: none; } .sra-status__user { width: 9rem; } }
+
+.cds--side-nav__navigation { display: flex; flex-direction: column; }
+.sra-nav-group {
+  padding: 1rem 1rem 0.5rem; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.32px; text-transform: uppercase;
+  color: var(--cds-text-secondary); white-space: nowrap; overflow: hidden;
+}
+.sra-shell--rail .sra-nav-group { visibility: hidden; height: 0.5rem; padding: 0; }
+.sra-nav-current .cds--side-nav__link-text { overflow: hidden; text-overflow: ellipsis; }
+.sra-nav-footer {
+  list-style: none; margin: 0; padding: 0.25rem 0; border-top: 1px solid var(--cds-border-subtle-01); flex: none;
+  button.cds--side-nav__link { width: 100%; border: none; background: none; cursor: pointer; font: inherit; text-align: left; }
+}
+.sra-content { margin-top: 3rem; margin-left: var(--sra-rail-w); padding: 1.5rem 1rem 4rem; min-height: calc(100vh - 3rem); transition: margin-left 110ms cubic-bezier(0.2, 0, 1, 0.9); }
+@include bp.breakpoint(lg) {
+  .sra-shell--expanded .sra-content { margin-left: var(--sra-nav-w); }
+  .sra-content { padding: 2rem 2rem 4rem; }
+}
+@media (prefers-reduced-motion: reduce) { .sra-content { transition: none; } }
+
+// ---- Page structure -----------------------------------------------------------------------------------------------
+.page-head { display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.page-eyebrow { margin: 0 0 0.25rem; font-size: 0.75rem; letter-spacing: 0.32px; text-transform: uppercase; color: var(--cds-text-secondary); }
+.page-meta { margin: -1rem 0 1rem; }
+.card {
+  background: var(--cds-layer-01); border: 1px solid var(--cds-border-subtle-01); padding: 1rem; margin-bottom: 1rem;
+  // Carbon layering: fields inside a layer-01 card use field-02
+  input:not([type='checkbox']):not([type='radio']):not([type='file']), select, textarea { background: var(--cds-field-02); }
+}
+// Carbon's reset zeroes paragraph margins and list bullets; restore them for prose inside cards.
+.card p { margin: 0 0 0.75rem; }
+.card p:last-child { margin-bottom: 0; }
+.card ul { list-style: disc; padding-left: 1.5rem; margin: 0.5rem 0 0.75rem; }
+.card li + li { margin-top: 0.25rem; }
+.card ul.plain { list-style: none; padding-left: 0; }
+.card-head { display: flex; gap: 0.75rem; align-items: baseline; flex-wrap: wrap; margin-bottom: 0.75rem; h2 { margin: 0; } }
+.row { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+.grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); }
+.split { display: grid; grid-template-columns: minmax(18rem, 24rem) 1fr; gap: 1rem; align-items: start; }
+@media (max-width: 54rem) { .split { grid-template-columns: 1fr; } }
+.sra-asof { font-size: 0.75rem; letter-spacing: 0.32px; color: var(--cds-text-helper); white-space: nowrap; }
+.card-head .sra-asof { margin-left: auto; }
+
+// ---- Native form controls, drawn as Carbon fields ------------------------------------------------------------------
+input:not([type='checkbox']):not([type='radio']):not([type='file']), select, textarea {
+  font: inherit; font-size: 0.875rem; color: var(--cds-text-primary); background: var(--cds-field-01);
+  border: none; border-bottom: 1px solid var(--cds-border-strong-01); border-radius: 0; padding: 0 1rem; min-height: 2.5rem;
+  &::placeholder { color: var(--cds-text-placeholder); }
+  &:focus { outline: 2px solid var(--cds-focus); outline-offset: -2px; }
+  &:disabled { color: var(--cds-text-disabled); border-bottom-color: transparent; cursor: not-allowed; }
+}
+select { padding-right: 2rem; cursor: pointer; }
+textarea { width: 100%; min-height: 4rem; padding: 0.6875rem 1rem; resize: vertical; }
+input[type='checkbox'] { width: 1rem; height: 1rem; margin: 0; accent-color: var(--cds-icon-primary); flex: none; }
+input[type='checkbox']:focus-visible { outline: 2px solid var(--cds-focus); outline-offset: 1px; }
+label.field { display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.75rem; letter-spacing: 0.32px; color: var(--cds-text-secondary); }
+label.check { display: flex; gap: 0.5rem; align-items: center; min-height: 1.5rem; }
+fieldset:disabled label { color: var(--cds-text-disabled); }
+
+// ---- Tables, in Carbon's data-table look --------------------------------------------------------------------------
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 0.5rem 1rem; border-bottom: 1px solid var(--cds-border-subtle-01); vertical-align: top; }
+th { background: var(--cds-layer-accent-01); color: var(--cds-text-primary); font-weight: 600; font-size: 0.875rem; white-space: nowrap; vertical-align: middle; height: 2.5rem; }
+td { color: var(--cds-text-secondary); }
+td b, td strong, td a { color: var(--cds-text-primary); }
+td a { color: var(--cds-link-primary); }
+tr.clickable { cursor: pointer; }
+tbody tr:hover td { background: var(--cds-layer-hover-01); color: var(--cds-text-primary); }
+td.row-actions, th.row-actions { width: 2.5rem; padding: 0.25rem; text-align: center; vertical-align: middle; }
+tr .row-delete { opacity: 0; }
+tr:hover .row-delete, tr:focus-within .row-delete { opacity: 1; }
+@media (hover: none) { tr .row-delete { opacity: 1; } }
+.row-delete:hover svg { fill: var(--cds-support-error); }
+
+// ---- Status: badges, severities, ratings, tags --------------------------------------------------------------------
+.badge {
+  --c: var(--sra-na);
+  display: inline-flex; align-items: center; gap: 0.375rem; padding: 0 0.5rem; min-height: 1.5rem; border-radius: 1rem;
+  font-size: 0.75rem; letter-spacing: 0.32px; white-space: nowrap; color: var(--cds-text-primary);
+  background: color-mix(in srgb, var(--c) 18%, transparent);
+  &::before { content: ''; width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--c); flex: none; }
+}
+.r-Met { --c: var(--sra-met); }
+.r-Gap { --c: var(--sra-gap); }
+.r-Insufficient { --c: var(--sra-ie); }
+.r-NA, .r-none { --c: var(--sra-na); }
+.sev {
+  display: inline-flex; align-items: center; gap: 0.375rem; font-weight: 600; color: var(--cds-text-primary);
+  &::before { content: ''; width: 0.625rem; height: 0.625rem; background: var(--c, var(--sra-na)); flex: none; }
+}
+.s-Critical { --c: var(--sra-crit); } .s-High { --c: var(--sra-high); } .s-Medium { --c: var(--sra-med); } .s-Low { --c: var(--sra-low); }
+.rating {
+  display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 600; color: var(--cds-text-primary); white-space: nowrap;
+  &::before { content: ''; width: 0.625rem; height: 0.625rem; border-radius: 50%; background: var(--dot); flex: none; }
+  &--lg { font-size: 1.25rem; &::before { width: 0.875rem; height: 0.875rem; } }
+}
+.pill {
+  display: inline-flex; align-items: center; min-height: 1.5rem; padding: 0 0.5rem; border-radius: 1rem; font-size: 0.75rem;
+  letter-spacing: 0.32px; white-space: nowrap; color: var(--cds-text-secondary); border: 1px solid var(--cds-border-strong-01);
+}
+
+// ---- KPI tiles and bars -------------------------------------------------------------------------------------------
+.kpi { font-family: var(--sra-mono); font-size: 2rem; line-height: 1.25; font-weight: 400; font-variant-numeric: tabular-nums; margin: 0.25rem 0 0.5rem; }
+.kpi-tile { border-left: 3px solid var(--edge, var(--cds-border-subtle-01)); margin-bottom: 0; display: flex; flex-direction: column; }
+.kpi-tile__head { display: flex; gap: 0.5rem; align-items: baseline; justify-content: space-between; }
+.kpi-tile__label { font-size: 0.75rem; letter-spacing: 0.32px; color: var(--cds-text-secondary); }
+.kpi-row { margin-bottom: 1rem; }
+.bar { height: 0.5rem; background: var(--sra-bar-track); overflow: hidden; }
+.bar > span { display: block; height: 100%; background: var(--sra-bar); }
+.score-row { display: grid; grid-template-columns: 4rem 1fr 3rem; gap: 0.75rem; align-items: center; margin-bottom: 0.5rem; }
+.score-row .num { text-align: right; }
+
+// ---- Carbon component adjustments ---------------------------------------------------------------------------------
+.sra-notice { max-width: none; margin-bottom: 1rem; }
+.sra-notice.cds--inline-notification { min-block-size: 3rem; }
+.assessment-tabs { margin-bottom: 0.5rem; }
+.assessment-tabs + .cds--tab-content, .sra-tab-panel { padding: 1rem 0 0; }
+.sra-tab-panel:focus { outline: none; }
+.cds--btn .cds--btn__icon { flex: none; }
+.confirm-body { color: var(--cds-text-secondary); }
+.btn-row { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+// Findings filter: wide enough that Carbon's equal-width switches fit "vulnerability 12" without truncating.
+.findings-switch.cds--content-switcher { inline-size: min(100%, 46rem); }
+// An actionable notice in the narrow criteria column puts its button under the text.
+.crit-list .cds--actionable-notification { flex-wrap: wrap; }
+.crit-list .cds--actionable-notification__button-wrapper { margin-left: 2.75rem; margin-bottom: 0.5rem; }
+
+// ---- Criteria list ------------------------------------------------------------------------------------------------
+.crit-list { padding: 0; position: sticky; top: 4rem; }
+.crit-list > .sra-notice, .crit-list > label.field { margin: 1rem; }
+.crit-list button {
+  display: flex; gap: 0.5rem; align-items: center; width: 100%; text-align: left; border: none; border-left: 3px solid transparent;
+  padding: 0.5rem 1rem; background: none; color: var(--cds-text-secondary); font: inherit; cursor: pointer;
+  &:hover { background: var(--cds-layer-hover-01); color: var(--cds-text-primary); }
+  &:focus-visible { outline: 2px solid var(--cds-focus); outline-offset: -2px; }
+  &.on { background: var(--cds-layer-selected-01); color: var(--cds-text-primary); border-left-color: var(--cds-border-interactive); }
+}
+.crit-list .tpl { font-weight: 600; margin: 0.75rem 1rem 0.25rem; font-size: 0.75rem; letter-spacing: 0.32px; color: var(--cds-text-primary); }
+.crit-meta { display: grid; grid-template-columns: 10rem 1fr; gap: 0.25rem 1rem; margin: 1rem 0; dt { color: var(--cds-text-secondary); } dd { margin: 0; } }
+@media (max-width: 42rem) { .crit-meta { grid-template-columns: 1fr; dd { margin-bottom: 0.5rem; } } }
+pre.answer { white-space: pre-wrap; font-family: var(--sra-mono); background: var(--cds-layer-02); border-left: 2px solid var(--cds-border-interactive); padding: 0.75rem 1rem; margin: 0 0 1rem; }
+.finding-detail td { background: var(--cds-layer-02); color: var(--cds-text-primary); }
+tbody tr.finding-detail:hover td { background: var(--cds-layer-02); }
+
+// ---- Evidence drop zone -------------------------------------------------------------------------------------------
+.dropzone {
+  border: 1px dashed var(--cds-border-strong-01); padding: 1.5rem; text-align: center; color: var(--cds-text-secondary);
+  display: flex; gap: 0.75rem; align-items: center; justify-content: center; flex-wrap: wrap;
+  &.over { border: 2px solid var(--cds-border-interactive); background: var(--cds-layer-hover-01); color: var(--cds-text-primary); }
+}
+
+// ---- Automated pass status (JobPanel) -----------------------------------------------------------------------------
+.job { border-left: 3px solid var(--cds-support-info); }
+.job-ok { border-left-color: var(--sra-met); }
+.job-warn { border-left-color: var(--sra-ie); }
+.job-bad { border-left-color: var(--sra-gap); }
+.job-bar { height: 0.5rem; }
+.job-bar > span { transition: width 0.4s ease; }
+.job-log-wrap { margin-top: 0.75rem; }
+.job-log-wrap > summary { cursor: pointer; color: var(--cds-text-secondary); }
+.job-log {
+  max-height: 14rem; overflow-y: auto; background: var(--cds-layer-02); padding: 0.5rem 0.75rem; margin-top: 0.5rem;
+  line-height: 1.5; overflow-wrap: anywhere;
+  .lvl-warn b { color: var(--sra-ie); }
+  .lvl-error { color: var(--cds-text-error); }
+}
+.spinner {
+  width: 1rem; height: 1rem; border-radius: 50%; border: 2px solid var(--cds-border-subtle-01);
+  border-top-color: var(--cds-interactive); animation: spin 0.9s linear infinite; flex: none;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 3s; } .job-bar > span { transition: none; } }
+
+// GitHub repository scan (Evidence tab)
+.gh-scan > .cds--form-item { flex: 1 1 14rem; min-width: 12rem; }
+.gh-scan > .cds--select { flex: 0 1 14rem; }
+.ev-source { margin: 0 0 0 0.5rem; vertical-align: middle; }
+.gh-conn { margin-top: 0.75rem; }
+.gh-code-row { display: flex; align-items: center; gap: 0.5rem; margin: 0.75rem 0 1rem; }
+.gh-code { font-size: 2rem; letter-spacing: 0.15em; }
+.gh-token { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--cds-border-subtle-01); }
+.gh-token .cds--form-item { flex: 1 1 14rem; }

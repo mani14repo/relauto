@@ -345,6 +345,10 @@ def parse_scan(obj, fmt: str) -> tuple[list[ScanFinding], list[dict]]:
             for p in r.get("Packages", []) or []:
                 components.append({"name": p.get("Name", ""), "version": p.get("Version", "")})
     elif fmt == "cyclonedx":
+        # the producing tool, when the BOM names one (CycloneDX 1.4 lists tools; 1.5+ nests them under components)
+        tools = (obj.get("metadata") or {}).get("tools") or []
+        tools = tools.get("components") or [] if isinstance(tools, dict) else tools
+        tool = next((t.get("name") for t in tools if isinstance(t, dict) and t.get("name")), None) or "cyclonedx"
         comps = {c.get("bom-ref"): c for c in obj.get("components", [])}
         components = [{"name": c.get("name", ""), "version": c.get("version", "")} for c in comps.values()]
         for v in obj.get("vulnerabilities", []) or []:
@@ -352,7 +356,7 @@ def parse_scan(obj, fmt: str) -> tuple[list[ScanFinding], list[dict]]:
             sev = ratings[0].get("severity") or ratings[0].get("score") or "unknown"
             for aff in v.get("affects") or [{}]:
                 c = comps.get(aff.get("ref"), {})
-                findings.append(ScanFinding(tool="cyclonedx", rule_id=v.get("id", ""),
+                findings.append(ScanFinding(tool=tool, rule_id=v.get("id", ""),
                                             title=(v.get("description") or v.get("detail") or "")[:300],
                                             severity=_sev(sev), package=c.get("name", aff.get("ref", "")),
                                             installed_version=c.get("version", ""),

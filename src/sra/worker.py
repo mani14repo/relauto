@@ -50,7 +50,9 @@ async def consume_jobs(svc: AssessmentService, consumer, stop: asyncio.Event) ->
                 job = json.loads(m.value)
                 log.info("job %s for %s", job.get("job"), job.get("assessment_id"))
                 try:
-                    if job.get("job") == "run":
+                    if job.get("job") == "github_scan":       # gh must be installed and signed in on the worker
+                        await asyncio.to_thread(svc.scan_github_job, job)
+                    elif job.get("job") == "run":
                         # CPU-bound LLM work runs in a thread so the relay keeps flowing
                         await asyncio.to_thread(svc.run_job, job)
                     elif job.get("job") in KNOWLEDGE_JOBS:

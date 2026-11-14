@@ -1,1 +1,1 @@
-{"root":["./src/app.tsx","./src/assessmentview.tsx","./src/jobpanel.tsx","./src/newassessment.tsx","./src/api.ts","./src/main.tsx","./src/ui.tsx"],"version":"5.6.3"}
+{"root":["./src/app.tsx","./src/assessmentview.tsx","./src/jobpanel.tsx","./src/newassessment.tsx","./src/shell.tsx","./src/api.ts","./src/app.test.tsx","./src/github-scan.test.tsx","./src/main.tsx","./src/test-setup.ts","./src/theme.tsx","./src/ui.tsx"],"version":"5.6.3"}

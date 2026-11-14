@@ -164,6 +164,30 @@ class AssessmentService:
                         audit=[{"actor": actor, "action": "add_evidence", "after": [r["name"] for r in rows]}])
         return rows
 
+    def scan_github(self, aid: str, repo: str, ref: str | None, host: str | None, actor: str,
+                    alerts: bool = True, signals: bool = True, code: bool = True, acl: list[str] | None = None,
+                    progress: Progress | None = None) -> dict:
+        """Scan a GitHub repository with the gh CLI and add what it found as evidence, stored like uploaded files
+        (connectors/github.py). Raises connectors.github.GitHubError (bad input, gh failures) or GhUnavailable."""
+        from .connectors.github import scan
+        a = self.store.get(aid)
+        progress = progress or NullProgress()
+        res = scan(repo, ref, host, alerts=alerts, signals=signals, code=code, progress=progress)
+        progress.phase("Storing evidence", total=len(res.files), msg=f"Adding {len(res.files)} evidence file(s)")
+        rows = []
+        for n, f in enumerate(res.files, 1):     # nothing is stored before this point, so a cancel adds nothing
+            rows.append(self.store.add_evidence(aid, f.name, f.data, None, acl))
+            progress.items_done(n, f.name.rsplit("/", 1)[-1])
+        if rows:
+            self.request_ingestion()
+        summary = res.summary()
+        self.store.save(a, events=[envelope("evidence_ingested", aid, {"files": [r["name"] for r in rows],
+                                                                        "source": "github", "repository": res.repository,
+                                                                        "sha": res.sha}, actor)],
+                        audit=[{"actor": actor, "action": "github_scan", "target": f"{res.host}/{res.repository}@{res.sha}",
+                                "after": {**summary, "evidence": [r["id"] for r in rows]}}])
+        return {**summary, "evidence": rows}
+
     def search(self, query: str, aid: str | None = None, k: int = 6, principals: list[str] | None = None,
                application: str | None = None, kinds: list[str] | None = None, doc_types: list[str] | None = None,
                source_systems: list[str] | None = None, related: bool = True) -> dict:
@@ -270,6 +294,40 @@ class AssessmentService:
         sc, stats = out["scorecard"], out.get("llm")
         progress.done({"rating": sc["rating"], "index": sc["index"], "llm": stats},
                       f"Finished: rated {sc['rating']} (index {sc['index']})")
+        return out
+
+    def scan_github_job(self, job: dict) -> dict | None:
+        """Run a queued 'github_scan' job with live progress in the assessment's job record (as runs have)."""
+        from .connectors.github import GitHubError
+        aid, who = job["assessment_id"], job.get("actor", "system")
+        queued = self.store.get_job(aid) or {}
+        current_id = (queued.get("job") or {}).get("id")
+        if job.get("id") and current_id and current_id != job["id"]:
+            log.info("skipping superseded job %s for %s (current job is %s)", job["id"], aid, current_id)
+            return None
+        progress = Progress(sink=lambda s: self.store.set_job(aid, s), job=job, label=aid, history=queued.get("log"),
+                            cancelled=lambda: self.store.cancel_requested(aid))
+        try:
+            progress.check()
+            progress.info(f"Repository scan of {job['repository']} started by {who}")
+            out = self.scan_github(aid, job["repository"], job.get("ref"), job.get("host"), who, alerts=job.get("alerts", True),
+                                   signals=job.get("signals", True), code=job.get("code", True), acl=job.get("acl"),
+                                   progress=progress)
+        except JobCancelled:
+            progress.cancelled("Cancelled. No evidence from this scan was added.")
+            self.store.clear_cancel(aid)
+            return None
+        except GitHubError as exc:
+            progress.failed(str(exc), what="Scan")
+            return None
+        except Exception as exc:  # noqa: BLE001 - reported to the user through the job record
+            log.exception("repository scan failed for %s", aid)
+            progress.failed(f"{type(exc).__name__}: {exc}", what="Scan")
+            return None
+        scan = {k: v for k, v in out.items() if k != "evidence"} | {"evidence_added": len(out["evidence"])}
+        for n in out.get("notes") or []:
+            progress.info(n)
+        progress.done({"scan": scan}, f"Finished: {len(out['evidence'])} evidence file(s) from {out['repository']}@{out['sha'][:12]}")
         return out
 
     # ---------------------------------------------------------------- review

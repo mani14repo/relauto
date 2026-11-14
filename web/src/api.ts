@@ -101,6 +101,33 @@ export interface Template {
   criteria: Criterion[];
 }
 
+/** Where scanned files came from: one entry per repository commit (GET /api/assessments/{id}/evidence). */
+export interface ScannedRepo { label: string; host: string; repository: string; sha: string; files: number }
+
+export interface EvidenceList {
+  files: any[]; errors: string[]; summary: Record<string, number>;
+  synced?: { table: string; rows: number; source: string }[]; notes?: string[]; repositories?: ScannedRepo[];
+}
+
+export interface GitHubScan {
+  repository: string; host: string; ref: string; sha: string; files: Record<string, number>;
+  alerts: Record<string, number | null>; notes: string[]; skipped: number; evidence: any[];
+  /** the source code pass: files analysed, signals by category (latency, security, ...), capabilities found */
+  code?: { files: number; signals: number; by_category: Record<string, number>; capabilities: string[] } | null;
+}
+
+/** gh's device sign-in in progress on the server (GitHub one-time code flow). */
+export interface GitHubLogin {
+  host: string; state: "starting" | "pending" | "done" | "failed" | "cancelled" | "expired";
+  code: string | null; url: string | null; error: string | null; account: string | null; expires_in: number;
+}
+
+/** The server's GitHub connection for one host: who, and where the credential comes from; never the token. */
+export interface GitHubAuth {
+  host: string; signed_in: boolean; account: string | null; source: "environment" | "gh" | null; scopes: string[];
+  env_token: string | null; interactive_login: boolean; token_login: boolean; login: GitHubLogin | null; error?: string;
+}
+
 export interface Candidate { template_id: string; title: string; selected: boolean; always: boolean; score: number | null; reasons: string[] }
 
 const user = () => localStorageSafe("sra.user") || "";
@@ -149,7 +176,16 @@ export const api = {
     if (hint) fd.append("hint", hint);
     return req<any[]>("POST", `/api/assessments/${id}/evidence`, fd, true);
   },
-  evidence: (id: string) => req<{ files: any[]; errors: string[]; summary: Record<string, number>; synced?: { table: string; rows: number; source: string }[]; notes?: string[] }>("GET", `/api/assessments/${id}/evidence`),
+  evidence: (id: string) => req<EvidenceList>("GET", `/api/assessments/${id}/evidence`),
+  githubStatus: () => req<{ available: boolean; error: string | null; hosts: string[]; default_host: string; interactive_login?: boolean; token_login?: boolean }>("GET", "/api/github/status"),
+  githubAuth: (host: string) => req<GitHubAuth>("GET", `/api/github/auth?host=${encodeURIComponent(host)}`),
+  githubLogin: (host: string) => req<GitHubLogin>("POST", "/api/github/login", { host }),
+  githubLoginCancel: (host: string) => req<GitHubLogin>("DELETE", `/api/github/login?host=${encodeURIComponent(host)}`),
+  githubLoginToken: (host: string, token: string) => req<GitHubAuth>("POST", "/api/github/login/token", { host, token }),
+  githubLogout: (host: string) => req<GitHubAuth>("POST", "/api/github/logout", { host }),
+  /** Queues the scan as a job (progress through `job`, stop it with `cancel`), like the automated pass. */
+  scanGithub: (id: string, body: { repository: string; ref?: string; host?: string; alerts?: boolean; signals?: boolean; code?: boolean }) =>
+    req<Job>("POST", `/api/assessments/${id}/github`, body),
   run: (id: string, llm: boolean) => req<Job>("POST", `/api/assessments/${id}/run`, { llm }),
   job: (id: string) => req<Job>("GET", `/api/assessments/${id}/job`),
   cancel: (id: string) => req<Job>("POST", `/api/assessments/${id}/cancel`),

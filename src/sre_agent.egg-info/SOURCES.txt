@@ -8,6 +8,7 @@ src/sra/models.py
 src/sra/ooxml.py
 src/sra/pipeline.py
 src/sra/progress.py
+src/sra/scheduler.py
 src/sra/service.py
 src/sra/store.py
 src/sra/worker.py
@@ -85,12 +86,14 @@ tests/test_criteria_rules.py
 tests/test_data_rules.py
 tests/test_detectors.py
 tests/test_edit_delete.py
+tests/test_gateway_tool_mode.py
 tests/test_incident_clusters.py
 tests/test_llm.py
 tests/test_llm_client.py
 tests/test_llm_efficiency.py
 tests/test_llm_off_and_feedback.py
 tests/test_llm_parallel.py
+tests/test_oip_runtime.py
 tests/test_postgres.py
 tests/test_report.py
 tests/test_scenario_kit.py

@@ -17,6 +17,8 @@ ARG ARTIFACTORY_HOST=cvsh.jfrog.io
 FROM ${NODE_IMAGE} AS web
 ARG ARTIFACTORY_HOST
 WORKDIR /web
+# Carbon's packages run an IBM telemetry postinstall that calls out to the internet; switch it off for the build.
+ENV IBM_TELEMETRY_DISABLED=true
 COPY web/package.json web/package-lock.json ./
 # The lockfile may name the public registry or a developer's JFrog repository; the pipeline credentials read
 # cvsdigital-npm, so point every resolved URL there. Integrity hashes are unchanged, so npm still verifies each package.
@@ -32,8 +34,8 @@ RUN --mount=type=secret,id=artifactory_user_encoded,env=ARTIFACTORY_USERNAME \
     else : > /tmp/.npmrc; fi \
  && npm ci --no-audit --no-fund --userconfig /tmp/.npmrc; status=$?; rm -f /tmp/.npmrc; exit $status
 COPY web/ ./
-# tsc -b type-checks first, so a UI type error fails the image build (as OIP's ui stage does)
-RUN npm run build
+# tsc -b type-checks first, and the Vitest smoke tests run after, so a UI failure fails the image build (as OIP's ui stage does)
+RUN npm run build && npm test
 
 # ---- python deps --------------------------------------------------------------
 # The distroless debug image has the same Python as the runtime image (and a busybox shell for RUN), so compiled
@@ -54,10 +56,29 @@ RUN --mount=type=secret,id=artifactory_user_encoded,env=ARTIFACTORY_USERNAME \
  && python -m pip install --index-url "$INDEX" --no-deps --target /home/nonroot/app/site-packages rapidocr-onnxruntime==1.4.4 \
  && python -m pip install --index-url "$INDEX" --no-deps --target /home/nonroot/app/site-packages .
 
+# GitHub CLI for the repository scan (sra/connectors/github.py). gh is one static Go binary, so it runs in distroless.
+# It comes from JFrog like everything else: GH_CLI_URL is the gh_<version>_linux_amd64.tar.gz release asset through a
+# JFrog generic remote repository that proxies https://github.com/cli/cli/releases (the repository name is the
+# platform team's: CONFIRM), and GH_CLI_SHA256 its checksum from the release's checksums file. Without GH_CLI_URL the
+# image has no gh and the scan answers "gh is not installed" (uploads and everything else work as before).
+ARG GH_CLI_URL=""
+ARG GH_CLI_SHA256=""
+RUN --mount=type=secret,id=artifactory_user_encoded,env=ARTIFACTORY_USERNAME \
+    --mount=type=secret,id=artifactory_token,env=ARTIFACTORY_TOKEN \
+    mkdir -p /home/nonroot/app/bin \
+ && if [ -n "$GH_CLI_URL" ]; then python -c "import base64,hashlib,io,os,sys,tarfile,urllib.parse,urllib.request as u; \
+r = u.Request(os.environ['GH_CLI_URL']); tok = os.environ.get('ARTIFACTORY_TOKEN'); \
+tok and r.add_header('Authorization', 'Basic ' + base64.b64encode((urllib.parse.unquote(os.environ.get('ARTIFACTORY_USERNAME', '')) + ':' + tok).encode()).decode()); \
+d = u.urlopen(r, timeout=300).read(); h = hashlib.sha256(d).hexdigest(); want = os.environ.get('GH_CLI_SHA256'); \
+want and h != want and sys.exit('gh archive checksum mismatch: ' + h); want or print('GH_CLI_SHA256 not set; gh archive sha256 is', h); \
+t = tarfile.open(fileobj=io.BytesIO(d)); m = next(x for x in t.getmembers() if x.name.endswith('/bin/gh')); \
+open('/home/nonroot/app/bin/gh', 'wb').write(t.extractfile(m).read()); os.chmod('/home/nonroot/app/bin/gh', 0o755)"; fi
+
 # ---- runtime (distroless, non-root) -----------------------------------------
 FROM ${RUNTIME_IMAGE}
 WORKDIR /app
 COPY --from=build /home/nonroot/app/site-packages /app/site-packages
+COPY --from=build /home/nonroot/app/bin/ /app/bin/
 COPY catalog/ /app/catalog/
 COPY config/ /app/config/
 # The OIPReqs standards, playbooks and templates (the same library OIP's Reference library loads). No ServiceNow or
@@ -68,6 +89,8 @@ ENV PYTHONPATH=/app/site-packages \
     PYTHONUNBUFFERED=1 \
     SRA_ROOT=/app \
     SRA_DATA_DIR=/tmp/sra \
+    SRA_GH=/app/bin/gh \
+    GH_CONFIG_DIR=/tmp/sra/gh \
     PORT=8080
 USER 31337:31337
 EXPOSE 8080

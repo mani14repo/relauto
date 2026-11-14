@@ -14,7 +14,7 @@ from pathlib import Path
 from fastapi import Body, Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, SecretStr
 
 from .. import config
 from ..catalog import load_playbooks, load_rubric, load_templates, load_titles
@@ -50,6 +50,24 @@ class SyncBody(BaseModel):
     tables: list[str] | None = None         # ServiceNow tables to sync; default: all in config/sources.yaml
 
 
+class GitHubScanBody(BaseModel):
+    repository: str = Field(min_length=3, max_length=300)   # owner/name, or an https:// or git@ clone URL
+    ref: str | None = Field(None, max_length=250)            # branch, tag or commit; default: the default branch
+    host: str | None = Field(None, max_length=255)           # GitHub Enterprise host (GH_HOST); default: GH_HOST or github.com
+    alerts: bool = True                                      # open Dependabot, code-scanning and secret-scanning alerts
+    signals: bool = True                                     # branch protection, environments, releases, deployments
+    code: bool = True                                        # reliability signals in the source code (not stored)
+    acl: str | None = None                                   # as for uploads: comma-separated readers for search
+
+
+class GitHubHostBody(BaseModel):
+    host: str | None = Field(None, max_length=255)           # default: GH_HOST or github.com
+
+
+class GitHubTokenBody(GitHubHostBody):
+    token: SecretStr   # never shown in reprs; its shape is checked in login_with_token, so a 422 cannot echo it back
+
+
 def _evaluator_factory():
     from ..llm.evaluate import Evaluator
     return Evaluator.from_settings()
@@ -68,6 +86,8 @@ def create_app(store=None, run_jobs_inline: bool = False) -> FastAPI:
     def handle_job(job: dict) -> None:
         if job.get("job") in KNOWLEDGE_JOBS:
             run_knowledge_job(store, job)
+        elif job.get("job") == "github_scan":
+            svc.scan_github_job(job)
         else:
             svc.run_job(job)
 
@@ -262,6 +282,103 @@ def create_app(store=None, run_jobs_inline: bool = False) -> FastAPI:
         readers = [x.strip() for x in (acl or "").split(",") if x.strip()]
         return svc.add_evidence(aid, data, hint or None, who, readers or None)
 
+    @app.get("/api/github/status")
+    def github_status():
+        """Whether this server can scan GitHub repositories (gh installed) and which hosts it may scan."""
+        from ..connectors import github as gh
+        try:
+            gh.gh_binary()
+            err = None
+        except gh.GitHubError as exc:
+            err = str(exc)
+        return {"available": err is None, "error": err, "hosts": gh.allowed_hosts(), "default_host": gh.default_host(),
+                "interactive_login": gh.config.flag("SRA_GH_INTERACTIVE_LOGIN", False),
+                "token_login": gh.config.flag("SRA_GH_INTERACTIVE_LOGIN", False) and gh.config.flag("SRA_GH_TOKEN_LOGIN", False)}
+
+    def _gh(call, *args):
+        from ..connectors.github import GitHubError
+        try:
+            return call(*args)
+        except GitHubError as exc:
+            raise HTTPException(exc.status, str(exc)) from None
+
+    @app.get("/api/github/auth")
+    def github_auth(host: str | None = None):
+        """The server's GitHub connection (gh auth status): account, host and where the credential comes from (an
+        environment token or gh's own sign-in), never the token; plus the device sign-in in progress, if any."""
+        from ..connectors import github as gh
+        return _gh(gh.auth_status, host)
+
+    @app.post("/api/github/login", status_code=202)
+    def github_login(body: GitHubHostBody | None = None, who: str = Depends(actor)):
+        """Start gh's device flow (local/dev only: SRA_GH_INTERACTIVE_LOGIN). Returns the one-time code and the
+        URL where the user enters it; poll GET /api/github/auth until login.state is done or failed."""
+        from ..connectors import github as gh
+        res = _gh(gh.start_login, (body or GitHubHostBody()).host, who)
+        log.info("GitHub device sign-in for %s started by %s: %s", res["host"], who, res["state"])
+        return res
+
+    @app.delete("/api/github/login")
+    def github_login_cancel(host: str | None = None):
+        from ..connectors import github as gh
+        return _gh(gh.cancel_login, host) or {"state": "none"}
+
+    @app.post("/api/github/login/token")
+    def github_login_token(body: GitHubTokenBody, who: str = Depends(actor)):
+        """Sign gh in with a pasted token (opt-in: SRA_GH_TOKEN_LOGIN). The token goes to gh on stdin and is never
+        logged, returned or stored by the app."""
+        from ..connectors import github as gh
+        res = _gh(gh.login_with_token, body.host, body.token.get_secret_value())
+        log.info("GitHub token sign-in for %s by %s: account %s", res["host"], who, res.get("account"))
+        return res
+
+    @app.post("/api/github/logout")
+    def github_logout(body: GitHubHostBody | None = None, who: str = Depends(actor)):
+        from ..connectors import github as gh
+        res = _gh(gh.logout, (body or GitHubHostBody()).host)
+        log.info("GitHub sign-out for %s by %s", res["host"], who)
+        return res
+
+    @app.post("/api/assessments/{aid}/github", status_code=202)
+    def scan_github(aid: str, body: GitHubScanBody, who: str = Depends(actor)):
+        """Queue a scan of a GitHub repository with the gh CLI (as the server's gh sign-in): its workflows, manifests,
+        Helm charts, Dockerfiles, CODEOWNERS, docs, source code signals, open security alerts and repository signals
+        become evidence. The input and gh's sign-in are checked here (422 / 503 at once); the scan itself is a job like
+        the automated pass: follow it with GET /api/assessments/{id}/job and stop it with POST .../cancel."""
+        from ..connectors import github as gh
+        get_or_404(aid)
+        cur = job_view(aid)
+        if cur["state"] in ("queued", "running") and not cur["stale"]:
+            raise HTTPException(409, "A scan or automated pass is already running for this assessment")
+        try:
+            repo, host = gh.parse_target(body.repository, body.host or None)
+            ref = (body.ref or "").strip() or None
+            if ref and not gh.REF.match(ref):
+                raise gh.GitHubError(f"Not a git ref: {ref!r}")
+            gh.check_auth(host)
+        except gh.GitHubError as exc:
+            log.warning("GitHub scan of %s for %s refused: %s", body.repository, aid, exc)
+            raise HTTPException(exc.status, str(exc)) from None
+        readers = [x.strip() for x in (body.acl or "").split(",") if x.strip()]
+        job = {"job": "github_scan", "assessment_id": aid, "repository": repo, "ref": ref, "host": host,
+               "alerts": body.alerts, "signals": body.signals, "code": body.code, "acl": readers or None, "actor": who,
+               "id": uuid.uuid4().hex[:12]}
+        store.clear_cancel(aid)
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        where = "the Kafka worker" if kafka else "this server"
+        store.set_job(aid, {"state": "queued", "phase": "Queued", "step": 0, "total": 0, "current": "", "started_at": now,
+                            "updated_at": now, "finished_at": None, "eta_s": None, "warnings": 0, "error": None,
+                            "summary": None, "job": job,
+                            "log": [{"t": now, "level": "info",
+                                     "msg": f"Scan of {host}/{repo}{'@' + ref if ref else ''} queued by {who}; waiting for {where}"}]})
+        if run_jobs_inline:
+            handle_job(job)
+        elif kafka:
+            store.bus.publish(JOBS_TOPIC, aid, job)
+        else:
+            local_jobs.submit(job)
+        return job_view(aid)
+
     @app.post("/api/assessments/{aid}/search")
     def search_assessment(aid: str, body: SearchBody, who: list[str] = Depends(principals)):
         """Hybrid retrieval inside one assessment's evidence (keyword + vector + RRF, optional rerank)."""
@@ -312,19 +429,27 @@ def create_app(store=None, run_jobs_inline: bool = False) -> FastAPI:
         b = store.bundle(aid)
         info = {it.id: {"kind": it.kind.value, "doc_type": it.doc_type.value if it.doc_type else None, "table": it.table,
                         "reviewed_at": it.reviewed_at.isoformat() if it.reviewed_at else None, "meta": {k: v for k, v in it.meta.items()
-                                                                                                        if k != "raw_secret_scan"}}
+                                                                                                        if k not in ("raw_secret_scan", "doc")}}
                 for it in b.items.values()}
         mine = {r["id"] for r in rows}
         synced = [{"table": it.table, "rows": len(it.records), "source": it.name} for it in b.items.values() if it.id not in mine]
-        return {"files": [{**r, **info.get(r["id"], {})} for r in rows], "errors": b.errors, "summary": b.summary(),
-                "synced": synced, "notes": b.notes}
+        from ..connectors.github import scanned_from
+        repos: dict[str, dict] = {}
+        for r in rows:
+            src = scanned_from(r["name"])
+            if src:
+                repos.setdefault(src["label"], {**src, "files": 0})["files"] += 1
+        return {"files": [{**r, **info.get(r["id"], {}), **({"source": "github"} if scanned_from(r["name"]) else {})}
+                          for r in rows], "errors": b.errors, "summary": b.summary(),
+                "synced": synced, "notes": b.notes, "repositories": list(repos.values())}
 
     @app.post("/api/assessments/{aid}/run", status_code=202)
     def run(aid: str, llm: bool = Body(False, embed=True), who: str = Depends(actor)):
         get_or_404(aid)
         cur = job_view(aid)
         if cur["state"] in ("queued", "running") and not cur["stale"]:
-            raise HTTPException(409, "An automated pass is already running for this assessment")
+            what = "A repository scan" if (cur.get("job") or {}).get("job") == "github_scan" else "An automated pass"
+            raise HTTPException(409, f"{what} is already running for this assessment")
         llm = llm and config.llm_enabled()   # with the LLM turned off every run is rules only
         job = {"job": "run", "assessment_id": aid, "llm": llm, "actor": who, "id": uuid.uuid4().hex[:12]}
         store.clear_cancel(aid)           # a cancel aimed at an earlier run must not stop this one

@@ -12,7 +12,7 @@ from .model import DocType, EvidenceItem, Kind, ScanFinding, evidence_id
 from .parsers import (classify_document, detect_scan_format, docx_to_text, image_to_text, is_ci_config, parse_k8s,
                       parse_scan, parse_scan_csv, pdf_to_text, review_date)
 from .redact import find_secrets, redact
-from . import registers
+from . import code_signals, registers
 from .servicenow import guess_table, normalize, read_rows
 
 TEXT_EXT = {".md", ".txt", ".rst", ".log", ".adoc", ".html", ".htm"}
@@ -78,13 +78,17 @@ class EvidenceBundle:
             rows = [normalize(r) for r in registers.read_xlsx(data)]
             table = hint if hint and hint not in [d.value for d in DocType] else guess_table(name, rows)
             return EvidenceItem(kind=Kind.SN_TABLE, table=table, records=rows, meta={"rows": len(rows)}, **base)
-        if ext in (".csv", ".json"):
-            if ext == ".json":
+        if ext in (".csv", ".json", ".sarif"):
+            if ext in (".json", ".sarif"):
                 obj = json.loads(data.decode("utf-8-sig"))
+                if isinstance(obj, dict) and obj.get("format") == code_signals.FORMAT:
+                    return self._code(base, obj)
                 fmt = detect_scan_format(obj)
                 if fmt:
                     findings, comps = parse_scan(obj, fmt)
                     return self._scan(base, fmt, findings, comps)
+                if ext == ".sarif":
+                    raise ValueError("not a SARIF 2.x log (no runs)")
             else:
                 findings = parse_scan_csv(data.decode("utf-8-sig", errors="replace"))
                 if findings is not None and (hint in (None, "scan")):
@@ -92,7 +96,9 @@ class EvidenceBundle:
             rows = read_rows(data, name)
             table = hint if hint and hint not in [d.value for d in DocType] else guess_table(name, rows)
             return EvidenceItem(kind=Kind.SN_TABLE, table=table, records=rows, meta={"rows": len(rows)}, **base)
-        if ext in YAML_EXT or ext in CONFIG_EXT or ext == "" or name.lower() == "jenkinsfile":
+        base_name = Path(name).name.lower()
+        if (ext in YAML_EXT or ext in CONFIG_EXT or ext == "" or base_name == "jenkinsfile"
+                or base_name.startswith(("dockerfile", "containerfile")) or base_name.endswith(".dockerfile")):
             raw = data.decode("utf-8", errors="replace")
             hits = find_secrets(raw)
             text = redact(raw)
@@ -126,6 +132,24 @@ class EvidenceBundle:
         doc_type = DocType(hint) if hint in [d.value for d in DocType] else classify_document(name, text)
         return EvidenceItem(kind=Kind.DOCUMENT, doc_type=doc_type, text=text, meta={**meta, "raw_secret_scan": hits},
                             reviewed_at=review_date(text) or modified, **base)
+
+    def _code(self, base, doc: dict) -> EvidenceItem:
+        """A code-signals document (from a repository scan): signals become records, plus a readable summary."""
+        for s in doc.get("signals") or []:           # snippets were redacted by the analyzer; redact again on ingest
+            for o in s.get("occurrences") or []:
+                if o.get("snippet"):
+                    o["snippet"] = redact(str(o["snippet"]))[:160]
+        by = defaultdict(int)
+        for s in doc.get("signals") or []:
+            by[s.get("category", "other")] += int(s.get("count", 1))
+        meta = {"files": doc.get("files_scanned", 0), "signals": sum(by.values()), **{f"{k}": v for k, v in sorted(by.items())},
+                "capabilities": len(doc.get("capabilities") or {})}
+        return EvidenceItem(kind=Kind.CODE, text=redact(code_signals.summary_text(doc)), records=list(doc.get("signals") or []),
+                            meta={**meta, "doc": {k: doc.get(k) for k in ("repository", "sha", "languages", "practice",
+                                                                        "capabilities", "files_not_scanned")}}, **base)
+
+    def code_analyses(self) -> list[EvidenceItem]:
+        return [it for it in self.items.values() if it.kind == Kind.CODE]
 
     def _scan(self, base, fmt, findings, comps) -> EvidenceItem:
         for f in findings:

@@ -68,6 +68,12 @@ servicenow:
   userKey: username
   passwordKey: password
 
+github:                                       # repository scan through gh (needs gh in the image: Dockerfile GH_CLI_URL)
+  host: ""                                    # GH_HOST, e.g. a GitHub Enterprise host; empty = github.com
+  hosts: ""                                   # SRA_GITHUB_HOSTS: comma-separated hosts assessors may scan; empty = host
+  existingSecret: ""                          # Kubernetes secret with a read-only token (contents, security alerts); empty = scan off
+  tokenKey: token                             # becomes GH_TOKEN (github.com) or GH_ENTERPRISE_TOKEN (any other host)
+
 llm:
   enabled: true                              # false: rules/checklists only, no chat
   # anthropic (default, as OIP): Claude through the CVS LMS gateway -> AWS Bedrock. Evidence is sent to the hosted model

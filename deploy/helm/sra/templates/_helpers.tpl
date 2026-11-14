@@ -56,6 +56,21 @@ app.kubernetes.io/version: {{ .Values.image.tag | quote }}
   value: {{ .Values.ingestion.hours | default "" | quote }}
 - name: SRA_INGEST_STANDARDS
   value: {{ ternary "true" "false" (ne .Values.ingestion.standards false) | quote }}
+{{- with .Values.github }}
+{{- if .host }}
+- name: GH_HOST
+  value: {{ .host | quote }}
+{{- end }}
+{{- if .hosts }}
+- name: SRA_GITHUB_HOSTS
+  value: {{ .hosts | quote }}
+{{- end }}
+{{- if .existingSecret }}
+{{- /* gh reads the token from its environment; the app code never reads or logs it. GH_ENTERPRISE_TOKEN serves every host but github.com. */}}
+- name: {{ if or (not .host) (eq .host "github.com") }}GH_TOKEN{{ else }}GH_ENTERPRISE_TOKEN{{ end }}
+  valueFrom: {secretKeyRef: {name: {{ .existingSecret }}, key: {{ .tokenKey | default "token" }}}}
+{{- end }}
+{{- end }}
 - name: LLM_ENABLED
   value: {{ ternary "true" "false" (ne .Values.llm.enabled false) | quote }}
 - name: LLM_PROVIDER

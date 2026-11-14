@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
+import { DocumentImport } from "@carbon/icons-react";
+import { Button } from "@carbon/react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "./api";
-import { ErrorBox } from "./ui";
+import { ErrorBox, Notice } from "./ui";
 
 const TRIGGERS = [
   ["new_production", "Entering production"], ["major_change", "Major change"], ["architecture_change", "Architecture change"],
@@ -30,6 +32,7 @@ function ProfileImport({ onLoad }: { onLoad: (profile: Record<string, any>) => v
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const input = useRef<HTMLInputElement>(null);
 
   async function pick(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
@@ -48,14 +51,14 @@ function ProfileImport({ onLoad }: { onLoad: (profile: Record<string, any>) => v
   return (
     <div className="card">
       <div className="row" style={{ gap: 12, flexWrap: "wrap" }}>
-        <label className="btn">
+        <Button kind="tertiary" size="md" renderIcon={DocumentImport} disabled={busy} onClick={() => input.current?.click()}>
           {busy ? "Reading…" : "Fill from profile.yaml…"}
-          <input type="file" accept=".yaml,.yml,.json" onChange={pick} disabled={busy} style={{ display: "none" }} />
-        </label>
+        </Button>
+        <input ref={input} type="file" accept=".yaml,.yml,.json" onChange={pick} disabled={busy} hidden aria-label="profile.yaml file" />
         <span className="muted small">Optional. Replaces the fields below with the file's values; anything the file leaves out goes back to its default.</span>
       </div>
       <ErrorBox error={error} />
-      {msg && <p className="notice" role="status" style={{ marginTop: 10, marginBottom: 0 }}>{msg}</p>}
+      {msg && <div style={{ marginTop: 12 }}><Notice kind="success">{msg}</Notice></div>}
     </div>
   );
 }
@@ -116,11 +119,13 @@ export default function NewAssessment() {
 
   return (
     <form onSubmit={submit}>
-      <h1 style={{ marginBottom: 14 }}>New assessment</h1>
+      <div className="page-head">
+        <div><p className="page-eyebrow"><a href="#/">Reliability assessments</a></p><h1>New assessment</h1></div>
+      </div>
       <ErrorBox error={error} />
       <ProfileImport onLoad={(x) => setP(toForm(x))} />
       <ProfileFields p={p} set={set} />
-      <button className="primary" disabled={busy || !p.name}>{busy ? "Creating…" : "Create and propose templates"}</button>
+      <Button type="submit" size="lg" disabled={busy || !p.name}>{busy ? "Creating…" : "Create and propose templates"}</Button>
     </form>
   );
 }
@@ -161,12 +166,11 @@ export function EditAssessment({ id }: { id: string }) {
   if (!p) return <><ErrorBox error={error} /><p className="muted">Loading…</p></>;
   return (
     <form onSubmit={submit}>
-      <div className="row" style={{ marginBottom: 14 }}>
-        <h1>Edit assessment</h1>
-        <span className="muted mono">{id}</span>
+      <div className="page-head">
+        <div><p className="page-eyebrow"><a href="#/">Reliability assessments</a> / <a href={back} className="mono">{id}</a></p><h1>Edit assessment</h1></div>
       </div>
       <ErrorBox error={error} />
-      {locked && <p className="notice" role="status">{locked}</p>}
+      {locked && <Notice kind="warning">{locked}</Notice>}
       <fieldset disabled={!!locked || busy} style={{ border: "none", padding: 0, margin: 0 }}>
         <div className="card">
           <h2>Assessment</h2>
@@ -178,9 +182,9 @@ export function EditAssessment({ id }: { id: string }) {
         </div>
         <ProfileImport onLoad={(x) => setP(toForm(x))} />
         <ProfileFields p={p} set={set} />
-        <div className="row" style={{ gap: 8 }}>
-          <button className="primary" disabled={!p.name || !date}>{busy ? "Saving…" : "Save changes"}</button>
-          <a className="btn" href={back}>Cancel</a>
+        <div className="btn-row">
+          <Button type="submit" size="lg" disabled={!p.name || !date}>{busy ? "Saving…" : "Save changes"}</Button>
+          <Button kind="secondary" size="lg" href={back}>Cancel</Button>
         </div>
       </fieldset>
     </form>

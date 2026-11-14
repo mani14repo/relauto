@@ -1,9 +1,18 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark" class="cds--g100">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Reliability Assessments</title>
+    <script>
+      // Apply the remembered theme before the first paint (theme.tsx keeps it in sync afterwards).
+      try {
+        if (localStorage.getItem("sra-theme") === "light") {
+          document.documentElement.dataset.theme = "light";
+          document.documentElement.className = "cds--white";
+        }
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

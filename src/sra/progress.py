@@ -126,10 +126,10 @@ class Progress:
             self.state.update(state="cancelled", current="", eta_s=None, finished_at=_now())
         self._line("warn", msg)
 
-    def failed(self, error: str) -> None:
+    def failed(self, error: str, what: str = "Run") -> None:
         with self._lock:
             self.state.update(state="failed", current="", eta_s=None, finished_at=_now(), error=error)
-        self._line("error", f"Run failed: {error}")
+        self._line("error", f"{what} failed: {error}")
 
     # -------------------------------------------------------------- internals
     def _eta(self, done_steps: int) -> int | None:

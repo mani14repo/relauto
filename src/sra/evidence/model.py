@@ -13,6 +13,7 @@ class Kind(StrEnum):
     SCAN = "scan"
     K8S = "k8s_manifest"
     CI_CONFIG = "ci_config"
+    CODE = "code_analysis"        # reliability signals found in source code (evidence/code_signals.py)
     OTHER = "other"
 
 

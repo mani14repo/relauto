@@ -5,6 +5,8 @@
     sra assess  <evidence-dir> [--profile p.yaml] [--out out/<app>] [--as-of 2026-11-04] [--llm]
     sra serve [--build]                            # UI, API and scheduler on :8080 (one process, as on CAP); --build runs npm first
     sra worker                                     # Kafka worker (optional: only when KAFKA_BOOTSTRAP_SERVERS is set)
+    sra github  <owner/name> [--ref r] [--host h] (--out <evidence-dir> | --assessment SRA-...)   # scan a repo with gh
+    sra github  status | login | logout [--host h]  # gh's sign-in for the host (login: gh's device flow on this terminal)
 """
 from __future__ import annotations
 
@@ -145,6 +147,68 @@ def cmd_ingest(args) -> None:
     store.close()
 
 
+def cmd_github(args) -> None:
+    """Scan a GitHub repository with gh: into an evidence folder (for `sra assess`), or into a stored assessment.
+    `sra github status|login|logout` show or change gh's sign-in for the host (login and logout run gh itself)."""
+    from .connectors.github import GitHubError, scan
+    if args.repository in ("status", "login", "logout"):
+        return cmd_github_auth(args)
+    if not (args.out or args.assessment):
+        sys.exit("sra github <owner/name>: pass --out <folder> or --assessment SRA-...")
+    try:
+        if args.assessment:
+            from .service import AssessmentService
+            from .store import store_from_settings
+            store = store_from_settings()
+            try:
+                out = AssessmentService(store).scan_github(args.assessment, args.repository, args.ref, args.host, "cli",
+                                                           alerts=not args.no_alerts, signals=not args.no_signals,
+                                                           code=not args.no_code)
+            finally:
+                getattr(store, "close", lambda: None)()
+            print(json.dumps({k: v for k, v in out.items() if k != "evidence"}, indent=1))
+            print(f"added {len(out['evidence'])} evidence file(s) to {args.assessment}")
+            return
+        res = scan(args.repository, args.ref, args.host, alerts=not args.no_alerts, signals=not args.no_signals,
+                   code=not args.no_code)
+    except KeyError:
+        sys.exit(f"assessment not found: {args.assessment}")
+    except GitHubError as exc:
+        sys.exit(f"GitHub scan failed: {exc}")
+    root = Path(args.out)
+    for f in res.files:
+        # <out>/<owner>/<name>@<sha12>/<path>: `sra assess <out>` ingests it like any other evidence folder
+        p = root.joinpath(*f.name.split("/")[1:])
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_bytes(f.data)
+    print(json.dumps(res.summary(), indent=1))
+    print(f"wrote {len(res.files)} file(s) under {root.resolve()}")
+
+
+def cmd_github_auth(args) -> None:
+    import subprocess
+
+    from .connectors import github as gh
+    from .connectors.github import GitHubError
+    try:
+        host = gh._host_or_default(args.host)
+        if args.repository == "status":
+            st = gh.auth_status(host)
+            print(json.dumps({k: st.get(k) for k in ("host", "signed_in", "account", "source", "scopes", "env_token", "error")
+                              if st.get(k) is not None}, indent=1))
+            sys.exit(0 if st["signed_in"] else 1)
+        exe = gh.gh_binary()
+    except GitHubError as exc:
+        sys.exit(str(exc))
+    if gh.env_token_name(host):
+        sys.exit(f"{gh.env_token_name(host)} is set for {host}; gh uses it, so there is nothing to {args.repository}")
+    # gh itself, on this terminal: the device flow (or a browser) for login, its own prompts for logout
+    cmd = (["auth", "login", "--hostname", host, "--web", "--git-protocol", "https"] if args.repository == "login"
+           else ["auth", "logout", "--hostname", host])
+    env = {k: v for k, v in gh._env(host).items() if k != "GH_PROMPT_DISABLED"}   # gh may ask on this terminal
+    sys.exit(subprocess.run([exe, *cmd], env=env).returncode)
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="sra", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -167,6 +231,17 @@ def main(argv=None):
     ip.add_argument("--servicenow", action="store_true", help="sync ServiceNow (SERVICENOW_INSTANCE_URL and credentials)")
     ip.add_argument("--tables", help="comma-separated ServiceNow tables (default: all in config/sources.yaml)")
     ip.add_argument("--every", type=int, metavar="SECONDS", help="keep running: repeat after this many seconds")
+    gp = sub.add_parser("github", help="scan a GitHub repository with the gh CLI (gh auth login, or GH_TOKEN, first)")
+    gp.add_argument("repository", help="owner/name or a clone URL to scan; or status | login | logout for gh's sign-in")
+    gp.add_argument("--ref", help="branch, tag or commit (default: the default branch)")
+    gp.add_argument("--host", help="GitHub Enterprise host (default: GH_HOST, else github.com)")
+    dest = gp.add_mutually_exclusive_group()
+    dest.add_argument("--out", help="write the evidence files into this folder (then: sra assess <folder>)")
+    dest.add_argument("--assessment", help="add the evidence to this stored assessment (SRA-...)")
+    gp.add_argument("--no-alerts", action="store_true", help="skip Dependabot, code-scanning and secret-scanning alerts")
+    gp.add_argument("--no-signals", action="store_true", help="skip branch protection, environments, releases, deployments")
+    gp.add_argument("--no-code", action="store_true",
+                    help="skip the source code pass (latency, security, performance, scalability, coding practice)")
     args = ap.parse_args(argv)
     if args.cmd == "catalog":
         from .catalog import compile_catalog
@@ -193,6 +268,8 @@ def main(argv=None):
         asyncio.run(worker_main())
     elif args.cmd == "ingest":
         cmd_ingest(args)
+    elif args.cmd == "github":
+        cmd_github(args)
 
 
 if __name__ == "__main__":
