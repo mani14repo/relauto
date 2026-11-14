@@ -1,6 +1,6 @@
 apiVersion: v2
 name: sra
-description: Site Reliability Assessment Bot - API, Kafka worker and local LLM (Ollama, CPU)
+description: Site Reliability Assessment Bot - one container on CAP as OIP runs (UI, API, scheduler); Kafka worker and Ollama optional
 type: application
 version: 0.1.0
 appVersion: "0.1.0"

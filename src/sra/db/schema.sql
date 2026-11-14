@@ -28,6 +28,14 @@ CREATE TABLE IF NOT EXISTS sra_assessments (
 );
 CREATE INDEX IF NOT EXISTS sra_assessments_app_idx ON sra_assessments (application_id, created_at DESC);
 
+-- Uploaded evidence files (PgBlobs), keyed "<assessment id>/<evidence id>__<name>". The default blob store on CAP:
+-- the database is the system of record, as for OIP; GCS (SRA_GCS_BUCKET) remains optional.
+CREATE TABLE IF NOT EXISTS sra_blobs (
+    key         text PRIMARY KEY,
+    data        bytea NOT NULL,
+    created_at  timestamptz NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS sra_evidence (
     id             text NOT NULL,
     assessment_id  text NOT NULL REFERENCES sra_assessments(id) ON DELETE CASCADE,

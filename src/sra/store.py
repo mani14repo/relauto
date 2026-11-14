@@ -1,7 +1,7 @@
 """Persistence: assessments, evidence blobs, audit log, outbox.
 
     FileStore  - local directory (dev, tests, single-user CLI)
-    PgStore    - PostgreSQL (Cloud SQL) with outbox; blobs in GCS (gs://) or a mounted path
+    PgStore    - PostgreSQL (Cloud SQL) with outbox; blobs in the database (sra_blobs, the default) or GCS (gs://)
 
 Chosen by settings: DATABASE_URL (or CAP's CAP_POSTGRES_* settings) set -> PgStore, else FileStore(SRA_DATA_DIR).
 """
@@ -98,9 +98,66 @@ class GcsBlobs:
         return len(blobs)
 
 
-def blobs_from_settings() -> BlobStore:
+class PgBlobs:
+    """Evidence files in the database itself (sra_blobs), as OIP keeps everything in its one CAP Postgres database.
+
+    The default for PgStore: the container's disk is scratch space (lost on restart) and CAP provisions no bucket for
+    OIP, so the database is the system of record. Uploads are capped by SRA_MAX_UPLOAD_MB (50 MB), well within bytea.
+    """
+
+    def __init__(self, pool) -> None:
+        self.pool = pool
+
+    def put(self, key: str, data: bytes) -> str:
+        with self.pool.connection() as c:
+            c.execute("INSERT INTO sra_blobs (key, data) VALUES (%s, %s) ON CONFLICT (key) DO UPDATE SET data = "
+                      "EXCLUDED.data, created_at = now()", (key, data))
+        return f"pg:{key}"
+
+    def get(self, uri: str) -> bytes:
+        if not uri.startswith("pg:"):
+            raise ValueError(f"not a database blob: {uri}")
+        with self.pool.connection() as c:
+            row = c.execute("SELECT data FROM sra_blobs WHERE key = %s", (uri[3:],)).fetchone()
+        if not row:
+            raise FileNotFoundError(uri)
+        return bytes(row[0])
+
+    def delete_prefix(self, prefix: str) -> int:
+        like = prefix.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+        with self.pool.connection() as c:
+            return c.execute("DELETE FROM sra_blobs WHERE key LIKE %s", (like,)).rowcount
+
+
+class AnyBlobs:
+    """Writes to `primary`; reads any URI scheme, so files stored before a switch of blob store stay readable."""
+
+    def __init__(self, primary, readers: dict) -> None:
+        self.primary, self.readers = primary, readers
+
+    def put(self, key: str, data: bytes) -> str:
+        return self.primary.put(key, data)
+
+    def get(self, uri: str) -> bytes:
+        scheme = uri.split(":", 1)[0]
+        reader = self.readers.get(scheme)
+        if reader is None and scheme == "gs":
+            reader = self.readers["gs"] = GcsBlobs(uri.split("/", 3)[2])
+        return (reader or self.primary).get(uri)
+
+    def delete_prefix(self, prefix: str) -> int:
+        return self.primary.delete_prefix(prefix)
+
+
+def blobs_from_settings(pool=None) -> BlobStore:
+    """SRA_GCS_BUCKET set: GCS. Otherwise the database when there is one (OIP/CAP default), else local files."""
     bucket = config.setting("SRA_GCS_BUCKET")
-    return GcsBlobs(bucket) if bucket else LocalBlobs(config.DATA_DIR / "blobs")
+    local = LocalBlobs(config.DATA_DIR / "blobs")
+    if bucket:
+        return GcsBlobs(bucket)
+    if pool is not None:
+        return AnyBlobs(PgBlobs(pool), {"file": local})
+    return local
 
 
 # ------------------------------------------------------------------ store
@@ -285,19 +342,46 @@ class PgStore:
     def __init__(self, dsn: str, blobs: BlobStore | None = None) -> None:
         from psycopg_pool import ConnectionPool
         self.pool = ConnectionPool(dsn, min_size=1, max_size=int(config.setting("DB_POOL_MAX", "5")), open=True)
-        self.blobs = blobs or blobs_from_settings()
+        self.blobs = blobs or blobs_from_settings(self.pool)
         self.bus = self   # publish() writes to the outbox
         from .knowledge.store import KnowledgeStore
         self.knowledge = KnowledgeStore(self.pool, self.blobs)     # the standing knowledge store (sra/knowledge)
 
     has_vector = False          # pgvector available: semantic search on; otherwise keyword search only
     iterative_scan = False      # pgvector >= 0.8
+    init_error: str | None = None   # set while the schema could not be applied (database down at start)
+    _init_tried = 0.0
+    RETRY_INIT_S = 30
 
     def init(self) -> None:
         sql = (Path(__file__).parent / "db" / "schema.sql").read_text(encoding="utf-8")
         with self.pool.connection() as c:
             c.execute(sql)
         self._enable_vector()
+        self.init_error = None
+
+    def try_init(self) -> bool:
+        """Apply the schema, recording a failure instead of raising (as OIP's prepare_database does): the process and
+        its health probe stay up, and the API reports the database error until a later attempt succeeds."""
+        self._init_tried = time.monotonic()
+        try:
+            self.init()
+            self.init_error = None
+            return True
+        except Exception as exc:  # noqa: BLE001 - any connection or SQL failure
+            self.init_error = (str(exc).strip().splitlines() or [type(exc).__name__])[0][:300]
+            log.error("database not ready: %s", self.init_error)
+            return False
+
+    def ready(self) -> bool:
+        """True once the schema is applied; retries at most every RETRY_INIT_S seconds while it is not."""
+        if self.init_error is None:
+            return True
+        if time.monotonic() - self._init_tried >= self.RETRY_INIT_S:
+            with _INIT_LOCK:
+                if self.init_error is not None and time.monotonic() - self._init_tried >= self.RETRY_INIT_S:
+                    self.try_init()
+        return self.init_error is None
 
     def close(self) -> None:
         self.pool.close()
@@ -522,10 +606,13 @@ class PgStore:
                 "feedback_kept": len(keep_feedback or [])}
 
 
+_INIT_LOCK = threading.Lock()
+
+
 def store_from_settings() -> Store:
     dsn = config.database_dsn()      # DATABASE_URL, or the CAP_POSTGRES_* settings CAP injects
     if dsn:
         s = PgStore(dsn)
-        s.init()
+        s.try_init()                 # a database that is down at start does not stop the process (see PgStore.ready)
         return s
     return FileStore()

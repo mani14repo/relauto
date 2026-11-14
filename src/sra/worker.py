@@ -72,6 +72,8 @@ async def main() -> None:
     if not bootstrap or not database_dsn():
         raise SystemExit("worker needs KAFKA_BOOTSTRAP_SERVERS and a database (DATABASE_URL or CAP_POSTGRES_*)")
     store = store_from_settings()
+    if store.init_error:
+        raise SystemExit(f"database unavailable: {store.init_error}")
     svc = AssessmentService(store, _evaluator_factory)
     security = {}
     if setting("KAFKA_SECURITY_PROTOCOL"):

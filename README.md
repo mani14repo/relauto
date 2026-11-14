@@ -4,7 +4,7 @@ Helps an SRE run a reliability assessment end to end, using the FSI REO template
 
 1. **Selects the templates** that apply to the application (41 templates: SRE-AT-01..16, ITSM-AT-01..12, CMDB-AT-01..13 — the CMDB set is the V2 CMDB/CSDM release).
 2. **Ingests evidence**: ServiceNow exports, documents, scanner output, Kubernetes manifests and CI configuration. Secrets are redacted on the way in.
-3. **Detects gaps, vulnerabilities and anomalies** with deterministic detectors first. A **local LLM** (Ollama, CPU) then evaluates only the criteria the rules cannot settle, and every AI result is checked against the evidence it cites.
+3. **Detects gaps, vulnerabilities and anomalies** with deterministic detectors first. An LLM (on CAP: Claude through the CVS LMS gateway, as OIP uses; locally: Ollama on CPU) then evaluates only the criteria the rules cannot settle, and every AI result is checked against the evidence it cites.
 4. **Recommends a fix for every finding**, grounded in the numbered steps of the OIPReqs playbooks, with an owner and a due date.
 5. **Scores** each criterion, template and domain. Applies the rubric's gating Readiness Rating (P1/P2 gap counts), and computes a Reliability Readiness Index and a maturity level (L1–L5).
 6. **Writes the filled-in `.docx`** for each template in its original format, plus an Assessment Summary report.
@@ -14,9 +14,10 @@ The SRE reviews and overrides everything in a guided web UI. Human decisions are
 ## How it fits together
 
 ```
-React UI ──► sra-api (FastAPI :8080) ──► Postgres (Cloud SQL + pgvector)  ◄── cloud-sql-proxy sidecar (IAM)
-                 │ outbox ─► Kafka (sra.assessment.events, sra.jobs) ─► sra-worker ──► Ollama (CPU, local model)
-                 └── GCS (evidence blobs, reports)
+React UI ──► sra (one container on CAP, :8080: UI, API, /healthz, in-process jobs and scheduler)
+                 ├── cloud-sql-proxy sidecar (IAM) ──► CAP Postgres (sra_* tables beside OIP's cog_*, pgvector, evidence files)
+                 └── LMS gateway (HTTPS) ──► AWS Bedrock ──► Claude          (local dev: Ollama on CPU)
+Optional, off by default: Kafka (sra.jobs) + a separate worker, GCS for evidence files, an Ollama StatefulSet.
 ```
 
 | Stage | Module | Notes |
@@ -27,10 +28,10 @@ React UI ──► sra-api (FastAPI :8080) ──► Postgres (Cloud SQL + pgvec
 | Evidence | `sra.evidence` | ServiceNow CSV, XLSX and Table API JSON (incident, change_request, problem, kb_knowledge, em_alert, cmdb_ci, cmdb_rel_ci); docx/pdf/md/txt; images (jpg/png/tiff/webp) and scanned PDFs via RapidOCR (CPU, weights inside the wheel); Trivy/Grype/CycloneDX/SARIF; Kubernetes YAML; Jenkinsfile/GitHub Actions |
 | Detectors | `sra.detectors` | `rubric_rules` (all 18 Evidence Catalog rules), `criteria_rules` (25 template criteria computed from ingested data), `checklists` (37 document checklists, `config/checklists.yaml`), `data_rules` (52 criteria from extra ServiceNow tables and registers), `incident_anomalies`, `incident_clusters`, `vulnerabilities`, `config_checks`. Thresholds are in `config/detectors.yaml` |
 | Retrieval | `sra.retrieval` | Hybrid: keyword + semantic vector search fused with RRF, optional local reranker. In PostgreSQL (tsvector + pgvector) when the service has a database, in memory otherwise |
-| LLM | `sra.llm` | Per-criterion JSON-schema calls; `verify.py` rejects invented citations. Local Ollama by default; Claude through the LMS gateway is an optional provider, off by default |
+| LLM | `sra.llm` | Per-criterion JSON-schema calls; `verify.py` rejects invented citations. On CAP, Claude through the LMS gateway in tool mode (forced `submit_answer` call, one corrective retry), as OIP does; locally, Ollama or any OpenAI-compatible server |
 | Scoring | `sra.scoring` + `config/scoring_matrix.yaml` | See below |
 | Reports | `sra.report` | `docx_fill.py` edits the original template XML in place; `summary.py` produces the rubric Section 8 output |
-| Service | `sra.service`, `sra.api`, `sra.worker`, `sra.store` | FileStore for dev; PgStore with a transactional outbox → Kafka |
+| Service | `sra.service`, `sra.api`, `sra.worker`, `sra.store` | FileStore for dev; PgStore (evidence files in `sra_blobs`; outbox → Kafka only when Kafka is configured); `sra.scheduler` runs ingestion in-process |
 
 ### Knowledge store and hybrid retrieval (`sra.knowledge`, `sra.connectors`, `sra.retrieval`)
 
@@ -106,20 +107,23 @@ Standards and playbooks say what should exist, not what does, so they are never 
 - **Tested** against PostgreSQL 16 + pgvector 0.8 (`tests/test_postgres.py`: set `SRA_TEST_DATABASE_URL`; it creates and drops its own scratch database).
 - **To confirm before the first real sync:** the field names and the query scope per table in `config/sources.yaml` (every assumption is marked CONFIRM), and which ServiceNow account the connector may use.
 
-### Running beside COG on CAP
+### Fitting into OIP on CAP
 
-`docs/cog_cap_deployment.svg` shows how COG v2 runs; SRA follows the same pattern and can use the same CAP-provisioned database.
+SRA is built and run the way OIP (FSIC COG v2) is, following OIP's `CAP_DEPLOYMENT_ARCHITECTURE.md`, `CICD_JFROG_CAP.md` and `GATEWAY_COMPATIBILITY.md` (copies of the deployment diagram: `docs/cog_cap_deployment.svg`). In OIP's readiness assessment it is the "Reliability Assessment Agent — Posture Scoring" against the OIPReqs standards.
 
-| COG | SRA |
+| OIP | SRA |
 |---|---|
-| One process, port 8080, FastAPI + React UI, `/healthz` | Same |
-| Distroless Python image, UID 31337, pulled from JFrog by tag `fsic-cog-v2-<run>` | Same, tag `sra-<run>` |
-| cloud-sql-proxy sidecar on localhost, IAM login, no password | Same |
-| `CAP_POSTGRES_<APP>_<DB>_JDBC_URI`, `CAP_POSTGRES_USER` injected by CAP | Read when `DATABASE_URL` is not set (`config.database_dsn`). Helm: `cloudSql.useCapInjected: true`. If CAP injects several databases, `SRA_CAP_POSTGRES_VAR` names the one to use. |
-| Tables `cog_*`, created on first use | Tables and indexes `sra_*`, created on first use, in the same database. SRA never reads or writes a `cog_*` table. |
-| Claude through the LMS gateway (`ANTHROPIC_BASE_URL` in the image, `ANTHROPIC_API_KEY` at runtime) | Optional provider `LLM_PROVIDER=anthropic`, **off by default**, same two variables. Evidence then leaves the cluster for the hosted model, so it needs the approval COG has. See `src/sra/llm/anthropic_client.py` for the settings. |
+| One long-running container, port 8080: FastAPI + React UI, `/healthz`, scheduler thread in the same process | Same: `sra serve`. Jobs run in-process; `sra.scheduler` runs the knowledge-store ingestion at `SRA_INGEST_HOURS` (and once at start with `SRA_RUN_ON_START`). Kafka + `sra worker` are optional. |
+| Single replica (the scheduler is in the web process); a rollout may briefly overlap two pods | Helm pins `api.replicas: 1` unless `kafka.enabled`, and uses the `Recreate` strategy so pods never overlap |
+| A database failure at start is logged; the health probe stays up and the UI shows the error | Same: `/healthz` reports `database: error: …`, `/api/*` answers 503 with the reason, and the schema is retried every 30 s |
+| `ci.yml` calls `gha_workflow_actions/python_docker.yaml@latest` with the `permissions` block, `ARTIFACT_SCA: "requirements.txt"`, `DOCKER_PUBLISH: true` | Same; tag `sra-<run_number>`. The Python tests run first on a self-hosted runner. |
+| Dockerfile: JFrog only; BuildKit secrets `artifactory_user_encoded` / `artifactory_token`; distroless `python-3-debug` builder and `python-3-distroless` runtime; UID 31337; exec-form `CMD` | Same; the npm lockfile is pointed at `cvsdigital-npm` at build time |
+| cloud-sql-proxy sidecar on localhost, IAM login, no password; `CAP_POSTGRES_<APP>_<DB>_JDBC_URI` and `CAP_POSTGRES_USER` injected | Same (Helm `cloudSql.useCapInjected: true`, the default). If CAP injects several databases, `SRA_CAP_POSTGRES_VAR` names the one to use. |
+| Tables `cog_*`, created on first use; the database is the system of record | Tables and indexes `sra_*` in the same database, created on first use; uploaded evidence files are stored there too (`sra_blobs`). SRA never reads or writes a `cog_*` table. |
+| Claude through the LMS gateway; `ANTHROPIC_BASE_URL` set, `ANTHROPIC_API_KEY` from the approved secret store at runtime; forced tool call (the gateway rejects `output_config.format` and `strict`), answers validated, one corrective retry | Same (Helm `llm.provider: anthropic`, `outputMode: tool`, model `claude-opus-5`). `LLM_OUTPUT_MODE=auto` picks tool mode for any address other than api.anthropic.com. |
+| No login on the UI: CAP dev environment only | Same limit. Identity comes from ingress headers, which are only trustworthy if the ingress sets them and strips client copies |
 
-SRA additionally needs Kafka (jobs and events), a GCS bucket (evidence files and reports) and, unless the gateway provider is used, the Ollama StatefulSet. To confirm with CAP: the exact injected variable names, whether the SRA service account may create tables in COG's database, and who enables pgvector there.
+To confirm with CAP: the exact injected variable names, whether the SRA service account may create tables in OIP's database, who enables pgvector there, the namespace, ingress and image pull path, and where `ANTHROPIC_API_KEY` is set.
 
 ### Images and diagrams in evidence (OCR)
 
@@ -262,16 +266,18 @@ UI: `python -m sra.cli serve --build` builds the web UI (running `npm install` t
 
 Local LLM: install Ollama and run `ollama pull qwen3.5:4b` (the laptop default; set `LLM_MODEL` to change it). Thinking mode is off by default (`LLM_THINK=false`), because reasoning tokens are too slow on CPU. For the cluster, the candidate is `gemma4:26b`, a mixture-of-experts model that uses about 4B parameters per token; confirm it with the eval. Then add `--llm` to `assess`, or tick "Use local LLM" in the UI. To compare models, use `python eval/run_eval.py --llm --model <a> --model <b>`.
 
-Full stack: `docker compose up` (Postgres+pgvector, Kafka KRaft, Ollama, api, worker).
+Full stack: `docker compose up -d postgres ollama api` (Postgres+pgvector, Ollama, and the single app container, as on CAP). The optional Kafka topology: `docker compose --profile kafka up -d`.
 
 Postgres tests: `docker compose up -d postgres`, then run pytest with `SRA_TEST_DATABASE_URL=postgresql://sra:sra-dev-only@localhost:5432/sra`.
 
 ## Deploying to GKE (CAP)
 
-`deploy/helm/sra`:
-- the API (2 replicas, PDB, probes, non-root, read-only root filesystem) with a native-sidecar cloud-sql-proxy using IAM auth;
-- the Kafka worker;
-- an Ollama StatefulSet on a CPU high-memory node pool. Model weights are mirrored to GCS and copied into the PVC by an init container, because the cluster has no internet access.
+`deploy/helm/sra`, by default the OIP shape:
+- one app container (1 replica, `Recreate`, probes on `/healthz`, non-root, read-only root filesystem) with a native-sidecar cloud-sql-proxy using IAM auth, on the CAP-injected database;
+- Claude through the LMS gateway (`llm.gateway.existingSecret` must name the secret holding `ANTHROPIC_API_KEY`);
+- ingestion on the in-process scheduler (`ingestion.hours`, `ingestion.runOnStart`).
+
+Optional: `kafka.enabled` (Kafka worker Deployment, several API replicas), `gcs.bucket` (evidence files in GCS), `ollama.enabled` with `llm.provider: ollama` (an Ollama StatefulSet on a CPU high-memory node pool; weights mirrored to GCS and copied into the PVC by an init container), `ingestion.schedule` (a CronJob instead of the scheduler).
 
 The image builds through `.github/workflows/ci.yml`, using the shared `python_docker.yaml` workflow. All base images come from JFrog.
 
@@ -280,5 +286,5 @@ The image builds through `.github/workflows/ci.yml`, using the shared `python_do
 - The rubric, the scoring weights and the maturity bands are V1 drafts.
 - The crosswalk is curated by hand.
 - `[CONFIRM]` ServiceNow tables and fields in `config/detectors.yaml` (e.g. `u_slo_definition`, `u_business_application`).
-- Mirroring model weights through JFrog/GCS; pgvector on the Cloud SQL instance; Kafka topics and auth; UI ingress/IAP.
+- pgvector on the Cloud SQL instance; UI ingress/IAP or SSO (OIP has the same open item); pinning the shared workflow instead of `@latest`. Only with the optional extras: mirroring model weights, Kafka topics and auth.
 - Duplicate playbooks: SRE-PB-11/14 and SRE-PB-13/15 (the crosswalk uses the lower number).

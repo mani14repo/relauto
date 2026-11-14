@@ -1,3 +1,5 @@
+{{- if .Values.kafka.enabled }}
+# The Kafka worker: only when jobs go to Kafka (kafka.enabled). By default jobs run in the web process, as OIP's do.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -31,3 +33,4 @@ spec:
           securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
           volumeMounts: [{name: tmp, mountPath: /tmp}]
       volumes: [{name: tmp, emptyDir: {}}]
+{{- end }}

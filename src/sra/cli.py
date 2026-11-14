@@ -3,8 +3,8 @@
     sra catalog                                   # compile docs/OIPReqs -> catalog/
     sra select  <evidence-dir> [--profile p.yaml]  # show proposed templates with reasons
     sra assess  <evidence-dir> [--profile p.yaml] [--out out/<app>] [--as-of 2026-11-04] [--llm]
-    sra serve [--build]                            # API (+ UI) on :8080; --build runs the npm build first
-    sra worker                                     # Kafka worker
+    sra serve [--build]                            # UI, API and scheduler on :8080 (one process, as on CAP); --build runs npm first
+    sra worker                                     # Kafka worker (optional: only when KAFKA_BOOTSTRAP_SERVERS is set)
 """
 from __future__ import annotations
 
@@ -133,6 +133,8 @@ def cmd_ingest(args) -> None:
     store = store_from_settings()
     if not hasattr(store, "knowledge"):
         sys.exit("the knowledge store needs PostgreSQL: set DATABASE_URL (or the CAP_POSTGRES_* settings)")
+    if store.init_error:
+        sys.exit(f"database unavailable: {store.init_error}")
     job = {"job": "sync" if (args.standards or args.servicenow) else "ingest", "standards": args.standards,
            "servicenow": args.servicenow, "tables": [t.strip() for t in args.tables.split(",")] if args.tables else None}
     while True:
@@ -175,11 +177,16 @@ def main(argv=None):
     elif args.cmd == "assess":
         cmd_assess(args)
     elif args.cmd == "serve":
+        # One process, as OIP runs on CAP: UI, API and /healthz on :8080, jobs in-process (unless Kafka is set),
+        # and the scheduler thread (sra/scheduler.py). Run a single replica.
         import uvicorn
         from .config import setting
         if args.build:
             build_web()
-        uvicorn.run("sra.api.app:app", host="0.0.0.0", port=int(setting("PORT", "8080")))
+        from .api.app import app
+        from .scheduler import start_from_settings
+        start_from_settings(app.state.store, kafka=app.state.kafka)
+        uvicorn.run(app, host="0.0.0.0", port=int(setting("PORT", "8080")))
     elif args.cmd == "worker":
         import asyncio
         from .worker import main as worker_main

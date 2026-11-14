@@ -1,9 +1,16 @@
-# Uses the shared Automation Engineering workflow (see docs/image (7).png).
-# Builds web + python into one image and publishes to cvsh.jfrog.io/cvsdigital-docker as sra-<run_number>.
-name: ci
+# Build and publish the way OIP (FSIC COG v2) does: the shared Python + Docker workflow builds ./Dockerfile, runs the SCA
+# scan on requirements.txt and publishes to cvsh.jfrog.io/cvsdigital-docker as sra-<run_number>; CAP then runs that tag.
+# See OIP's CICD_JFROG_CAP.md. The Python tests run first on a self-hosted runner that can reach JFrog PyPI.
+name: CICD
 on:
   push: {branches: [main]}
   pull_request:
+# Required by the shared workflow (id-token: write for OIDC to JFrog).
+permissions:
+  id-token: write
+  contents: write
+  issues: write
+  pull-requests: write
 jobs:
   test:
     runs-on: [self-hosted]
@@ -12,21 +19,22 @@ jobs:
       - uses: actions/setup-python@v5
         with: {python-version: "3.13"}
       - name: Install (JFrog PyPI remote)
-        env: {PIP_INDEX_URL: "${{ secrets.ARTIFACTORY_PYPI_URL }}"}
+        env: {PIP_INDEX_URL: "${{ secrets.ARTIFACTORY_PYPI_URL }}"}   # [confirm] secret name with the pipeline team
         # rapidocr is installed without its dependencies, as in the Dockerfile (it asks for opencv-python; we use the headless build)
         run: pip install --no-cache-dir -r requirements.txt pytest && pip install --no-deps rapidocr-onnxruntime==1.4.4 && pip install --no-deps -e .
       - name: Tests
         run: python -m pytest -q
-  build:
+  cicd:
     needs: test
     if: github.event_name == 'push'
+    # [confirm] OIP uses @latest; pin a release here once the pipeline team publishes one (a change upstream changes this build)
     uses: cvs-health-source-code/gha_workflow_actions/.github/workflows/python_docker.yaml@latest
     with:
       PYTHON_VERSION: "3.13"
-      PYTHON_PACKAGE_MANAGER: pip
-      PYTHON_DEPS_COMMAND: pip install --no-cache-dir -r requirements.txt
-      DOCKERFILE_PATH: ./Dockerfile
-      ARTIFACT_SCA: true
+      PYTHON_PACKAGE_MANAGER: "pip"
+      PYTHON_DEPS_COMMAND: "pip install --no-cache-dir -r requirements.txt"
+      DOCKERFILE_PATH: "./Dockerfile"
+      ARTIFACT_SCA: "requirements.txt"
       DOCKER_PUBLISH: true
-      IMAGE_TAG_VERSION: sra-${{ github.run_number }}
+      IMAGE_TAG_VERSION: "sra-${{ github.run_number }}"
     secrets: inherit

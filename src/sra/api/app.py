@@ -104,6 +104,8 @@ def create_app(store=None, run_jobs_inline: bool = False) -> FastAPI:
         else:
             local_ingest.submit(job)
     svc.submit_job = submit_knowledge_job
+    # for the in-process scheduler started by `sra serve` (sra/scheduler.py)
+    app.state.store, app.state.kafka = store, kafka
 
     def actor(request: Request) -> str:
         for h in ("x-goog-authenticated-user-email", "x-forwarded-email", "x-user"):
@@ -132,9 +134,23 @@ def create_app(store=None, run_jobs_inline: bool = False) -> FastAPI:
     async def conflict(_, exc):
         return JSONResponse({"detail": str(exc)}, status_code=409)
 
+    @app.middleware("http")
+    async def database_gate(request: Request, call_next):
+        """Until the schema is applied (database down at start), /api/* answers 503 with the reason, as OIP does,
+        while /healthz and the UI keep serving so the pod stays up and the page can show the error."""
+        ready = getattr(store, "ready", None)
+        if request.url.path.startswith("/api/") and ready is not None:
+            from starlette.concurrency import run_in_threadpool
+            if not await run_in_threadpool(ready):
+                return JSONResponse({"detail": f"database unavailable: {store.init_error}"}, status_code=503)
+        return await call_next(request)
+
     @app.get("/healthz")
     def healthz():
-        return {"ok": True, "templates": len(load_templates())}
+        # Liveness/readiness for CAP: the process is serving. The database state is reported, not gated on, so a
+        # database outage does not restart the pod in a loop.
+        db = "none" if not hasattr(store, "pool") else ("ok" if store.init_error is None else f"error: {store.init_error}")
+        return {"ok": True, "templates": len(load_templates()), "database": db}
 
     @app.get("/api/llm/health")
     def llm_health():

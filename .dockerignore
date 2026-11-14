@@ -1,11 +1,20 @@
-.venv
+# Keep secrets and local artefacts out of the build context (as OIP's .dockerignore does).
+.env*
+!.env.example
+*.log
 .git
+.github
 .idea
+.claude
+.venv
+.pytest_cache
+.ruff_cache
+**/__pycache__
 out
 data
 docs/*.png
 web/node_modules
 web/dist
-**/__pycache__
+web/.npmrc
 eval/scenarios
 tests

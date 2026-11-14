@@ -6,7 +6,14 @@ metadata:
     {{- include "sra.labels" . | nindent 4 }}
     app.kubernetes.io/component: api
 spec:
+  {{- if and (gt (int .Values.api.replicas) 1) (not .Values.kafka.enabled) }}
+  {{- fail "api.replicas > 1 needs kafka.enabled: jobs and the scheduler run in the web process, so each replica would run every job (as for OIP, keep 1)" }}
+  {{- end }}
   replicas: {{ .Values.api.replicas }}
+  {{- if not .Values.kafka.enabled }}
+  # Recreate: during a rolling update the old and new pod would both run jobs and the scheduler (OIP section 6)
+  strategy: {type: Recreate}
+  {{- end }}
   selector:
     matchLabels: {app.kubernetes.io/name: sra, app.kubernetes.io/component: api}
   template:
@@ -33,6 +40,8 @@ spec:
           ports: [{name: http, containerPort: 8080}]
           env:
             {{- include "sra.env" . | nindent 12 }}
+            - name: SRA_RUN_ON_START
+              value: {{ ternary "true" "false" (eq .Values.ingestion.runOnStart true) | quote }}
           startupProbe: {httpGet: {path: /healthz, port: http}, periodSeconds: 5, failureThreshold: 30}
           readinessProbe: {httpGet: {path: /healthz, port: http}, periodSeconds: 10}
           livenessProbe: {httpGet: {path: /healthz, port: http}, periodSeconds: 20, failureThreshold: 3}
@@ -49,7 +58,9 @@ metadata:
 spec:
   selector: {app.kubernetes.io/name: sra, app.kubernetes.io/component: api}
   ports: [{name: http, port: 80, targetPort: http}]
+{{- if gt (int .Values.api.replicas) 1 }}
 ---
+# Only with several replicas: with one, minAvailable 1 would block every node drain.
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
@@ -58,6 +69,7 @@ spec:
   minAvailable: 1
   selector:
     matchLabels: {app.kubernetes.io/component: api}
+{{- end }}
 {{- if .Values.api.ingress.enabled }}
 ---
 apiVersion: networking.k8s.io/v1

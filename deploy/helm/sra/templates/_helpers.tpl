@@ -32,6 +32,7 @@ app.kubernetes.io/version: {{ .Values.image.tag | quote }}
   valueFrom: {secretKeyRef: {name: {{ .Values.servicenow.existingSecret }}, key: {{ .Values.servicenow.passwordKey | default "password" }}}}
 {{- end }}
 {{- end }}
+{{- if .Values.kafka.enabled }}
 - name: KAFKA_BOOTSTRAP_SERVERS
   value: {{ .Values.kafka.bootstrap | quote }}
 - name: KAFKA_GROUP
@@ -46,8 +47,15 @@ app.kubernetes.io/version: {{ .Values.image.tag | quote }}
 - name: KAFKA_PASSWORD
   valueFrom: {secretKeyRef: {name: {{ .Values.kafka.existingSecret }}, key: password}}
 {{- end }}
+{{- end }}
+{{- with .Values.gcs.bucket }}
 - name: SRA_GCS_BUCKET
-  value: {{ .Values.gcs.bucket | quote }}
+  value: {{ . | quote }}
+{{- end }}
+- name: SRA_INGEST_HOURS
+  value: {{ .Values.ingestion.hours | default "" | quote }}
+- name: SRA_INGEST_STANDARDS
+  value: {{ ternary "true" "false" (ne .Values.ingestion.standards false) | quote }}
 - name: LLM_ENABLED
   value: {{ ternary "true" "false" (ne .Values.llm.enabled false) | quote }}
 - name: LLM_PROVIDER
@@ -66,8 +74,8 @@ app.kubernetes.io/version: {{ .Values.image.tag | quote }}
   value: {{ .Values.llm.gateway.concurrency | default 4 | quote }}
 - name: LLM_EFFORT
   value: {{ .Values.llm.gateway.effort | quote }}   {{- /* "" is meaningful: do not send the field */}}
-- name: LLM_STRUCTURED_OUTPUT
-  value: {{ ternary "true" "false" (ne .Values.llm.gateway.structuredOutput false) | quote }}
+- name: LLM_OUTPUT_MODE
+  value: {{ .Values.llm.gateway.outputMode | default "tool" | quote }}
 {{- else }}
 - name: LLM_MODEL
   value: {{ .Values.llm.model | quote }}

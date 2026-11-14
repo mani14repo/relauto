@@ -1,4 +1,8 @@
 # Values for the CAP (GKE) namespace. Items marked [confirm] depend on CAP conventions.
+# Defaults follow how OIP (FSIC COG v2) runs on CAP (OIP docs: CAP_DEPLOYMENT_ARCHITECTURE.md): ONE long-running
+# container (UI, API, /healthz and an in-process scheduler on :8080), one replica, a cloud-sql-proxy sidecar to the
+# CAP-provisioned Postgres (IAM login, no password), and Claude through the LMS gateway. Kafka, GCS and the local
+# Ollama server are optional extras, all off by default.
 image:
   repository: cvsh.jfrog.io/cvsdigital-docker/sra
   tag: sra-1                      # set by CI: sra-<run_number>
@@ -14,13 +18,17 @@ cloudSql:
   database: sra
   user: sra@PROJECT_ID.iam                    # IAM database user, no password
   proxyImage: cvsh.jfrog.io/cvsdigital-docker/cloud-sql-proxy:2.14.1
-  # true: do not set DATABASE_URL; use the CAP_POSTGRES_<APP>_<DB>_JDBC_URI and CAP_POSTGRES_USER that CAP injects for a
-  # provisioned database (how COG is configured). Use this to share COG's database: the SRA tables are all prefixed
-  # sra_ (COG's are cog_) and are created on first start. [confirm the injected variable names with CAP]
-  useCapInjected: false
+  # true (default, as OIP): do not set DATABASE_URL; use the CAP_POSTGRES_<APP>_<DB>_JDBC_URI and CAP_POSTGRES_USER
+  # that CAP injects for a provisioned database. This also shares OIP's database: the SRA tables are all prefixed sra_
+  # (OIP's are cog_) and are created on first start. false: DATABASE_URL from instance/database/user above.
+  # [confirm the injected variable names with CAP]
+  useCapInjected: true
   capJdbcVar: ""                              # only when CAP injects more than one database: the variable to use
 
+# Optional. Off (as OIP): jobs run in the web process. On: jobs go to Kafka and a separate worker Deployment runs them;
+# the API may then run more than one replica.
 kafka:
+  enabled: false
   bootstrap: kafka-bootstrap.kafka.svc:9092   # [confirm]
   securityProtocol: ""                        # e.g. SASL_SSL
   saslMechanism: ""
@@ -28,7 +36,8 @@ kafka:
   group: sra-worker
 
 gcs:
-  bucket: sra-evidence-PROJECT_ID             # uploaded evidence + generated reports
+  bucket: ""                                  # empty (default, as OIP): evidence files are kept in Postgres (sra_blobs);
+                                              # set a bucket name to keep them in GCS instead
 
 # Checklist line suggestions use a small NLI model (cross-encoder/nli-deberta-v3-xsmall, ~96 MB ONNX). The pods run
 # with HF_HUB_OFFLINE=1, so its files must be baked into the image's Hugging Face cache (or mounted with HF_HOME);
@@ -40,10 +49,13 @@ gcs:
 retrieval:
   rerank: "off"                               # off | auto (use the local cross-encoder when its files are in the image)
 
-# The standing knowledge store's sources. Uploads are ingested by the worker as they arrive. The schedule below runs
-# the ingestion service as a CronJob to refresh the OIPReqs library (baked into the image) and to sync ServiceNow.
+# The standing knowledge store's sources. Uploads are ingested in the web process as they arrive. The scheduler in
+# the same process (sra/scheduler.py, as OIP's jobs run) refreshes the OIPReqs library baked into the image and syncs
+# ServiceNow when it is configured. Hours are the container clock (usually UTC).
 ingestion:
-  schedule: ""                                # e.g. "*/30 * * * *"; empty = no CronJob (trigger with POST /api/knowledge/sync)
+  hours: "2"                                  # SRA_INGEST_HOURS, e.g. "2" or "2,14"; empty = no schedule
+  runOnStart: true                            # SRA_RUN_ON_START: load the library once when a new image starts
+  schedule: ""                                # optional CronJob instead (e.g. "*/30 * * * *"); leave empty when hours is set
   standards: true
   resources:
     requests: {cpu: 500m, memory: 1Gi}
@@ -57,18 +69,21 @@ servicenow:
   passwordKey: password
 
 llm:
-  enabled: true                              # false: rules/checklists only, no chat; also set ollama.enabled=false to skip the server
-  provider: ollama                           # ollama | openai_compat | anthropic (Claude through the LMS gateway; see gateway below)
-  # Only for provider: anthropic. OFF unless you choose that provider. Evidence is then sent to the hosted model through
-  # the gateway COG uses, so it needs the same approval. Also set ollama.enabled: false (the model below is not used).
+  enabled: true                              # false: rules/checklists only, no chat
+  # anthropic (default, as OIP): Claude through the CVS LMS gateway -> AWS Bedrock. Evidence is sent to the hosted model
+  # under the same approval as OIP's AI checks. ollama | openai_compat: a local model server instead (set ollama.enabled).
+  provider: anthropic
   gateway:
-    model: claude-opus-5-5                    # or the gateway's own name for the model
-    baseUrl: ""                               # e.g. https://hyperion-lms-api.prod.cvshealth.com [confirm path with the LMS team]
-    existingSecret: ""                        # Kubernetes secret holding the key (from the approved secret store)
+    model: claude-opus-5                      # the name OIP confirmed through the gateway (2026-09-30)
+    baseUrl: https://hyperion-lms-api.prod.cvshealth.com
+    existingSecret: ""                        # Kubernetes secret holding ANTHROPIC_API_KEY (from the approved secret store) [confirm]
     secretKey: ANTHROPIC_API_KEY
     concurrency: 4                            # criteria evaluated at the same time
-    effort: medium                            # low | medium | high | xhigh | max; "" = do not send (if the gateway's model rejects it)
-    structuredOutput: true                    # false if the gateway rejects output_config.format
+    # tool (as OIP through the gateway): forced submit_answer call + one corrective retry. The gateway rejects
+    # output_config.format and strict tools. auto: native for api.anthropic.com, tool otherwise.
+    outputMode: tool
+    effort: ""                                # "" = not sent (OIP sends no output_config through the gateway)
+  # Only for provider ollama | openai_compat:
   model: gemma4:26b                           # MoE, ~4B active params: CPU-friendly; confirm with eval/run_eval.py
   think: false                                # reasoning tokens are too slow on CPU
   timeoutSeconds: 600
@@ -76,7 +91,9 @@ llm:
   numPredict: 768                             # most tokens per reply
 
 api:
-  replicas: 2
+  # Keep 1 (as OIP): jobs and the scheduler run in this process, so two replicas would run every job twice. More than
+  # one is accepted only with kafka.enabled. Updates use Recreate so an old and a new pod never run jobs side by side.
+  replicas: 1
   resources:
     requests: {cpu: 250m, memory: 512Mi}
     limits: {cpu: "1", memory: 1Gi}
@@ -85,14 +102,14 @@ api:
     host: sra.example.internal
     className: ""
 
-worker:
+worker:                                       # only with kafka.enabled
   replicas: 1                                 # one LLM job at a time per worker; scale with Ollama replicas
   resources:
     requests: {cpu: 500m, memory: 1Gi}        # includes the local ONNX embedding model
     limits: {cpu: "2", memory: 2Gi}
 
 ollama:
-  enabled: true
+  enabled: false                              # only with llm.provider: ollama
   image: cvsh.jfrog.io/cvsdigital-docker/ollama:0.40.14   # needs >= the release that ships gemma4
   replicas: 1                                 # each replica is a separate CPU node's worth of throughput; the app spreads criteria across them
   numParallel: 1                              # OLLAMA_NUM_PARALLEL per replica (and LLM_CONCURRENCY); 2+ needs memory for 2+ KV caches
